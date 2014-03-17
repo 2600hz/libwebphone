@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title></title>
+		<meta name="description" content="">
+		<meta name="viewport" content="width=device-width initial-scale=1.0">
+
+		<script src="lib/kazoo.js" type="text/javascript"></script>
+		<style>
+			div.demo-block {
+				border: 1px solid #22CCFF;
+				float: left;
+				margin: 10px;
+				padding: 10px;
+			}
+			div.demo-flash-error {
+				color: red;
+				font-style: italic;
+				font-size: 18px;
+			}
+			#toast {
+				display: none;
+				position: fixed;
+				top: 10px;
+				right: 10px;
+				width: 400px;
+				border: solid 2px #333;
+				border-radius: 10px;
+				box-shadow: 0px 0px 20px #333;
+				padding: 10px;
+				cursor: pointer;
+				background: white;
+			}
+			#toast.success {background-color: #62c462;}
+			#toast.error {background-color: #ee5f5b;}
+			#toast.warning {background-color: #fbb450;}
+			#toast.info {background-color: #5bc0de;}
+		</style>
+	</head>
+	<body>
+		<h1>Welcome in the Kazoo Client Demo</h1>
+		<div id="loginForm" class="demo-block" style="display: none;">
+			<form>
+				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_6gv067"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:user_6gv067@webdev.realm"><br>
+				Password: <input type="text" id="password" value="6wfpblen7me9"><br> -->
+				Private Identity: <input type="text" id="privateIdentity" value="user_s6chaxxdu8"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:user_s6chaxxdu8@webdev.realm"><br>
+				Password: <input type="text" id="password" value="v8pcb2bg27hb"><br>
+				Realm: <input type="text" id="realm" value="webdev.realm"><br>
+				<button id="btnLogin" type="button" onClick="login()">Login</button>
+				<button id="btnLogout" type="button" onClick="logout()" style="display: none;">Log out</button>
+			</form>
+		</div>
+
+		<div id="divLoggedIn" class="demo-block" style="display: none;">
+			Logged In
+			<div>
+				<input type="text" id="destination" placeholder="sip:2222@webdev.realm"></input>
+				<button id="call" onClick="call()">Call</button>
+			</div>
+		</div>
+
+		<div id="divCalling" class="demo-block" style="display: none;">
+			<h3>Call in progress...</h3>
+
+			<button id="btnHangup" type="button" onClick="hangup()">Hangup</button>
+			<button id="btnMute" type="button" onClick="mute()" data-state="unmuted">Mute</button>
+
+			<div id="dialpad">
+				<table>
+					<tr>
+						<td><input type="button" value="1" onClick="sendDTMF('1')"/></td>
+						<td><input type="button" value="2" onClick="sendDTMF('2')"/></td>
+						<td><input type="button" value="3" onClick="sendDTMF('3')"/></td>
+					</tr>
+					<tr>
+						<td><input type="button" value="4" onClick="sendDTMF('4')"/></td>
+						<td><input type="button" value="5" onClick="sendDTMF('5')"/></td>
+						<td><input type="button" value="6" onClick="sendDTMF('6')"/></td>
+					</tr>
+					<tr>
+						<td><input type="button" value="7" onClick="sendDTMF('7')"/></td>
+						<td><input type="button" value="8" onClick="sendDTMF('8')"/></td>
+						<td><input type="button" value="9" onClick="sendDTMF('9')"/></td>
+					</tr>
+					<tr>
+						<td><input type="button" value="*" onClick="sendDTMF('*')"/></td>
+						<td><input type="button" value="0" onClick="sendDTMF('0')"/></td>
+						<td><input type="button" value="#" onClick="sendDTMF('#')"/></td>
+					</tr>
+				</table>
+			</div>
+
+			<div id="transferDiv">
+				<input type="text" id="transferDestination" placeholder="sip:2222@webdev.realm"></input>
+				<button id="transfer" onClick="transfer()">Transfer</button>
+			</div>
+		</div>
+
+		<div id="toast" onClick="clearToast()" onMouseOver="clearTimeout(toastTimer)" onMouseOut="clearToast(3000)"></div>
+
+		<script>
+			var paramsInit = {
+				forceRTMP: false,
+				onLoaded: function() {
+					document.getElementById('loginForm').style.display = "block";
+				},
+				onFlashMissing: function(container) {
+					container.innerHTML = 'This content requires the Adobe Flash Player. <a href=http://www.adobe.com/go/getflash/>Get Flash</a>';
+					container.className = 'demo-flash-error';
+				}
+			};
+
+			kazoo.init(paramsInit);
+
+			function login(){
+				var kazooParams = {
+					wsUrl: 'ws://10.26.0.41:8080',
+					rtmpUrl: 'rtmp://10.26.0.41/sip',
+					realm: document.getElementById('realm').value,
+					privateIdentity: document.getElementById('privateIdentity').value,
+					publicIdentity: document.getElementById('publicIdentity').value,
+					password: document.getElementById('password').value,
+					onAccepted: onAccepted,
+					onConnected: onConnected,
+					onHangup: onHangup,
+					onIncoming: onIncoming,
+					onTransfer: onTransfer,
+					onNotified: onNotified,
+					onError: onError
+				};
+
+				kazoo.register(kazooParams);
+			}
+
+			function onTransfer() {
+				document.getElementById('divCalling').style.display = "none";
+			}
+
+			function onIncoming(call) {
+				confirm(call.callerName + ' is calling you! Pick up the call?') ? call.accept() : call.reject();
+			}
+
+			function onHangup() {
+				document.getElementById('divCalling').style.display = "none";
+			}
+
+			function onAccepted() {
+				document.getElementById('divCalling').style.display = "block";
+			}
+
+			function onConnected() {
+				document.getElementById('divLoggedIn').style.display = "block";
+				document.getElementById('btnLogin').style.display = "none";
+				document.getElementById('btnLogout').style.display = "block";
+			}
+
+			function onNotified(notification) {
+				switch(notification.key) {
+					case 'replaced_registration': {
+						if(document.getElementById('btnLogin').style.display === "none") { //Check to ignore double notifications
+							logout();
+							toast('error', notification.message);
+						}
+						break;
+					}
+					case 'overriding_registration': {
+						toast('info', notification.message);
+						break;
+					}
+					default: {
+						console.log(notification.message);
+					}
+
+				}
+			}
+
+			function onError(error) {
+				alert("ERROR:" + error.message);
+			}
+
+
+			/* UI Binding */
+			function transfer() {
+				var destination = document.getElementById('transferDestination').value;
+
+				kazoo.transfer(destination);
+			};
+
+			function call() {
+				var destination = document.getElementById('destination').value;
+
+				kazoo.connect(destination);
+			}
+
+			function hangup() {
+				kazoo.hangup();
+			}
+
+			function mute(e) {
+				var e = e || window.event,
+					muteBtn = e.target || e.srcElement;
+
+				if(muteBtn.getAttribute('data-state') === 'unmuted') {
+					kazoo.muteMicrophone(true, function() {
+						muteBtn.setAttribute('data-state', 'muted');
+						muteBtn.innerText = 'Unmute';
+					});
+				} else {
+					kazoo.muteMicrophone(false, function() {
+						muteBtn.setAttribute('data-state', 'unmuted');
+						muteBtn.innerText = 'Mute';
+					});
+				}
+			}
+
+			function logout() {
+				kazoo.logout();
+
+				document.getElementById('divLoggedIn').style.display = "none";
+				document.getElementById('divCalling').style.display = "none";
+				document.getElementById('btnLogin').style.display = "block";
+				document.getElementById('btnLogout').style.display = "none";
+			}
+
+			function sendDTMF(dtmf) {
+				kazoo.sendDTMF(dtmf);
+			}
+
+			var toastTimer;
+			function toast(type, content, timer) {
+				clearTimeout(toastTimer);
+				var toast = document.getElementById('toast');
+				toast.className = type;
+				toast.innerHTML = content;
+				toast.style.display = 'block';
+				toastTimer = setTimeout(function() {
+					toast.style.display = 'none';
+				}, timer || 5000);
+			}
+			function clearToast(delay) {
+				clearTimeout(toastTimer);
+				toastTimer = setTimeout(function() {
+					document.getElementById('toast').style.display = 'none';
+				}, delay || 0);
+			}
+		</script>
+	</body>
+</html>
