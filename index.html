@@ -39,6 +39,11 @@
 			#toast.warning, #popupHeader.warning {background-color: #fbb450;}
 			#toast.info, #popupHeader.info {background-color: #5bc0de;}
 
+			#flash_div {
+				border: 1px solid red;
+				display: inline-block;
+			}
+
 			#popupOverlay {
 				display: none;
 				position: fixed;
@@ -151,9 +156,13 @@
 			</div>
 		</div>
 
+		<div id="flash_div">
+		</div>
+
 		<script>
 			var paramsInit = {
 				forceRTMP: false,
+				flashContainer: 'flash_div',
 				onLoaded: function() {
 					document.getElementById('loginForm').style.display = "block";
 				},
