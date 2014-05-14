@@ -189,7 +189,9 @@
 					onIncoming: onIncoming,
 					onTransfer: onTransfer,
 					onNotified: onNotified,
-					onError: onError
+					onError: onError,
+					reconnectMaxAttempts: -1, // Unlimited autoreconnect attempts
+					reconnectDelay: 5000 // New autoreconnect attempt every 5 seconds
 				};
 
 				kazoo.register(kazooParams);
@@ -200,7 +202,6 @@
 			}
 
 			function onIncoming(call) {
-				// confirm(call.callerName + ' is calling you! Pick up the call?') ? call.accept() : call.reject();
 				confirmPopup(call.callerName + ' is calling you! Pick up the call?', call.accept, call.reject);
 			}
 
@@ -239,6 +240,18 @@
 						toast('info', notification.message);
 						break;
 					}
+					case 'connectivity_notification': {
+						if(notification.status === 'offline') {
+							toast('warning', notification.message);
+						} else {
+							toast('info', notification.message);
+						}
+						break;
+					}
+					case 'reconnecting_notification': {
+						toast('info', notification.message + '('+notification.attempt+')');
+						break;
+					}
 					default: {
 						console.log(notification.message);
 					}
@@ -249,6 +262,13 @@
 			function onError(error) {
 				toast('error', 'ERROR: ' + error.message);
 				closePopup();
+				if(error.key === 'disconnected') {
+					document.getElementById('divLoggedIn').style.display = "none";
+					document.getElementById('divCalling').style.display = "none";
+					document.getElementById('btnLogin').style.display = "block";
+					document.getElementById('btnLogout').style.display = "none";
+
+				}
 			}
 
 
