@@ -1,4 +1,4 @@
-## Webphone
+# jQuery Webphone
 
 ## Overview
 ### Terminology
@@ -8,19 +8,23 @@ _Kazoo:_ This is our platform which provides telecommunications services.  Avail
 
 _Kazoo API:_  The Kazoo platform exposes REST HTTP interfaces for configuration, call control, maintenance, and integration.
 
-_Webhooks:_ The Kazoo platform has the capability, if configured, to issue requests to a HTTP server when specific events happen.  For example, it could be configured to issue a HTTP GET request to "http://myserver.com/new_call.php?call_id=1234&caller_id=4158867900&..." whenever a new call in a given account is placed.
-
-_MonsterUI:_ This is a new framework developed by 2600hz to run Kazoo specific javascript web-applications.  The framework is built around an "App Store" concept, which includes everything from a browser based phone to a PBX UI.
-
-_UI Application:_  This is a packaging of javascript, css, html, and other assets that can be installed into MonsterUI to provide functionality to end users.  This document may simply refer to this as the application.
-
 ### Purpose
+The purpose of this project is provide a jQuery plugin that an inexperienced web developer can use to implement a fully functional webphone.  It should provide jQuery UI elements suitable for end-users with enough flexibility that the web developer can control the user experience.
 
 ### Non-Goals
+This project will not attempt feature parity with a softphone at this stage.
 
-### Scenarios 
+### Scenarios
+#### Click to Call
+As a web developer
+
+#### Customize Style
+
+#### Customize User Experience
+
+
 
 ### Research and Technical Development
-
+We need to determine the viability 
 
 ## Technical Specification
