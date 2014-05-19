@@ -1,0 +1,42 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf190
+{\fonttbl\f0\fswiss\fcharset204 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww16720\viewh10080\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\b\fs32 \cf0 Pretend Softphone
+\b0 \
+This is a really bad sample but hopefully it gets the idea across\
+\
+<html>\
+<head></head>\
+<body>\
+\
+<div>\
+<!\'97 This is your main dial area \'97>\
+	<input type=\'93text\'94 value=\'931-203-555-1234\'94/>\
+	<input type=\'93button\'94 value=\'93Call\'94/>\
+</div>\
+\
+<div>\
+<!\'97- This is where we paint the DTMF keys \'97>\
+	<input type=\'93button\'94 value=\'931\'94/>\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 	<input type=\'93button\'94 value=\'932\'94/>\
+	<input type=\'93button\'94 value=\'933\'94/>\
+	<input type=\'93button\'94 value=\'934\'94/>\
+	<input type=\'93button\'94 value=\'935\'94/>\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 	etc.\
+</div>\
+\
+// TWO EXTRA FUNCTIONS\
+// 1. \'93Hey, the call I\'92m about to make has these form fields. Now give me back the SIP creds\'94\
+// 2. If someone loads this \'93softphone\'94 and you get to the init routine and there are no SIP creds, can you check the URL somehow and look for user=, pass=, realm= . Do something encrypted-ish. Could use a key set account-wide that also matches the website page\
+\
+\
+var creds = $.kazoo.getCreds(form_fields, \'91customer_id\'92);\
+$(\'91some_div\'92).onClick($.kazoo.init(creds));\
+\
+</body>\
+}
