@@ -202,7 +202,8 @@
 			}
 
 			function onIncoming(call) {
-				confirmPopup(call.callerName + ' is calling you! Pick up the call?', call.accept, call.reject);
+				var caller = call.callerName + (call.callerNumber ? ' ('+call.callerNumber+')' : '');
+				confirmPopup(caller + ' is calling you! Pick up the call?', call.accept, call.reject);
 			}
 
 			function onHangup() {
