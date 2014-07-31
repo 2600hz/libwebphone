@@ -94,9 +94,9 @@
 				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_6gv067"><br>
 				Public Identity: <input type="text" id="publicIdentity" value="sip:user_6gv067@webdev.realm"><br>
 				Password: <input type="text" id="password" value="6wfpblen7me9"><br> -->
-				Private Identity: <input type="text" id="privateIdentity" value="user_s6chaxxdu8"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:user_s6chaxxdu8@webdev.realm"><br>
-				Password: <input type="text" id="password" value="v8pcb2bg27hb"><br>
+				Private Identity: <input type="text" id="privateIdentity" value="user_sel656"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:user_sel656@webdev.realm"><br>
+				Password: <input type="text" id="password" value="adoe8aurmjex"><br>
 				Realm: <input type="text" id="realm" value="webdev.realm"><br>
 				<button id="btnLogin" type="button" onClick="login()">Login</button>
 				<button id="btnLogout" type="button" onClick="logout()" style="display: none;">Log out</button>
@@ -206,6 +206,7 @@
 			}
 
 			function onIncoming(call) {
+				console.log(call);
 				var caller = call.callerName + (call.callerNumber ? ' ('+call.callerNumber+')' : '');
 				confirmPopup(caller + ' is calling you! Pick up the call?', call.accept, call.reject);
 			}
@@ -295,18 +296,17 @@
 			}
 
 			function mute(e) {
-				var e = e || window.event,
-					muteBtn = e.target || e.srcElement;
+				var muteBtn = document.getElementById('btnMute');
 
 				if(muteBtn.getAttribute('data-state') === 'unmuted') {
 					kazoo.muteMicrophone(true, function() {
 						muteBtn.setAttribute('data-state', 'muted');
-						muteBtn.innerText = 'Unmute';
+						muteBtn.innerHTML = 'Unmute';
 					});
 				} else {
 					kazoo.muteMicrophone(false, function() {
 						muteBtn.setAttribute('data-state', 'unmuted');
-						muteBtn.innerText = 'Mute';
+						muteBtn.innerHTML = 'Mute';
 					});
 				}
 			}
