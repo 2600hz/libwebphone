@@ -81,22 +81,21 @@
 				border-top: solid 1px black;
 				text-align: center;
 			}
-
-			#kazooVideoRemote {
-				display: none;
-			}
 		</style>
 	</head>
 	<body>
 		<h1>Welcome to the Kazoo Client Demo</h1>
 		<div id="loginForm" class="demo-block" style="display: none;">
 			<form>
-				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_6gv067"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:user_6gv067@webdev.realm"><br>
-				Password: <input type="text" id="password" value="6wfpblen7me9"><br> -->
 				Private Identity: <input type="text" id="privateIdentity" value="user_sel656"><br>
 				Public Identity: <input type="text" id="publicIdentity" value="sip:user_sel656@webdev.realm"><br>
 				Password: <input type="text" id="password" value="adoe8aurmjex"><br>
+				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_9hgggnp4dp"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:user_9hgggnp4dp@webdev.realm"><br>
+				Password: <input type="text" id="password" value="3pgje9y2br9u"><br> -->
+				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_s6chaxxdu8"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:user_s6chaxxdu8@webdev.realm"><br>
+				Password: <input type="text" id="password" value="v8pcb2bg27hb"><br> -->
 				Realm: <input type="text" id="realm" value="webdev.realm"><br>
 				<button id="btnLogin" type="button" onClick="login()">Login</button>
 				<button id="btnLogout" type="button" onClick="logout()" style="display: none;">Log out</button>
@@ -106,7 +105,7 @@
 		<div id="divLoggedIn" class="demo-block" style="display: none;">
 			Logged In
 			<div>
-				<input type="text" id="destination" placeholder="sip:2222@webdev.realm"></input>
+				<input type="text" id="destination" placeholder="sip:2222@webdev.realm" value="sip:9009@webdev.realm"></input>
 				<button id="call" onClick="call()">Call</button>
 			</div>
 		</div>
@@ -191,10 +190,11 @@
 					onHangup: onHangup,
 					onCancel: onCancel,
 					onIncoming: onIncoming,
+					onConnecting: onConnecting,
 					onTransfer: onTransfer,
 					onNotified: onNotified,
 					onError: onError,
-					reconnectMaxAttempts: -1, // Unlimited autoreconnect attempts
+					reconnectMaxAttempts: 3, // Unlimited autoreconnect attempts
 					reconnectDelay: 5000 // New autoreconnect attempt every 5 seconds
 				};
 
@@ -206,9 +206,13 @@
 			}
 
 			function onIncoming(call) {
-				console.log(call);
+				console.log('onIncoming', call);
 				var caller = call.callerName + (call.callerNumber ? ' ('+call.callerNumber+')' : '');
 				confirmPopup(caller + ' is calling you! Pick up the call?', call.accept, call.reject);
+			}
+
+			function onConnecting() {
+				console.log('Connecting...');
 			}
 
 			function onHangup() {
@@ -242,6 +246,7 @@
 						}
 						break;
 					}
+					case 'transfer_notification':
 					case 'overriding_registration': {
 						toast('info', notification.message);
 						break;
