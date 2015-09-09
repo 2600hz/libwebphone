@@ -12,9 +12,9 @@
         },
 
         options     = {
-            apiUrl: 'http://10.26.0.41:8000/v2/',
-            websocketUrl: 'ws://10.26.0.41:8080',
-            rtmpUrl: 'rtmp://10.26.0.41/sip',
+            apiUrl: 'http://10.26.0.81:8000/v2/',
+            websocketUrl: 'ws://10.26.0.81:8080',
+            rtmpUrl: 'rtmp://10.26.0.81/sip',
             volume: {
                 range   : 'min',
                 value   : 25,
