@@ -132,4 +132,4 @@ The kazoo object has 7 accessible methods:
 Using this, you should now be able to create some cool applications using softphones in your browser!
 
 ## Contact
-If you have any question or remark about the library or its documentation, feel free to contact me directly at jr@2600hz.com.
+If you have any question or remark about the library or its documentation, feel free to come talk to us on IRC #2600hz on FreeNode.
