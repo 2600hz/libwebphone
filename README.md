@@ -46,8 +46,8 @@ In order to register to some SIP credentials, we need to use the `kazoo.register
 - `wsUrl`: Web Socket Server URL (e.g: `ws://10.26.0.41:8080`)
 - `rtmpUrl`: RTMP Server URL (e.g: `rtmp://10.26.0.41/sip`)
 - `realm`: SIP Realm (Realm linked to your Kazoo account, e.g: `d218ds.sip.2600hz.com`)
-- `privateIdentity`: Full SIP Address (e.g: `sip:user_31dsajsjds@ d218ds.sip.2600hz.com`)
-- `publicIdentity`: SIP Username (e.g: `user_31dsajsjds`)
+- `privateIdentity`: SIP Username (e.g: `user_31dsajsjds`)
+- `publicIdentity`: Full SIP Address (e.g: `sip:user_31dsajsjds@ d218ds.sip.2600hz.com`)
 - `password`: SIP Password (e.g: `23bf1f9wwdslw2`)
 - `onIncoming`: JavaScript callback called once an incoming call has been detected. It takes one argument, a call object that has 2 methods: accept, and reject (which will either accept or reject the call) and one attribute: callerName (which will give you the callerId for this incoming call).
 - `onConnected`: OPTIONAL, JavaScript function called by the library once the user is successfully registered
