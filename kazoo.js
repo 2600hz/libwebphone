@@ -7,9 +7,10 @@
 	var kazoo = {
 		config: {
 			paths: {
-				AC_OETags: 'lib/dependencies/rtmp/AC_OETags.js',
-				VideoIO: 'lib/dependencies/rtmp/VideoIO',
-				SIPjs: 'lib/dependencies/sip/sip.js'
+				AC_OETags: '/lib/dependencies/rtmp/AC_OETags.js',
+				VideoIO: '/lib/dependencies/rtmp/VideoIO',
+				SIPjs: '/lib/dependencies/sip/sip.js',
+				SIPml5js: '/lib/dependencies/sip/sipml5.js'
 			},
 		},
 		rtmp: {},
@@ -122,8 +123,8 @@
 				loadRTMP();
 			}
 			else {
-				// loadSIPml5();
-				loadSIPjs();
+				loadSIPml5();
+				// loadSIPjs();
 			}
 		};
 
@@ -229,7 +230,20 @@
 
 				params.onLoaded && params.onLoaded();
 			});
-		};
+		}
+	
+	  function loadSIPml5() {
+			kazooLoadScript(kazoo.config.paths.SIPml5js, function() {
+				kazoo.version = 'sipml5';
+
+				kazoo.videoRemote = document.createElement('video');
+				kazoo.videoRemote.id = 'kazooVideoRemote';
+				kazoo.videoRemote.style.display = 'none';
+				document.getElementsByTagName('body')[0].appendChild(kazoo.videoRemote);
+
+				params.onLoaded && params.onLoaded();
+			});
+		}
 	};
 
 	kazoo.register = function(params) {
@@ -399,28 +413,28 @@
 								notification = {
 									key: notifications.overriding.key,
 									message: notifications.overriding.message
-								}
+								};
 								break;
 							}
 							case 'Replaced-By': {
 								notification = {
 									key: notifications.replaced.key,
 									message: notifications.replaced.message
-								}
+								};
 								break;
 							}
 							case 'Message-Account': {
 								notification = {
 									key: notifications.voicemail.key,
 									message: notifications.voicemail.message
-								}
+								};
 								break;
 							}
 							default: {
 								notification = {
 									key: notifications['default'].key,
 									message: notifications['default'].message
-								}
+								};
 							}
 						}
 						notification.source = event;
@@ -459,7 +473,7 @@
 						break;
 					}
 				}
-			}
+			};
 		}
 		else if(kazoo.version === 'sipjs') {
 			kazoo.sipjs.userAgent = new SIP.UA({
@@ -482,7 +496,7 @@
 			});
 
 			kazoo.sipjs.userAgent.on('disconnected', function(arg) {
-				console.log(kazoo.sipjs.connected, kazoo.sipjs.manualDisconnect)
+				console.log(kazoo.sipjs.connected, kazoo.sipjs.manualDisconnect);
 				if(!kazoo.sipjs.connected) {
 					params.onError && params.onError({
 						key: errors.serverNotReachable.key,
@@ -697,6 +711,279 @@
 				});
 			};
 		}
+  
+    else if(kazoo.version === 'sipml5') {
+		
+			kazoo.sipjs.StackeventsListener = function(e){
+        console.info('stack event = ' + e.type);
+        if(e.type == 'started'){
+          //kazoo.sipjs.connected = true;
+			    sipml5login();
+			    console.info('connected', e);
+        }
+        if(e.type =='stopped'){
+          console.log(kazoo.sipjs.connected, kazoo.sipjs.manualDisconnect);
+  				if(!kazoo.sipjs.connected) {
+  					params.onError && params.onError({
+  						key: errors.serverNotReachable.key,
+  						message: errors.serverNotReachable.message,
+  						source: e
+  					});
+  				} else {
+  					if(kazoo.sipjs.manualDisconnect) {
+  						kazoo.sipjs.manualDisconnect = false;
+  					} else {
+  						params.onError && params.onError({
+  							key: errors.disconnected.key,
+  							message: errors.disconnected.message,
+  							source: e
+  						});
+  					}
+  					kazoo.sipjs.connected = false;
+  				}
+  				console.info('disconnected', e);
+        }
+        if(e.type =='m_permission_accepted'){
+          kazoo.sipjs.registered = true;
+			    console.info('registered', e);
+			    params.onConnected && params.onConnected();
+        }
+        if(e.type =='stopped'){
+          kazoo.sipjs.registered = false;
+			    console.info('unregistered', e);
+        }
+        if(e.type =='m_permission_refused'){
+          console.info('registrationFailed', e);
+  				var errCode = e ? e.getSipResponseCode() || 0 : 0;
+  				switch(e.status_code) {
+  					case 401: //Unauthorized
+  					case 407: //Proxy Authentication Required
+  					{
+  						params.onError && params.onError({
+  							key: errors.unauthorized.key,
+  							message: errors.unauthorized.message,
+  							code: errCode,
+  							source: e
+  						});
+  						break;
+  					}
+  					case 403: //Forbidden
+  					{
+  						params.onError && params.onError({
+  							key: errors.forbidden.key,
+  							message: errors.forbidden.message,
+  							code: errCode,
+  							source: e
+  						});
+  						break;
+  					}
+  				}
+        }
+        if(e.type =='i_new_call'){
+            console.log(kazoo.sipjs.session);
+    				console.info('invite', e.newsession);
+    				if(typeof kazoo.sipjs.session === 'undefined') {
+    					kazoo.sipjs.session = e.newsession;
+    					kazoo.sipjs.bindSessionEvents(kazoo.sipjs.session);
+              console.log(kazoo.sipjs.session);
+    					var call = {
+    						accept: function() {
+    							kazoo.sipjs.session.accept({
+    								media: {
+    									constraints: {
+    										audio: true,
+    										video: false
+    									},
+    									render: {
+    										remote: {
+    											video: kazoo.videoRemote
+    										}
+    									}
+    								}
+    							});
+    						},
+    						reject: function() {
+    							kazoo.sipjs.session.reject();
+    
+    							delete kazoo.sipjs.session;
+    						},
+    						callerName: kazoo.sipjs.session.getRemoteFriendlyName,
+    						callerNumber: kazoo.sipjs.session.getRemoteUri
+    					};
+            //startRingTone();
+  					params.onIncoming && params.onIncoming(call);
+           }
+        }
+        
+      };
+			kazoo.sipjs.stack = new SIPml.Stack({
+          realm: params.realm, // mandatory: domain name
+          impi: params.privateIdentity, // mandatory: authorization name (IMS Private Identity)
+          impu: params.publicIdentity, // mandatory: valid SIP Uri (IMS Public Identity)
+          password: params.password, // optional
+          //display_name: 'Bob legend', // optional
+          websocket_proxy_url: params.wsUrl, // optional
+          //outbound_proxy_url: 'udp://example.org:5060', // optional
+          enable_rtcweb_breaker: true, // optional
+          events_listener: { events: '*', listener: kazoo.sipjs.StackeventsListener }, // optional: '*' means all events
+          sip_headers: [ // optional
+                  { name: 'User-Agent', value: 'IM-client/OMA1.0 sipML5-v1.0.0.0' },
+                  { name: 'Organization', value: 'Kixie' }
+          ]
+      });
+			
+      kazoo.sipjs.stack.start();
+
+      
+      
+      var registerSession;
+      kazoo.sipjs.SessioneventsListener = function(e){
+          console.info('session event = ' + e.type);
+          if(e.type == 'connected' && e.session == registerSession){
+            kazoo.sipjs.connected = true;
+			      console.info('connected', e);
+	      		notification = {
+							key: notifications.connectivity.key,
+							message: notifications.connectivity.message.online,
+							status: notifications.connectivity.status.online
+						};
+						notification.source = e;
+						console.info(notification);
+				    params.onNotified && params.onNotified(notification);
+          }
+          
+          
+      };
+      
+      sipml5login = function(){
+          registerSession = kazoo.sipjs.stack.newSession('register', {
+              events_listener: { events: '*', listener: kazoo.sipjs.SessioneventsListener } // optional: '*' means all events
+          });
+          registerSession.register();
+      };
+
+
+			/*kazoo.sipjs.userAgent.on('message', function(arg) {
+				console.info('message', arg);
+			});*/
+
+			/*kazoo.sipjs.userAgent.on('notify', function(arg) {
+				console.info('notify', arg);
+				var notificationType = arg.body.substring(0, arg.body.indexOf(':')),
+					notification = {};
+
+				switch(notificationType) {
+					case 'Overwrote': {
+						notification = {
+							key: notifications.overriding.key,
+							message: notifications.overriding.message
+						}
+						break;
+					}
+					case 'Replaced-By': {
+						notification = {
+							key: notifications.replaced.key,
+							message: notifications.replaced.message
+						}
+						break;
+					}
+					case 'Message-Account': {
+						notification = {
+							key: notifications.voicemail.key,
+							message: notifications.voicemail.message
+						}
+						break;
+					}
+					default: {
+						notification = {
+							key: notifications['default'].key,
+							message: notifications['default'].message
+						}
+					}
+				}
+				notification.source = arg;
+				params.onNotified && params.onNotified(notification);
+			});*/
+
+			kazoo.sipjs.bindSessionEvents = function(session) {
+        
+        console.log(session);
+        if(session.type =='connecting'){
+          console.info('connecting', session);
+        }
+
+        if(session.type =='terminating' || session.type =='terminated'){
+          console.info('cancel', session);
+					delete kazoo.sipjs.session;
+
+					params.onCancel && params.onCancel();
+					kazoo.params.onHangup && kazoo.params.onHangup();
+        }
+				
+				/*session.on('progress', function(response) {
+					console.info('progress', response);
+					if(response instanceof SIP.IncomingResponse) {
+						params.onConnecting && params.onConnecting();
+					}
+				});*/
+
+        if(session.type =='conected'){
+        	console.info('accepted', arg);
+					params.onAccepted && params.onAccepted();
+        }
+        
+
+				/*session.on('rejected', function(arg) {
+					console.info('rejected', arg);
+                                       if (!params.onCancel) {
+                                               return;
+                                       }
+                                       if (arg) {
+                                               params.onCancel({
+                                                       "code": arg.status_code,
+                                                       "message": arg.reason_phrase,
+                                                       "source": arg
+                                               });
+                                       } else {
+                                               params.onCancel();
+                                       }
+				});*/
+
+				/*session.on('failed', function(arg) {
+					console.info('failed', arg);
+				});*/
+
+				
+
+				/*session.on('refer', function(arg) {
+					console.info('refer', arg);
+					params.onNotified && params.onNotified({
+						key: notifications.transfered.key,
+						message: notifications.transfered.message,
+						source: arg
+					});
+				});
+
+				session.on('dtmf', function(arg) {
+					console.info('dtmf', arg);
+				});
+
+				session.on('muted', function(arg) {
+					console.info('muted', arg);
+				});
+
+				session.on('unmuted', function(arg) {
+					console.info('unmuted', arg);
+				});*/
+
+				/*session.on('bye', function(arg) {
+					console.info('bye', arg);
+					delete kazoo.sipjs.session;
+
+					kazoo.params.onHangup && kazoo.params.onHangup();
+				});*/
+			};
+		}
 
 		if(typeof params.onNotified === 'function') {
 			connectivity.connectivityCallback = function(onlineHistory) {
@@ -764,6 +1051,15 @@
 			}
 			delete kazoo.sipjs.session;
 		}
+		else if(kazoo.version === 'sipml5') {
+			if(kazoo.sipjs.session.dialog) {
+				kazoo.sipjs.session.hangup();
+			} else {
+				kazoo.sipjs.session.hangup();
+				kazoo.params.onHangup && kazoo.params.onHangup();
+			}
+			delete kazoo.sipjs.session;
+		}
 	};
 
 	kazoo.logout = function() {
@@ -780,6 +1076,11 @@
 			kazoo.sipjs.userAgent.stop();
 			delete kazoo.sipjs.session;
 		}
+		else if(kazoo.version === 'sipml5') {
+			kazoo.sipjs.manualDisconnect = true;
+			kazoo.sipjs.stack.stop();
+			delete kazoo.sipjs.session;
+		}
 
 		connectivity.connectivityCallback = function(onlineHistory) {};
 	};
@@ -790,6 +1091,9 @@
 		}
 		else if(kazoo.version === 'sipjs') {
 			kazoo.sipjs.session.refer(destination);
+		}
+		else if(kazoo.version === 'sipml5') {
+			kazoo.sipjs.session.transfer(destination);
 		}
 
 		kazoo.params.onTransfer && kazoo.params.onTransfer();
@@ -808,7 +1112,7 @@
 				kazoo.sipjs.session = kazoo.sipjs.userAgent.invite(destination, {
 					media: {
 						constraints: {
-							audio: true,
+							audio:  true,
 							video: false
 						},
 						render: {
@@ -818,6 +1122,46 @@
 						}
 					}
 				});
+				kazoo.sipjs.bindSessionEvents(kazoo.sipjs.session);
+			}
+		}
+		else if(kazoo.version === 'sipml5') {
+				kazoo.sipjs.session = kazoo.sipjs.stack.newSession('call-audio');
+				
+				kazoo.sipjs.session.call(destination);
+				kazoo.sipjs.bindSessionEvents(kazoo.sipjs.session);
+			}
+	};
+	
+	//Destination should be a sip address like: sip:1234@realm.com
+	kazoo.connectKixie = function(destination,audioSource) {
+		if(destination) {
+			if(kazoo.version === 'rtmp') {
+				if (!kazoo.hasFlashMicrophonePermission()) {
+					kazoo.showFlashSettings();
+				}
+				kazoo.rtmp.phone.callProperty('call', 'invite', destination);
+			}
+			else if(kazoo.version === 'sipjs') {
+				kazoo.sipjs.session = kazoo.sipjs.userAgent.invite(destination, {
+					media: {
+						constraints: {
+							audio:  {optional: [{sourceId: audioSource}]},
+							video: false
+						},
+						render: {
+							remote: {
+								video: kazoo.videoRemote
+							}
+						}
+					}
+				});
+				kazoo.sipjs.bindSessionEvents(kazoo.sipjs.session);
+			}
+			else if(kazoo.version === 'sipml5') {
+				kazoo.sipjs.session = kazoo.sipjs.stack.newSession('call-audio');
+				
+				kazoo.sipjs.session.call(destination);
 				kazoo.sipjs.bindSessionEvents(kazoo.sipjs.session);
 			}
 		}
@@ -832,6 +1176,9 @@
 				kazoo.rtmp.phone.callProperty('call', 'sendDTMF', dtmf);
 			}
 			else if(kazoo.version === 'sipjs') {
+				kazoo.sipjs.session.dtmf(dtmf);
+			}
+			else if(kazoo.version === 'sipml5') {
 				kazoo.sipjs.session.dtmf(dtmf);
 			}
 		}
@@ -864,6 +1211,21 @@
 				}
 				else {
 					kazoo.sipjs.session.unmute();
+				}
+				
+				success && success();
+			}
+			else {
+				error && error();
+			}
+		}
+		else if(kazoo.version === 'sipml5') {
+			if(kazoo.sipjs.hasOwnProperty('session')) {
+				if(mute) {
+					kazoo.sipjs.session.mute('audio',true);
+				}
+				else {
+					kazoo.sipjs.session.mute('audio',false);
 				}
 				
 				success && success();
