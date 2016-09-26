@@ -87,16 +87,10 @@
 		<h1>Welcome to the Kazoo Client Demo</h1>
 		<div id="loginForm" class="demo-block" style="display: none;">
 			<form>
-				Private Identity: <input type="text" id="privateIdentity" value="user_sel656"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:user_sel656@webdev.realm"><br>
-				Password: <input type="text" id="password" value="adoe8aurmjex"><br>
-				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_9hgggnp4dp"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:user_9hgggnp4dp@webdev.realm"><br>
-				Password: <input type="text" id="password" value="3pgje9y2br9u"><br> -->
-				<!-- Private Identity: <input type="text" id="privateIdentity" value="user_s6chaxxdu8"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:user_s6chaxxdu8@webdev.realm"><br>
-				Password: <input type="text" id="password" value="v8pcb2bg27hb"><br> -->
-				Realm: <input type="text" id="realm" value="webdev.realm"><br>
+				Private Identity: <input type="text" id="privateIdentity" value="webphone"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:webphone@myrealm.com"><br>
+				Password: <input type="text" id="password" value="webphone"><br>
+				Realm: <input type="text" id="realm" value="myrealm.com"><br>
 				<button id="btnLogin" type="button" onClick="login()">Login</button>
 				<button id="btnLogout" type="button" onClick="logout()" style="display: none;">Log out</button>
 			</form>
@@ -105,7 +99,7 @@
 		<div id="divLoggedIn" class="demo-block" style="display: none;">
 			Logged In
 			<div>
-				<input type="text" id="destination" placeholder="sip:2222@webdev.realm" value="sip:9009@webdev.realm"></input>
+				<input type="text" id="destination" placeholder="sip:2222@webdev.realm" value="sip:2002@myrealm.com"></input>
 				<button id="call" onClick="call()">Call</button>
 			</div>
 		</div>
@@ -165,6 +159,7 @@
 		<script>
 			var paramsInit = {
 				forceRTMP: false,
+				prefixScripts: 'lib/dependencies/',
 				flashContainer: 'flash_div',
 				onLoaded: function() {
 					document.getElementById('loginForm').style.display = "block";
