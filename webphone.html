@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Kazoo Webphone</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<!-- VENDOR CSS FILES -->
+		<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+		<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+		<!-- CUSTOM CSS FILES -->
+		<link href="css/webphone.css" rel="stylesheet">
+	</head>
+	<body>
+		<div class="webphone-container blur"></div>
+	</body>
+
+	<!-- VENDOR JS LIBRARIES -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+	<script src="https://rawgit.com/js-cookie/js-cookie/master/src/js.cookie.js"></script>
+	<script src="https://rawgit.com/blueimp/JavaScript-MD5/master/js/md5.min.js"></script>
+
+	<!-- CUSTOM JS LIBRARIES -->
+	<script src="lib/kazoo.js"></script>
+	<script src="lib/jquery.kazooWebphone.js"></script>
+
+	<script>
+		jQuery(document).ready(function($) {
+			$('.webphone-container').webphone({
+				volume: null,
+				prefixScripts: 'lib/dependencies/',
+			});
+		});
+	</script>
+</html>

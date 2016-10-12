@@ -1,0 +1,351 @@
+.webphone-container.blur .phone-dialer,
+.webphone-container.blur .phone-options {
+	-webkit-filter: blur(8px);
+			filter: blur(8px);
+}
+
+.webphone-container.blur .popup-container {
+	display: block;
+}
+
+.webphone-container .btn {
+	font-family: Verdana;
+	font-size: 15px;
+	position: relative;
+	overflow: hidden;
+	min-width: 140px;
+	padding: 6px 20px;
+	letter-spacing: .02em;
+	color: #909099;
+	border: solid 1px;
+	border-color: #c0c0c9;
+	border-radius: 2px;
+	background: transparent;
+}
+.webphone-container .btn:hover {
+	cursor: pointer;
+}
+.webphone-container .btn > i {
+	margin-right: 2px;
+	color: inherit;
+}
+
+/***************** TYPES ****************/
+.webphone-container .btn.btn-secondary {
+	color: #22a5ff;
+	border-color: #22a5ff;
+}
+.webphone-container .btn.btn-success {
+	color: #fff;
+	border-color: #18b309;
+	background: #33db24;
+}
+.webphone-container .btn.btn-danger {
+	color: #fff;
+	border-color: #e01a00;
+	background: #ff3d24;
+}
+
+
+
+
+
+.webphone-container {
+	font-family: Verdana;
+	position: relative;
+	width: 600px;
+	margin: auto;
+}
+
+.webphone-container::after {
+	display: block;
+	clear: both;
+	content: '';
+}
+
+.webphone-container .phone-dialer {
+	float: left;
+}
+
+.webphone-container.has-actions .phone-dialer {
+	width: 68%;
+}
+
+.webphone-container .phone-header {
+	padding: 10px 30px 25px 25px;
+	background-color: #22a5ff;
+}
+
+.webphone-container .call-tray {
+	height: 18px;
+	margin-bottom: 22px;
+	text-align: right;
+	color: #fff;
+}
+
+.webphone-container .call-tray i {
+	display: none;
+}
+
+.webphone-container .call-info {
+	font-family: Verdana;
+	font-size: 14px;
+	height: 18px;
+	color: #fff;
+}
+
+.webphone-container .dialbox-container {
+	position: relative;
+	margin-top: 10px;
+}
+
+.webphone-container .dialbox {
+	font-size: 38px;
+	width: 100%;
+	color: #fff;
+	border: 0;
+	background-color: transparent;
+}
+
+.webphone-container .dialbox-icon {
+	font-size: 38px;
+	position: absolute;
+	top: 4px;
+	cursor: pointer;
+	color: #fff;
+}
+
+.webphone-container .dialpad-container {
+	padding: 25px 30px 11px 25px;
+	border-right: 1px solid #c0c0c9;
+	border-left: 1px solid #c0c0c9;
+	background-color: #fff;
+}
+
+.webphone-container .dialpad-container::after {
+	display: block;
+	clear: both;
+	content: '';
+}
+
+.webphone-container .dialpad-item {
+	display: block;
+	float: left;
+	width: 33.333333%;
+	min-height: 70px;
+	padding: 0;
+	text-align: left;
+	border: 0;
+	background-color: #fff;
+}
+
+.webphone-container .dialpad-item .item-text {
+	font-size: 38px;
+	margin-left: 25px;
+	color: #22a5ff;
+}
+
+.webphone-container .dialpad-item .item-legend {
+	font-size: 14px;
+	margin-left: 8px;
+	color: #c0c0c9;
+}
+
+.webphone-container .dialpad-item:hover {
+	cursor: pointer;
+	background-color: #f0f0f9;
+}
+
+.webphone-container .call-actions {
+	padding: 25px 30px 30px 25px;
+	border: 1px solid #c0c0c9;
+	border-top: 0;
+}
+
+.webphone-container .call-actions .btn {
+	font-size: 24px;
+	width: 100%;
+	height: 55px;
+}
+
+.webphone-container .phone-options {
+	position: relative;
+	height: 494px;
+	margin-left: 68%;
+	padding: 49px 25px 30px 4%;
+	border: 1px solid #c0c0c9;
+	border-left: 0;
+	background-color: #f0f0f9;
+}
+
+.webphone-container .options-container .option-item {
+	font-size: 14px;
+	width: 100%;
+	height: 35px;
+}
+
+.webphone-container .options-container .option-item:not(:first-child) {
+	margin-top: 12px;
+}
+
+.webphone-container .options-container .option-item:hover {
+	cursor: pointer;
+	color: #fff;
+	background-color: #22a5ff;
+}
+
+.webphone-container .volume-container {
+	position: absolute;
+	bottom: 30px;
+	width: 142px;
+}
+
+.webphone-container .volume-icons {
+	margin-bottom: 10px;
+	color: #c0c0c9;
+}
+
+.webphone-container .volume-icons :last-child {
+	float: right;
+}
+
+.webphone-container .volume-control {
+	height: 10px;
+	cursor: pointer;
+	border-color: transparent;
+	border-radius: 12px;
+	background: #c0c0c9;
+}
+
+.webphone-container .ui-slider-range {
+	top: -1px;
+	left: -1px;
+	border: 1px solid #0297e5;
+	border-radius: 12px;
+	background: #22a5ff;
+}
+
+.webphone-container .ui-slider-handle {
+	width: 1em;
+	height: 1em;
+	border-color: #c0c0c9;
+	border-radius: 10px;
+	background: #f0f0f9;
+}
+
+
+
+
+.webphone-container .popup-container {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: none;
+	width: 100%;
+	height: 100%;
+}
+
+.webphone-container .popup-container .popup {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	padding: 20px;
+	-webkit-transform: translate(-50%, -50%);
+			transform: translate(-50%, -50%);
+	border: 1px solid #c0c0c9;
+	border-radius: 2px;
+	background-color: #fff;
+
+	-webkit-filter: blur(0);
+			filter: blur(0);
+}
+
+.webphone-container .popup-container fieldset {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.webphone-container .popup-container legend {
+	font-size: 21px;
+	line-height: 40px;
+	display: block;
+	width: 100%;
+	margin-bottom: 20px;
+	padding: 0;
+	color: #333;
+	border: 0;
+	border-bottom: 1px solid #c0c0c9;
+}
+
+.webphone-container .popup-container .control-group:not(:last-child) {
+	margin-bottom: 20px;
+}
+
+.webphone-container .popup-container .control-label {
+	float: left;
+	width: 160px;
+	margin-bottom: 5px;
+	padding-top: 5px;
+	text-align: right;
+}
+
+.webphone-container .popup-container .controls {
+	margin-left: 180px;
+}
+
+.webphone-container .popup-container input {
+	padding: 4px 6px;
+}
+
+.webphone-container .popup-container .actions {
+	margin-top: 20px;
+	text-align: right;
+}
+
+.webphone-container .popup-container .spinner {
+	font-size: 100px;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: none;
+	margin: -50px 0 0 -50px;
+	-webkit-transform: translate(-50%, -50%);
+			transform: translate(-50%, -50%);
+	color: #22a5ff;
+}
+
+.webphone-container .transfer-container {
+	display: none;
+	padding: 25px 30px 25px 25px;
+	border-right: 1px solid #c0c0c9;
+	border-bottom: 1px solid #22a5ff;
+	border-left: 1px solid #c0c0c9;
+}
+
+.webphone-container .transfer-container .call-info {
+	color: #22a5ff;
+}
+
+.webphone-container .transfer-container .dialbox-icon {
+	color: #c0c0c9;
+}
+
+.webphone-container .transfer-container .dialbox {
+	color: #22a5ff;
+}
+
+.webphone-container .call-actions::after {
+	display: block;
+	clear: both;
+	content: '';
+}
+
+.webphone-container .incoming button {
+	display: inline-block;
+}
+
+.webphone-container .incoming .cancel {
+	min-width: 100px;
+	margin-right: 18px;
+}
