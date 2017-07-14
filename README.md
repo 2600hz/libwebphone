@@ -43,7 +43,7 @@ be able to place and receive calls!
 
 In order to register to some SIP credentials, we need to use the `kazoo.register` function, the expected parameters are the following:
 
-- `wsUrl`: Web Socket Server URL (e.g: `ws://10.26.0.41:8080`)
+- `wsUrl`: Web Socket Server URL (e.g: `wss://10.26.0.41:5443`)
 - `rtmpUrl`: RTMP Server URL (e.g: `rtmp://10.26.0.41/sip`)
 - `realm`: SIP Realm (Realm linked to your Kazoo account, e.g: `d218ds.sip.2600hz.com`)
 - `privateIdentity`: SIP Username (e.g: `user_31dsajsjds`)
