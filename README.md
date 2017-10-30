@@ -1,4 +1,4 @@
-# Kazoo.js library v1.0
+# Kazoo.js library v0.1
 The goal of this library is to turn the browser in a softphone, using the correct protocol depending on the browser used by the client. On supported browsers, the goal is to allow calls using WebRTC, and to fall back on the RTMP
 protocol if WebRTC is not supported by the browser.
 
