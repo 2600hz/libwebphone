@@ -87,10 +87,10 @@
 		<h1>Welcome to the Kazoo Client Demo</h1>
 		<div id="loginForm" class="demo-block" style="display: none;">
 			<form>
-				Private Identity: <input type="text" id="privateIdentity" value="user_stumkwpqc8"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:user_stumkwpqc8@4a6863.sip.sandbox.2600hz.com"><br>
-				Password: <input type="text" id="password" value="zmtujug8ardw"><br>
-				Realm: <input type="text" id="realm" value="4a6863.sip.sandbox.2600hz.com"><br>
+				Private Identity: <input type="text" id="privateIdentity" value="user"><br>
+				Public Identity: <input type="text" id="publicIdentity" value="sip:user@realm"><br>
+				Password: <input type="text" id="password" value="password"><br>
+				Realm: <input type="text" id="realm" value="realm"><br>
 				<button id="btnLogin" type="button" onClick="login()">Login</button>
 				<button id="btnLogout" type="button" onClick="logout()" style="display: none;">Log out</button>
 			</form>
@@ -174,7 +174,7 @@
 
 			function login(){
 				var kazooParams = {
-					wsUrl: 'ws://sandbox.2600hz.com:5064',
+					wsUrl: 'WS_API_URL',
 					//rtmpUrl: 'rtmp://Kazoo RTMP Gateway /sip', // Optional
 					realm: document.getElementById('realm').value,
 					privateIdentity: document.getElementById('privateIdentity').value,
