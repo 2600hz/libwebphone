@@ -299,15 +299,13 @@
 				var muteBtn = document.getElementById('btnMute');
 
 				if(muteBtn.getAttribute('data-state') === 'unmuted') {
-					kazoo.muteMicrophone(true, function() {
-						muteBtn.setAttribute('data-state', 'muted');
-						muteBtn.innerHTML = 'Unmute';
-					});
+					kazoo.mute();
+					muteBtn.setAttribute('data-state', 'muted');
+					muteBtn.innerHTML = 'Unmute';
 				} else {
-					kazoo.muteMicrophone(false, function() {
-						muteBtn.setAttribute('data-state', 'unmuted');
-						muteBtn.innerHTML = 'Mute';
-					});
+					kazoo.unmute();
+					muteBtn.setAttribute('data-state', 'unmuted');
+					muteBtn.innerHTML = 'Mute';
 				}
 			}
 
