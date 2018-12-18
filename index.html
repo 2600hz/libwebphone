@@ -140,6 +140,8 @@
 				<input type="text" id="transferDestination" placeholder="sip:2222@webdev.realm"></input>
 				<button id="transfer" onClick="transfer()">Transfer</button>
 			</div>
+                        <audio id="remoteMedia" autoplay></audio>
+                        <audio id="localMedia" autoplay></audio>
 		</div>
 
 		<div id="toast" onClick="clearToast()" onMouseOver="clearTimeout(toastTimer)" onMouseOut="clearToast(3000)"></div>
