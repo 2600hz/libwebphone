@@ -41,13 +41,13 @@ kazoo.init(paramsInit);
 Now that the library has been initialized, we can use it to register to some SIP credentials and we’ll then
 be able to place and receive calls!
 
-In order to register to some SIP credentials, we need to use the `kazoo.register` function, the expected parameters are the following:
+In order to register to some SIP credentials, we need to use the `kazoo.register` function. The expected parameters are the following:
 
 - `wsUrl`: Web Socket Server URL (e.g: `wss://10.26.0.41:5443`)
 - `rtmpUrl`: RTMP Server URL (e.g: `rtmp://10.26.0.41/sip`)
 - `realm`: SIP Realm (Realm linked to your Kazoo account, e.g: `d218ds.sip.2600hz.com`)
 - `privateIdentity`: SIP Username (e.g: `user_31dsajsjds`)
-- `publicIdentity`: Full SIP Address (e.g: `sip:user_31dsajsjds@ d218ds.sip.2600hz.com`)
+- `publicIdentity`: Full SIP Address (e.g: `sip:user_31dsajsjds@d218ds.sip.2600hz.com`)
 - `password`: SIP Password (e.g: `23bf1f9wwdslw2`)
 - `onIncoming`: JavaScript callback called once an incoming call has been detected. It takes one argument, a call object that has 2 methods: accept, and reject (which will either accept or reject the call) and one attribute: callerName (which will give you the callerId for this incoming call).
 - `onConnected`: OPTIONAL, JavaScript function called by the library once the user is successfully registered
@@ -98,17 +98,18 @@ We registered to a SIP account (with credentials inputted in a HTML form). If it
 
 Below is the complete list of notifications and errors that you can handle in the onNotified and onError callbacks. The notification and error objects follow the same structure, including a string key, a string message explaining the error/notification, and a source object containing the source of the error/notification. Note that the source object structure will vary depending on the protocol used.
 
-||||||
-|---|---|---|---|---|
 | key | message | Occurrence | WebRTC | RTMP |
+|---|---|---|---|---|
 | `server_not_reachable` | Could not reach the server. | **Error** returned when trying to register a device to an unreachable server. || x |
 | `unauthorized` | Invalid credentials. | **Error** returned when trying to register a device with invalid credentials. | x | x |
+| `forbidden` | Access is not allowed. | **Error** returned when the registration is not allowed. | x | x |
 | `disconnected` | You have been disconnected. | **Error** returned when the server unexpectedly disconnects you (e.g. the server shuts down). | x | x |
 | `overriding_registration` | You have overridden an existing registration for this device. | **Notification** sent when registering a device that is already currently registered. | x | x |
 | `replaced_registration` | You have been disconnected: someone else has registered this device. | **Notification** sent when your currently registered device is being registered somewhere else | x | x |
 | `voicemail_notification` | You have one or more voicemail message(s). | **Notification** sent when the server detects one or more messages on your device's voicemail box. | x | x |
 | `connectivity_notification` | You have lost your connection to the network. OR You have recovered your connection to the network. | **Notification** sent when the network connectivity changes. This notification also has a status that may contain the values `online` or `offline`. | x | x |
 | `reconnecting_notification` | Attempting to reconnect... | **Notification** sent when the kazoo.reconnect() function is called, either manually or automatically from the auto-reconnect feature. | x | x |
+| `transfer_notification` | The call has been successfully transfered. | **Notification** sent when the current call has been successfully transfered to another destination. | x ||
 | `unknown_notification` | You have received a SIP notification. | **Notification** sent when the server sends a SIP notification that isn't recognized in any of the above categories. | x | x |
 
 Now that we looked at how to get started, we'll look at the different methods of the kazoo object.
@@ -117,18 +118,19 @@ Now that we looked at how to get started, we'll look at the different methods of
 
 The kazoo object has 7 accessible methods:
 
-- `init`: Method to initialize the Library, see Example 1
-- `register`: Method to register using some SIP credentials, see Example 2
-- `connect`: takes a SIP URL as the only parameter, and will try to call the following address (e.g: kazoo.connect(`sip:2222@dd21d.sip.2600hz.com`) )
-- `hangup`: no arguments needed, will hangup the current call. (e.g: kazoo.hangup());
-- `sendDTMF`: takes a character from this list 0,1,2,3,4,5,6,7,8,9,0,*,#, as a parameter and send it as a DTMF to the platform (e.g: `kazoo.sendDTMF('2')`);
-- `logout`: Will unregister the browser from the platform (e.g: kazoo.logout());
-- `transfer`: takes a SIP URL as the only parameter, and will try to call the following address (e.g: kazoo.transfer(`sip:2222@sdsdd.sip.2600hz.com`) ).
-- `muteMicrophone`: takes a boolean as a parameter (true to mute, false to unmute), as well as two callbacks for success and error (e.g. kazoo.muteMicrophone(true, success, error); ).]
-- `reconnect`: Attempts to re-register the device with the same parameters originally provided to the register function and sends a reconnecting_notification. This function gets called by the auto-reconnect feature.
-- `startAutoReconnect`: triggers the auto-reconnect using the reconnectMaxAttempts and reconnectDelay values provided in the register parameters. You should not have to call this method as it will be automatically called when getting disconnected (except when the registration is getting overridden).
-- `stopAutoReconnect`: stops the currently ongoing auto-reconnect. Note that the auto-reconnect automatically stops by itself as soon as the connection is successful.
-- `monitorConnectivity`: takes a Boolean as a parameter, which is true by default. This function allows to enable (true) or disable (false) the monitoring of your network connectivity. It is enabled by default, and disabling it will prevent the library from knowing when your connectivity has been loss, hence impairing the auto-reconnect feature. This is especially used for recovering from sleep/hibernate mode.
+- **`init`**: Method to initialize the Library, see Example 1.
+- **`register`**: Method to register using some SIP credentials, see Example 2.
+- **`connect`**: takes a SIP URL as the only parameter, and will try to call the following address (e.g: `kazoo.connect('sip:2222@dd21d.sip.2600hz.com')` ).
+- **`hangup`**: no arguments needed, will hangup the current call. (e.g: `kazoo.hangup()`).
+- **`sendDTMF`**: takes a character from this list 0,1,2,3,4,5,6,7,8,9,0,*,#, as a parameter and send it as a DTMF to the platform (e.g: `kazoo.sendDTMF('2')`).
+- **`logout`**: Will unregister the browser from the platform (e.g: `kazoo.logout()`);
+- **`transfer`**: takes a SIP URL as the only parameter, and will try to call the following address (e.g: `kazoo.transfer('sip:2222@sdsdd.sip.2600hz.com')` ).
+- **`muteMicrophone`**: takes a boolean as a parameter (`true` to mute, `false` to unmute), as well as two callbacks for success and error (e.g. `kazoo.muteMicrophone(true, success, error)` ).
+- **`reconnect`**: Attempts to re-register the device with the same parameters originally provided to the register function and sends a `reconnecting_notification`. This function gets called by the auto-reconnect feature.
+- **`startAutoReconnect`**: triggers the auto-reconnect using the `reconnectMaxAttempts` and `reconnectDelay` values provided in the register parameters. You should not have to call this method as it will be automatically called when getting disconnected (except when the registration is getting overridden).
+- **`stopAutoReconnect`**: stops the currently ongoing auto-reconnect. Note that the auto-reconnect automatically stops by itself as soon as the connection is successful.
+- **`monitorConnectivity`**: takes a Boolean as a parameter, which is `true` by default. This function allows to enable (`true`) or disable (`false`) the monitoring of your network connectivity. It is enabled by default, and disabling it will prevent the library from knowing when your connectivity has been lost, hence impairing the auto-reconnect feature. This is especially used for recovering from sleep/hibernate mode.
+
 Using this, you should now be able to create some cool applications using softphones in your browser!
 
 ## Contact
