@@ -21,6 +21,7 @@ Now that the library is loaded, we need to initialize it by calling `kazoo.init(
 - `onFlashMissing`: JavaScript callback called when trying to use RTMP without Flash available. The div initially supposed to contain the Flash element is provided as a parameter.
 - `flashContainer`: OPTIONAL, id of a div that will contain the Flash Embed element
 - `forceRTMP`: OPTIONAL, if set to true, will force the library to use the RTMP protocol.
+- `debug`: OPTIONAL, if set to true, trace logging will be enabled. Trace logging is disabled by default.
 
 ```javascript
 var paramsInit = {
