@@ -3,3 +3,5 @@
 *.sublime-workspace
 .DS_Store
 *.directory
+.project
+.vscode

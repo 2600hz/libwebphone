@@ -161,8 +161,9 @@
 				forceRTMP: false,
 				prefixScripts: 'lib/dependencies/',
 				flashContainer: 'flash_div',
+				debug: true,
 				onLoaded: function() {
-					document.getElementById('loginForm').style.display = "block";
+					document.getElementById('loginForm').style.display = 'block';
 				},
 				onFlashMissing: function(container) {
 					container.innerHTML = 'This content requires the Adobe Flash Player. <a href=http://www.adobe.com/go/getflash/>Get Flash</a>';
@@ -197,7 +198,8 @@
 			}
 
 			function onTransfer() {
-				document.getElementById('divCalling').style.display = "none";
+				document.getElementById('divCalling').style.display = 'none';
+				document.getElementById('call').disabled = false;
 			}
 
 			function onIncoming(call) {
@@ -208,10 +210,12 @@
 
 			function onConnecting() {
 				console.log('Connecting...');
+				document.getElementById('call').disabled = true;
 			}
 
 			function onHangup() {
-				document.getElementById('divCalling').style.display = "none";
+				document.getElementById('divCalling').style.display = 'none';
+				document.getElementById('call').disabled = false;
 			}
 
 			function onCancel(status) {
@@ -223,19 +227,20 @@
 			}
 
 			function onAccepted() {
-				document.getElementById('divCalling').style.display = "block";
+				document.getElementById('divCalling').style.display = 'block';
+				document.getElementById('call').disabled = true;
 			}
 
 			function onConnected() {
-				document.getElementById('divLoggedIn').style.display = "block";
-				document.getElementById('btnLogin').style.display = "none";
-				document.getElementById('btnLogout').style.display = "block";
+				document.getElementById('divLoggedIn').style.display = 'block';
+				document.getElementById('btnLogin').style.display = 'none';
+				document.getElementById('btnLogout').style.display = 'block';
 			}
 
 			function onNotified(notification) {
 				switch(notification.key) {
 					case 'replaced_registration': {
-						if(document.getElementById('btnLogin').style.display === "none") { //Check to ignore double notifications
+						if(document.getElementById('btnLogin').style.display === 'none') { //Check to ignore double notifications
 							logout();
 							toast('error', notification.message);
 						}
@@ -269,11 +274,11 @@
 				toast('error', 'ERROR: ' + error.message);
 				closePopup();
 				if(error.key === 'disconnected') {
-					document.getElementById('divLoggedIn').style.display = "none";
-					document.getElementById('divCalling').style.display = "none";
-					document.getElementById('btnLogin').style.display = "block";
-					document.getElementById('btnLogout').style.display = "none";
-
+					document.getElementById('divLoggedIn').style.display = 'none';
+					document.getElementById('divCalling').style.display = 'none';
+					document.getElementById('btnLogin').style.display = 'block';
+					document.getElementById('btnLogout').style.display = 'none';
+					document.getElementById('call').disabled = false;
 				}
 			}
 
@@ -288,6 +293,8 @@
 			function call() {
 				var destination = document.getElementById('destination').value;
 
+				document.getElementById('call').disabled = true;
+				
 				kazoo.connect(destination);
 			}
 
@@ -314,10 +321,12 @@
 			function logout() {
 				kazoo.logout();
 
-				document.getElementById('divLoggedIn').style.display = "none";
-				document.getElementById('divCalling').style.display = "none";
-				document.getElementById('btnLogin').style.display = "block";
-				document.getElementById('btnLogout').style.display = "none";
+				document.getElementById('divLoggedIn').style.display = 'none';
+				document.getElementById('divCalling').style.display = 'none';
+				document.getElementById('btnLogin').style.display = 'block';
+				document.getElementById('btnLogout').style.display = 'none';
+				document.getElementById('call').disabled = false;
+
 				closePopup();
 			}
 
