@@ -1,0 +1,35 @@
+{
+  "name": "libwebphone",
+  "version": "2.0.0",
+  "description": "A library of components to build real-time media clients in the browser",
+  "main": "index.html",
+  "scripts": {
+    "dev": "webpack --mode development --config webpack.config.js --watch",
+    "build": "webpack --mode production --config webpack.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2600hz/libwebphone.git"
+  },
+  "author": "2600Hz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/2600hz/libwebphone/issues"
+  },
+  "homepage": "https://github.com/2600hz/libwebphone#readme",
+  "dependencies": {
+    "audio-stream-meter": "^1.0.5",
+    "detectrtc": "^1.3.9",
+    "i18next": "^19.0.1",
+    "jssip": "^3.3.11",
+    "lodash": "^4.17.15",
+    "media-device-id": "^1.0.1",
+    "mustache": "^3.1.0",
+    "tone": "^13.8.25",
+    "webrtc-adapter": "^7.3.0"
+  },
+  "devDependencies": {
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10"
+  }
+}

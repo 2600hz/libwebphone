@@ -3,381 +3,145 @@
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-		<title></title>
+		<title>2600Hz Webphone Library</title>
 		<meta name="description" content="">
 		<meta name="viewport" content="width=device-width initial-scale=1.0">
 
-		<script src="lib/kazoo.js" type="text/javascript"></script>
-		<style>
-			div.demo-block {
-				border: 1px solid #22CCFF;
-				float: left;
-				margin: 10px;
-				padding: 10px;
-			}
-			div.demo-flash-error {
-				color: red;
-				font-style: italic;
-				font-size: 18px;
-			}
-			#toast {
-				display: none;
-				position: fixed;
-				top: 10px;
-				right: 10px;
-				width: 400px;
-				border: solid 2px #333;
-				border-radius: 10px;
-				box-shadow: 0px 0px 20px #333;
-				padding: 10px;
-				cursor: pointer;
-				background: white;
-				z-index: 1002;
-			}
-			#toast.success, #popupHeader.success {background-color: #62c462;}
-			#toast.error, #popupHeader.error {background-color: #ee5f5b;}
-			#toast.warning, #popupHeader.warning {background-color: #fbb450;}
-			#toast.info, #popupHeader.info {background-color: #5bc0de;}
-
-			#flash_div {
-				border: 1px solid red;
-				display: inline-block;
-			}
-
-			#popupOverlay {
-				display: none;
-				position: fixed;
-				z-index: 1000;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 100%;
-				background: black;
-				opacity: 0.8;
-			}
-			#popup {
-				display: none;
-				position: fixed;
-				left: 50px;
-				top: 50px;
-				width: 300px;
-				border: solid 1px black;
-				border-radius: 4px;
-				z-index: 1001;
-				background: white;
-			}
-			#popup #popupHeader {
-				padding: 10px 20px;
-				text-transform: capitalize;
-				border-bottom: solid 1px black;
-				border-top-left-radius: 5px;
-				border-top-right-radius: 5px;
-			}
-			#popup #popupContent {
-				padding: 20px;
-			}
-			#popup #popupActions {
-				padding: 10px;
-				border-top: solid 1px black;
-				text-align: center;
-			}
-		</style>
-	</head>
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+	
+		<script src="dist/libwebphone.js" type="text/javascript"></script>
 	<body>
-		<h1>Welcome to the Kazoo Client Demo</h1>
-		<div id="loginForm" class="demo-block" style="display: none;">
-			<form>
-				Private Identity: <input type="text" id="privateIdentity" value="webphone"><br>
-				Public Identity: <input type="text" id="publicIdentity" value="sip:webphone@myrealm.com"><br>
-				Password: <input type="text" id="password" value="webphone"><br>
-				Realm: <input type="text" id="realm" value="myrealm.com"><br>
-				<button id="btnLogin" type="button" onClick="login()">Login</button>
-				<button id="btnLogout" type="button" onClick="logout()" style="display: none;">Log out</button>
-			</form>
-		</div>
-
-		<div id="divLoggedIn" class="demo-block" style="display: none;">
-			Logged In
-			<div>
-				<input type="text" id="destination" placeholder="sip:2222@webdev.realm" value="sip:2002@myrealm.com"></input>
-				<button id="call" onClick="call()">Call</button>
-			</div>
-		</div>
-
-		<div id="divCalling" class="demo-block" style="display: none;">
-			<h3>Call in progress...</h3>
-
-			<button id="btnHangup" type="button" onClick="hangup()">Hangup</button>
-			<button id="btnMute" type="button" onClick="mute()" data-state="unmuted">Mute</button>
-
-			<div id="dialpad">
-				<table>
-					<tr>
-						<td><input type="button" value="1" onClick="sendDTMF('1')"/></td>
-						<td><input type="button" value="2" onClick="sendDTMF('2')"/></td>
-						<td><input type="button" value="3" onClick="sendDTMF('3')"/></td>
-					</tr>
-					<tr>
-						<td><input type="button" value="4" onClick="sendDTMF('4')"/></td>
-						<td><input type="button" value="5" onClick="sendDTMF('5')"/></td>
-						<td><input type="button" value="6" onClick="sendDTMF('6')"/></td>
-					</tr>
-					<tr>
-						<td><input type="button" value="7" onClick="sendDTMF('7')"/></td>
-						<td><input type="button" value="8" onClick="sendDTMF('8')"/></td>
-						<td><input type="button" value="9" onClick="sendDTMF('9')"/></td>
-					</tr>
-					<tr>
-						<td><input type="button" value="*" onClick="sendDTMF('*')"/></td>
-						<td><input type="button" value="0" onClick="sendDTMF('0')"/></td>
-						<td><input type="button" value="#" onClick="sendDTMF('#')"/></td>
-					</tr>
-				</table>
-			</div>
-
-			<div id="transferDiv">
-				<input type="text" id="transferDestination" placeholder="sip:2222@webdev.realm"></input>
-				<button id="transfer" onClick="transfer()">Transfer</button>
-			</div>
-		</div>
-
-		<div id="toast" onClick="clearToast()" onMouseOver="clearTimeout(toastTimer)" onMouseOut="clearToast(3000)"></div>
-
-		<div id="popupOverlay"></div>
-		<div id="popup">
-			<div id="popupHeader"></div>
-			<div id="popupContent"></div>
-			<div id="popupActions">
-				<button id="popupOkBtn">OK</button>
-				<button id="popupCancelBtn">Cancel</button>
-			</div>
-		</div>
-
-		<div id="flash_div">
-		</div>
-
 		<script>
-			var paramsInit = {
-				forceRTMP: false,
-				prefixScripts: 'lib/dependencies/',
-				flashContainer: 'flash_div',
-				debug: true,
-				onLoaded: function() {
-					document.getElementById('loginForm').style.display = 'block';
-				},
-				onFlashMissing: function(container) {
-					container.innerHTML = 'This content requires the Adobe Flash Player. <a href=http://www.adobe.com/go/getflash/>Get Flash</a>';
-					container.className = 'demo-flash-error';
-				}
-			};
-
-			kazoo.init(paramsInit);
-
-			function login(){
-				var kazooParams = {
-					wsUrl: 'ws://Kazoo WS API/',
-					rtmpUrl: 'rtmp://Kazoo RTMP Gateway /sip', // Optional
-					realm: document.getElementById('realm').value,
-					privateIdentity: document.getElementById('privateIdentity').value,
-					publicIdentity: document.getElementById('publicIdentity').value,
-					password: document.getElementById('password').value,
-					onAccepted: onAccepted,
-					onConnected: onConnected,
-					onHangup: onHangup,
-					onCancel: onCancel,
-					onIncoming: onIncoming,
-					onConnecting: onConnecting,
-					onTransfer: onTransfer,
-					onNotified: onNotified,
-					onError: onError,
-					reconnectMaxAttempts: 3, // Unlimited autoreconnect attempts
-					reconnectDelay: 5000 // New autoreconnect attempt every 5 seconds
-				};
-
-				kazoo.register(kazooParams);
-			}
-
-			function onTransfer() {
-				document.getElementById('divCalling').style.display = 'none';
-				document.getElementById('call').disabled = false;
-			}
-
-			function onIncoming(call) {
-				console.log('onIncoming', call);
-				var caller = call.callerName + (call.callerNumber ? ' ('+call.callerNumber+')' : '');
-				confirmPopup(caller + ' is calling you! Pick up the call?', call.accept, call.reject);
-			}
-
-			function onConnecting() {
-				console.log('Connecting...');
-				document.getElementById('call').disabled = true;
-			}
-
-			function onHangup() {
-				document.getElementById('divCalling').style.display = 'none';
-				document.getElementById('call').disabled = false;
-			}
-
-			function onCancel(status) {
-				var msg = 'Your call has been canceled';
-				if(status && status.message) { msg += ': ' + status.message; }
-				if(status && status.code) { msg += ' (' + status.code + ')'; }
-				toast('info', msg);
-				closePopup();
-			}
-
-			function onAccepted() {
-				document.getElementById('divCalling').style.display = 'block';
-				document.getElementById('call').disabled = true;
-			}
-
-			function onConnected() {
-				document.getElementById('divLoggedIn').style.display = 'block';
-				document.getElementById('btnLogin').style.display = 'none';
-				document.getElementById('btnLogout').style.display = 'block';
-			}
-
-			function onNotified(notification) {
-				switch(notification.key) {
-					case 'replaced_registration': {
-						if(document.getElementById('btnLogin').style.display === 'none') { //Check to ignore double notifications
-							logout();
-							toast('error', notification.message);
-						}
-						break;
-					}
-					case 'transfer_notification':
-					case 'overriding_registration': {
-						toast('info', notification.message);
-						break;
-					}
-					case 'connectivity_notification': {
-						if(notification.status === 'offline') {
-							toast('warning', notification.message);
-						} else {
-							toast('info', notification.message);
-						}
-						break;
-					}
-					case 'reconnecting_notification': {
-						toast('info', notification.message + '('+notification.attempt+')');
-						break;
-					}
-					default: {
-						console.log(notification.message);
-					}
-
-				}
-			}
-
-			function onError(error) {
-				toast('error', 'ERROR: ' + error.message);
-				closePopup();
-				if(error.key === 'disconnected') {
-					document.getElementById('divLoggedIn').style.display = 'none';
-					document.getElementById('divCalling').style.display = 'none';
-					document.getElementById('btnLogin').style.display = 'block';
-					document.getElementById('btnLogout').style.display = 'none';
-					document.getElementById('call').disabled = false;
-				}
-			}
-
-
-			/* UI Binding */
-			function transfer() {
-				var destination = document.getElementById('transferDestination').value;
-
-				kazoo.transfer(destination);
-			};
-
-			function call() {
-				var destination = document.getElementById('destination').value;
-
-				document.getElementById('call').disabled = true;
-				
-				kazoo.connect(destination);
-			}
-
-			function hangup() {
-				kazoo.hangup();
-			}
-
-			function mute(e) {
-				var muteBtn = document.getElementById('btnMute');
-
-				if(muteBtn.getAttribute('data-state') === 'unmuted') {
-					kazoo.muteMicrophone(true, function() {
-						muteBtn.setAttribute('data-state', 'muted');
-						muteBtn.innerHTML = 'Unmute';
-					});
-				} else {
-					kazoo.muteMicrophone(false, function() {
-						muteBtn.setAttribute('data-state', 'unmuted');
-						muteBtn.innerHTML = 'Mute';
-					});
-				}
-			}
-
-			function logout() {
-				kazoo.logout();
-
-				document.getElementById('divLoggedIn').style.display = 'none';
-				document.getElementById('divCalling').style.display = 'none';
-				document.getElementById('btnLogin').style.display = 'block';
-				document.getElementById('btnLogout').style.display = 'none';
-				document.getElementById('call').disabled = false;
-
-				closePopup();
-			}
-
-			function sendDTMF(dtmf) {
-				kazoo.sendDTMF(dtmf);
-			}
-
-			var toastTimer;
-			function toast(type, content, timer) {
-				clearTimeout(toastTimer);
-				var toast = document.getElementById('toast');
-				toast.className = type;
-				toast.innerHTML = content;
-				toast.style.display = 'block';
-				toastTimer = setTimeout(function() {
-					toast.style.display = 'none';
-				}, timer || 5000);
-			}
-			function clearToast(delay) {
-				clearTimeout(toastTimer);
-				toastTimer = setTimeout(function() {
-					document.getElementById('toast').style.display = 'none';
-				}, delay || 0);
-			}
-
-			function confirmPopup(message, okCallback, cancelCallback, type) {
-				var popupHeader = document.getElementById('popupHeader');
-
-				document.getElementById('popupContent').innerHTML = message || "Confirm?";
-				document.getElementById('popupOverlay').style.display = 'block';
-				document.getElementById('popup').style.display = 'block';
-				popupHeader.className = type || 'info';
-				popupHeader.innerHTML = 'Confirm';
-
-				document.getElementById('popupOkBtn').onclick = function() {
-					closePopup();
-					okCallback && okCallback();
-				};
-				document.getElementById('popupCancelBtn').onclick = function() {
-					closePopup();
-					cancelCallback && cancelCallback();
-				};
-			}
-
-			function closePopup() {
-				document.getElementById('popupOverlay').style.display = 'none';
-				document.getElementById('popup').style.display = 'none';
-				document.getElementById('popupContent').innerHTML = '';
-				document.getElementById('popupOkBtn').onclick = function() {};
-				document.getElementById('popupCancelBtn').onclick = function() {};
-			}
+			var webphone = new libwebphone({mediaDevices: {root: {element_id: 'media_device_preview'}}});
 		</script>
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col" style="border: solid;">
+					<div class="row">
+						<div class="col" style="text-align: center; border-bottom: dashed; padding: 10px;">
+							<div>
+								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('audioinput'));">Mute Audio</button>
+								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('audioinput'));">Unmute Audio</button>
+								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('audioinput'));">Toggle Audio Mute</button>
+
+								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('videoinput'));">Mute Video</button>
+								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('videoinput'));">Unmute Video</button>
+								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('videoinput'));">Toggle Video Mute</button>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col" style="border-right: dashed;">
+							<div id="media_device_preview"> </div>
+						</div>
+						<div class="col" style="border-right: dashed;">
+							<script type="text/javascript">
+								var customConfig = {
+									audiooutput:{
+										live_preview:false
+									},
+									audioinput:{ 
+										live_preview:false
+									},
+									videoinput:{ 
+										live_preview:false
+									},
+									root:{ 
+										element_id:'media_device_selector'
+									}
+								};
+								webphone.getMediaDevices().then(mediaDevices => {;
+									mediaDevices.render(customConfig);
+								});			
+							</script>
+							<div id="media_device_selector"> </div>
+						</div>
+						<div class="col">
+							<script type="text/javascript">
+								var template = `
+									<div>
+										<legend>{{i18n.legend}}</legend>
+
+										{{#videoinput.enabled}}          
+											<div>
+												<label for="{{selectors.videoinput.element_id}}">
+													{{i18n.videoinput}}
+												</label>                
+												<select id="{{selectors.videoinput.element_id}}">
+													{{#videoinput.devices}}
+														{{#connected}}
+															<option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+														{{/connected}}
+													{{/videoinput.devices}}
+												</select>
+											</div>
+										{{/videoinput.enabled}}
+
+										{{#audiooutput.enabled}}
+											<div>
+												<label for="{{selectors.audiooutput.element_id}}" style="display: inline-block">
+													{{i18n.audiooutput}}:
+												</label>
+												<span id="{{selectors.audiooutput.element_id}}">
+													{{#audiooutput.devices}}
+														{{#active}}
+															{{name}}
+														{{/active}}
+													{{/audiooutput.devices}}
+												</span>
+											</div>
+										{{/audiooutput.enabled}}
+
+										{{#audioinput.enabled}}
+											<div>
+												<label for="{{selectors.audioinput.element_id}}">
+													{{i18n.audioinput}}:
+												</label>
+												<div id="{{selectors.audioinput.element_id}}">
+													{{#audioinput.devices}}
+														{{#connected}}
+															<div>
+																<input type="radio" name="audioinput" value="{{id}}" {{#active}}checked="checked"{{/active}}
+																onclick="webphone.getMediaDevices().then(mediaDevices => {
+																			mediaDevices.changeInputDevice('audioinput', event.target.value);
+																		});
+																">
+																<label>{{name}}</label>
+															</div>
+														{{/connected}}    
+													{{/audioinput.devices}}
+												</div>               
+											</div>
+										{{/audioinput.enabled}}
+									</div>
+									`;
+									var customTemplateConfig = {
+										template: template,
+										root: {
+											element_id: 'media_device_custom'
+										},
+										selectors: {
+											audioinput: {
+												element_id: 'customized_audio_input'
+											}
+										}
+									};
+
+									webphone.getMediaDevices().then(mediaDevices => {;
+										mediaDevices.render(customTemplateConfig).then(() => {
+											document.querySelectorAll('#customized_audio_input > div > input[type=radio]').forEach(radio => {
+												console.log('found radio button after render succeeded: ', radio);
+											});
+										});
+									});
+							</script>
+							<div id="media_device_custom"> </div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 	</body>
 </html>

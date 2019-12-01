@@ -5,3 +5,4 @@
 *.directory
 .project
 .vscode
+node_modules
