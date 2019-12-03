@@ -10,21 +10,73 @@
 		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 	
 		<script src="dist/libwebphone.js" type="text/javascript"></script>
-	<body>
-		<script>
-			var webphone = new libwebphone({mediaDevices: {root: {element_id: 'media_device_preview'}}});
+
+		<script type="text/javascript">
+			var config = {
+				mediaDevices: {
+					videoinput: {
+						startMuted: false
+					},
+					audioinput: {
+						preferedDeviceIds: ['dfc8e6eb62fa04a069c4ae294119bdb60eebc352e9978661585e440d6baa5d62']
+					},
+					renderTargets: [
+						'media_device_preview',
+						{
+							root:{ 
+								elementId: 'media_device_selector'
+							},
+							audiooutput:{
+								livePreview: false
+							},
+							audioinput:{ 
+								livePreview: false
+							},
+							videoinput:{ 
+								livePreview: false
+							}
+						}
+					]
+				}
+			};
+			var webphone = new libwebphone(config);
+			webphone.getMediaDevices().then(mediaDevices => {
+				mediaDevices.on('input.added', (media, track) => console.log('device added: ', track));
+				mediaDevices.on('input.removed', (media, track) => console.log('device removed: ', track));
+			});
 		</script>
 
+	</head>
+	<body>
 		<div class="container-fluid">
 			<div class="row">
 				<div class="col" style="border: solid;">
 					<div class="row">
 						<div class="col" style="text-align: center; border-bottom: dashed; padding: 10px;">
+							Audio Input:
+							<span id='audio_mute_status'>UNMUTED</span>
+							<script type="text/javascript">
+								webphone.getMediaDevices().then(mediaDevices => {
+									mediaDevices.on('audio.input.muted', () => document.querySelector('#audio_mute_status').innerHTML = 'MUTED  ');
+									mediaDevices.on('audio.input.unmuted', () => document.querySelector('#audio_mute_status').innerHTML = 'UNMUTED');
+								});
+							</script>
 							<div>
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('audioinput'));">Mute Audio</button>
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('audioinput'));">Unmute Audio</button>
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('audioinput'));">Toggle Audio Mute</button>
-
+							</div>
+						</div>
+						<div class="col" style="text-align: center; border-bottom: dashed; padding: 10px;">
+							Video Input:
+							<span id='video_mute_status'>UNMUTED</span>
+							<script type="text/javascript">
+								webphone.getMediaDevices().then(mediaDevices => {
+									mediaDevices.on('video.input.muted', () => document.querySelector('#video_mute_status').innerHTML = 'MUTED  ');
+									mediaDevices.on('video.input.unmuted', () => document.querySelector('#video_mute_status').innerHTML = 'UNMUTED');
+								});
+							</script>
+							<div>
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('videoinput'));">Mute Video</button>
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('videoinput'));">Unmute Video</button>
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('videoinput'));">Toggle Video Mute</button>
@@ -36,112 +88,92 @@
 							<div id="media_device_preview"> </div>
 						</div>
 						<div class="col" style="border-right: dashed;">
-							<script type="text/javascript">
-								var customConfig = {
-									audiooutput:{
-										live_preview:false
-									},
-									audioinput:{ 
-										live_preview:false
-									},
-									videoinput:{ 
-										live_preview:false
-									},
-									root:{ 
-										element_id:'media_device_selector'
-									}
-								};
-								webphone.getMediaDevices().then(mediaDevices => {;
-									mediaDevices.render(customConfig);
-								});			
-							</script>
 							<div id="media_device_selector"> </div>
 						</div>
 						<div class="col">
-							<script type="text/javascript">
-								var template = `
-									<div>
-										<legend>{{i18n.legend}}</legend>
-
-										{{#videoinput.enabled}}          
-											<div>
-												<label for="{{selectors.videoinput.element_id}}">
-													{{i18n.videoinput}}
-												</label>                
-												<select id="{{selectors.videoinput.element_id}}">
-													{{#videoinput.devices}}
-														{{#connected}}
-															<option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-														{{/connected}}
-													{{/videoinput.devices}}
-												</select>
-											</div>
-										{{/videoinput.enabled}}
-
-										{{#audiooutput.enabled}}
-											<div>
-												<label for="{{selectors.audiooutput.element_id}}" style="display: inline-block">
-													{{i18n.audiooutput}}:
-												</label>
-												<span id="{{selectors.audiooutput.element_id}}">
-													{{#audiooutput.devices}}
-														{{#active}}
-															{{name}}
-														{{/active}}
-													{{/audiooutput.devices}}
-												</span>
-											</div>
-										{{/audiooutput.enabled}}
-
-										{{#audioinput.enabled}}
-											<div>
-												<label for="{{selectors.audioinput.element_id}}">
-													{{i18n.audioinput}}:
-												</label>
-												<div id="{{selectors.audioinput.element_id}}">
-													{{#audioinput.devices}}
-														{{#connected}}
-															<div>
-																<input type="radio" name="audioinput" value="{{id}}" {{#active}}checked="checked"{{/active}}
-																onclick="webphone.getMediaDevices().then(mediaDevices => {
-																			mediaDevices.changeInputDevice('audioinput', event.target.value);
-																		});
-																">
-																<label>{{name}}</label>
-															</div>
-														{{/connected}}    
-													{{/audioinput.devices}}
-												</div>               
-											</div>
-										{{/audioinput.enabled}}
-									</div>
-									`;
-									var customTemplateConfig = {
-										template: template,
-										root: {
-											element_id: 'media_device_custom'
-										},
-										selectors: {
-											audioinput: {
-												element_id: 'customized_audio_input'
-											}
-										}
-									};
-
-									webphone.getMediaDevices().then(mediaDevices => {;
-										mediaDevices.render(customTemplateConfig).then(() => {
-											document.querySelectorAll('#customized_audio_input > div > input[type=radio]').forEach(radio => {
-												console.log('found radio button after render succeeded: ', radio);
-											});
-										});
-									});
-							</script>
 							<div id="media_device_custom"> </div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-
 	</body>
+	<script type="text/javascript">
+		var template = `
+			<div>
+				<legend>{{i18n.legend}}</legend>
+
+				{{#videoinput.enabled}}          
+					<div>
+						<label for="{{selectors.videoinput.elementId}}">
+							{{i18n.videoinput}}
+						</label>                
+						<select id="{{selectors.videoinput.elementId}}">
+							{{#videoinput.devices}}
+								{{#connected}}
+									<option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+								{{/connected}}
+							{{/videoinput.devices}}
+						</select>
+					</div>
+				{{/videoinput.enabled}}
+
+				{{#audiooutput.enabled}}
+					<div>
+						<label for="{{selectors.audiooutput.elementId}}" style="display: inline-block">
+							{{i18n.audiooutput}}:
+						</label>
+						<span id="{{selectors.audiooutput.elementId}}">
+							{{#audiooutput.devices}}
+								{{#active}}
+									{{name}}
+								{{/active}}
+							{{/audiooutput.devices}}
+						</span>
+					</div>
+				{{/audiooutput.enabled}}
+
+				{{#audioinput.enabled}}
+					<div>
+						<label for="{{selectors.audioinput.elementId}}">
+							{{i18n.audioinput}}:
+						</label>
+						<div id="{{selectors.audioinput.elementId}}">
+							{{#audioinput.devices}}
+								{{#connected}}
+									<div>
+										<input type="radio" name="audioinput" value="{{id}}" {{#active}}checked="checked"{{/active}}
+										onclick="webphone.getMediaDevices().then(mediaDevices => {
+													mediaDevices.changeDevice('audioinput', event.target.value);
+												});
+										">
+										<label>{{name}}</label>
+									</div>
+								{{/connected}}    
+							{{/audioinput.devices}}
+						</div>               
+					</div>
+				{{/audioinput.enabled}}
+			</div>
+			`;
+			var customTemplateConfig = {
+				template: template,
+				root: {
+					elementId: 'media_device_custom'
+				},
+				selectors: {
+					audioinput: {
+						elementId: 'customized_audio_input'
+					}
+				}
+			};
+
+			webphone.getMediaDevices().then(mediaDevices => {;
+				mediaDevices.render(customTemplateConfig).then(() => {
+					document.querySelectorAll('#customized_audio_input > div > input[type=radio]').forEach(radio => {
+						console.log('found radio button after render succeeded: ', radio);
+					});
+				});
+			});
+	</script>
 </html>

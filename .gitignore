@@ -6,3 +6,4 @@
 .project
 .vscode
 node_modules
+dist
