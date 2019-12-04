@@ -11,8 +11,9 @@ import adapter from 'webrtc-adapter';
 
 
 class lwpMediaDevices extends EventEmitter {
-    constructor(config = {}, i18n = null) {
+    constructor(libwebphone, config = {}, i18n = null) {
         super();
+        this._libwebphone = libwebphone;
         return this._initInternationalization(config.i18n, i18n).then(() => {
                 return this._initProperties(config.mediaDevices);
             }).then(() => {
