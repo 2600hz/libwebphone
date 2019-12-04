@@ -1015,7 +1015,7 @@ class lwpMediaDevices extends EventEmitter {
             {{#videoinput.enabled}}
                 {{#videoinput.livePreview}}
                     <div>
-                        <video id="{{previews.videoinput.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay></video>
+                        <video id="{{previews.videoinput.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
                     </div>
                 {{/videoinput.livePreview}}               
                 <div>
