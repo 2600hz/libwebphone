@@ -15,7 +15,7 @@
 			var config = {
 				mediaDevices: {
 					videoinput: {
-						startMuted: false
+						startMuted: true
 					},
 					audioinput: {
 						preferedDeviceIds: ['dfc8e6eb62fa04a069c4ae294119bdb60eebc352e9978661585e440d6baa5d62']
@@ -41,8 +41,8 @@
 			};
 			var webphone = new libwebphone(config);
 			webphone.getMediaDevices().then(mediaDevices => {
-				mediaDevices.on('input.added', (media, track) => console.log('device added: ', track));
-				mediaDevices.on('input.removed', (media, track) => console.log('device removed: ', track));
+				mediaDevices.on('input.added', (media, track) => console.log('input added: ', track));
+				mediaDevices.on('input.removed', (media, track) => console.log('input removed: ', track));
 			});
 		</script>
 
@@ -82,6 +82,15 @@
 								<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('videoinput'));">Toggle Video Mute</button>
 							</div>
 						</div>
+						<div class="col" style="text-align: center; border-bottom: dashed; padding: 10px;">
+								<span id='video_mute_status'>State Control</span>
+								<div>
+									<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startPreviews());">Start Preview</button>
+									<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopPreviews());">Stop Preview</button>
+									<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startStreams());">Start Call Streams</button>
+									<button onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopStreams());">Stop Call Streams</button>
+								</div>
+							</div>
 					</div>
 					<div class="row">
 						<div class="col" style="border-right: dashed;">
