@@ -1,0 +1,4 @@
+npm install --save-dev webpack-merge
+
+npm install
+npm audit fix
