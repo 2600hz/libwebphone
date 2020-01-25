@@ -13,7 +13,12 @@ import {
     sipUnRegister,    
     stopShareVideoToggle,
     callTransfer,
+    sipToggleMute,
     sipSendDTMF} from './lwpPhoneUtils';
+
+import { lwpCallParkWebServiceHandler} from './lwpCallParkWebServiceHandler';
+import {CallParkUtils} from './lwpCallParkHandler';
+
 
 
 //Function to load SIPML5 library
@@ -94,8 +99,9 @@ export default class {
     getPhoneUtils(number,OperationType) 
     {
 
-        
-        if(OperationType == "call-audiovideo")
+
+      
+         if(OperationType == "call-audiovideo")
         {
         sipCall('call-audiovideo',number)
         console.log(`Operation performed:  ${OperationType}`)
@@ -125,6 +131,21 @@ export default class {
             sipUnRegister();
             console.log(`Operation performed:  ${OperationType}`)
         }
+        else if(OperationType == "toggleCallMuteUnmute")
+        {
+            sipToggleMute();
+            console.log(`Operation performed:  ${OperationType}`)
+        }
+
+
+       
+
+        
+
+        
+        
+
+        
 
 
         return  this._getPhoneUtils;
