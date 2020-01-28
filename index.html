@@ -10,14 +10,9 @@
 		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 	
 		<script src="dist/libwebphone.js" type="text/javascript"></script>
-		<script src="dist/SIPml-api_2.1.4.js" type="text/javascript"></script>
-
 
 		<script type="text/javascript">
 			var config = {
-				transport: {
-					url: 'wss://sandbox.2600hz.com'
-				},
 				dialpad: {
 					renderTargets: ['my_dialpad']
 				},
@@ -46,20 +41,40 @@
 						}
 					]
 				},
-				register: {
-					value_realm:"vbbZ65Q.sb.2600hz.com", 
-        			value_impi:"user_q5eNt95vwv@vbbZ65Q.sb.2600hz.com",
-        			value_impu: "sip:user_q5eNt95vwv@vbbZ65Q.sb.2600hz.com",
-        			value_password: "cxNMVV2BD47J",
-        			value_displayname: "sip:user_q5eNt95vwv@vbbZ65Q.sb.2600hz.com",
-        			value_wsservice: "wss://sandbox.2600hz.com:5065/",
-        			value_iceservice: "[{url:'stun:stun.l.google.com:19302'}]",
+				kazoo: {
+					sockets: [
+						'wss://sandbox.2600hz.com:5443'
+					],
+					api: 'https://sandbox.2600hz.com:8443/v2',
+					authentication: {
+						username: '',
+						password: '',
+						account_name: ''
+					}
 				},
-				mediaforcall: {
-					audioRemote:'audioremote', 
-        			videoLocal:'videolocal',
-        			videoRemote:'videoremote',        			
-				},
+				userAgent: {
+					transport: {
+						sockets: [
+							'wss://sandbox.2600hz.com:5065'
+						],
+						recovery_max_interval: 30,
+						recovery_min_interval: 2
+					},
+					authentication: {
+						username: 'user_q5eNt95vwv',
+						password: 'cxNMVV2BD47J',
+						realm: 'vbbZ65Q.sb.2600hz.com'
+					},
+					user_agent: {
+						//contact_uri: '',
+						//display_name: '',
+						instance_id: '8f1fa16a-1165-4a96-8341-785b1ef24f12',
+						no_answer_timeout: 60,
+						register: true,
+						register_expires: 300,
+						user_agent: 'libwebphone 2.x - dev'
+					}
+				}
 			}//End ofConfig
 
 				
@@ -135,16 +150,13 @@
 		
 		<!--Added by Mahfuz [start]-->
 		<div style="position:absolute">
-			<button onclick='webphone.getPhoneUtils("+12092155935","call-audiovideo");'>Genereate AudioVideo Call</button>
-			<button onclick='webphone.getPhoneUtils("+12092155935","call-audio");'>Genereate Audio Call</button>
-			<button onclick='webphone.getPhoneUtils("","toggleVideoShareStopResume");'>Stop / Share Video Share</button>
-			<button onclick='webphone.getPhoneUtils("+12092155935","transfer");'>Transfer</button>
-			<button onclick='webphone.getPhoneUtils("","handgup");'>Hangnup</button>
-			<button onclick='webphone.getPhoneUtils("","disconnect");'>Siggnout and Disconnect</button>
+			<button onclick='webphone.getUserAgent().then(ua => ua.call("+14158867903"));'>Call</button>
+			<button onclick='webphone.getUserAgent().then(ua => ua.register());'>Register</button>
+			<button onclick='webphone.getUserAgent().then(ua => ua.unregister());'>Unregister</button>
+
 			<audio id="audioremote"  autoplay loop ></audio>
-			<video id="videoremote"  width="340" height="270" preload="auto"  autoplay ></video>
-			<video id="videolocal" width="100" height="100"  preload="auto"  muted autoplay ></video>
 		</div>
+
 		<!--Added by Mahfuz [End]-->
 		
 

@@ -647,7 +647,7 @@ class lwpMediaDevices extends EventEmitter {
             });
 
             if (Object.keys(constraints).length == 0) {
-                return Promise.resolve();
+                return Promise.resolve().then(() => { return mediaStream });
             } 
 
             return this._shimGetUserMedia(constraints).then(otherMediaStream => {
@@ -659,6 +659,8 @@ class lwpMediaDevices extends EventEmitter {
                     track.enabled = !startMuted;
                     this._addTrack(mediaStream, track);               
                 });
+
+                return mediaStream;
             });
         });
     }

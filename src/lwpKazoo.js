@@ -8,17 +8,20 @@ export default class extends EventEmitter {
   constructor(libwebphone, config = {}, i18n = null) {
     super();
     this._libwebphone = libwebphone;
-    this._sockets = [];
     return this._initInternationalization(config.i18n, i18n)
       .then(() => {
-        return this._initProperties(config.userAgent);
+        return this._initProperties(config.phoneUtils);
       })
       .then(() => {
         return this;
       });
   }
 
-  /** Init functions */
+  kazooSubscribe(Type) {}
+
+  kazooUnsubscribe(Type) {}
+
+  kazooRequest(type, url, options) {}
 
   _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
     if (i18n) {
@@ -28,14 +31,22 @@ export default class extends EventEmitter {
 
     var i18nPromise = i18next.init(config);
     i18next.addResourceBundle("en", "libwebphone", {
-      dialpad: {}
+      transport: {}
     });
 
     return i18nPromise.then(translator => (this._translator = translator));
   }
 
   _initProperties(config) {
-    var defaults = {};
+    var defaults = {
+      sockets: [],
+      api: "https://sandbox.2600hz.com:8443/v2",
+      authentication: {
+        username: "",
+        password: "",
+        account_name: ""
+      }
+    };
 
     this._config = this._merge(defaults, config);
 
@@ -43,7 +54,6 @@ export default class extends EventEmitter {
   }
 
   /** Util Functions */
-
   _merge(...args) {
     return _.merge(...args);
   }
