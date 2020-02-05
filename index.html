@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html>
 	<head>
+  <style>
+  .wrapper {
+    background-color: #3c6446;
+    width: 320px;
+    margin: 0 auto;
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr);
+    grid-gap: 5px;
+    grid-auto-rows: minmax(100px, auto);
+  }
+  .wrapper button {
+    width: 75%;
+    height: 75%;
+    margin: auto;
+    font-size: 14px;
+    border-radius: 50%;
+  }
+  </style>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
 		<title>2600Hz Webphone Library</title>
@@ -79,6 +97,9 @@
 
 				
 			var webphone = new libwebphone(config);
+
+			
+
 			webphone.getMediaDevices().then(mediaDevices => {
 				mediaDevices.on('input.added', (media, track) => console.log('input added: ', track));
 				mediaDevices.on('input.removed', (media, track) => console.log('input removed: ', track));
@@ -149,7 +170,7 @@
 		
 		
 		<!--Added by Mahfuz [start]-->
-		<div style="position:absolute">
+	<div style="position:absolute">
 			<button onclick='webphone.getUserAgent().then(ua => ua.call("+14158867903"));'>Call</button>
 			<button onclick='webphone.getUserAgent().then(ua => ua.register());'>Register</button>
 			<button onclick='webphone.getUserAgent().then(ua => ua.unregister());'>Unregister</button>
@@ -158,6 +179,31 @@
 		</div>
 
 		<!--Added by Mahfuz [End]-->
+
+		
+		<!--Dialpad [start]-->
+    <div class="wrapper" style="position: absolute; left: 344px;">
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(1));'>1</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(2));'>2</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(3));'>3</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(4));'>4</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(5));'>5</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(6));'>6</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(7));'>7</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(8));'>8</button> 
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(9));'>9</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton("*"));'>＊</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton(0));'>0</button>
+    <button onclick='webphone.getDialpad().then(dp => dp.eventfordialpadbutton("#"));'>#</button>
+  </button>
+
+		
+		<!--Dialpad [end]-->
+
+		
+	
+
+
 		
 
 
