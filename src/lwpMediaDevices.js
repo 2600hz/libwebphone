@@ -111,12 +111,13 @@ class lwpMediaDevices extends EventEmitter {
         }
     }
 
-    startPlayTone() {
+    startPlayTone(tone) {
+        console.log('start playing tone ' + tone);
 
     }
 
-    stopPlayTone() {
-
+    stopPlayTone(tone) {
+        console.log('stop playing tone ' + tone);
     }
 
     startRinging() {

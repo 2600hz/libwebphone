@@ -1,5 +1,6 @@
 "use strict";
 
+import i18next from "i18next";
 import lwpKazoo from "./lwpKazoo";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpUserAgent from "./lwpUserAgent";
@@ -29,4 +30,27 @@ export default class {
   getDialpad() {
     return this._dialpadPromise;
   }
+
+  getCalls() {
+    return [];
+  }
+
+  switchCall(index) {
+    call = this._switchCall(index);
+    this.emit("switchCall", call);
+    return call;
+  }
+
+  addCall(call) {
+    call.on("end", this.removeCall(call));
+    this._calls.push(call);
+  }
+
+  removeCall(call) {
+    this._removeCall(call);
+  }
+
+  _removeCall(call) {}
+
+  _switchCall(index) {}
 } //End of default clas

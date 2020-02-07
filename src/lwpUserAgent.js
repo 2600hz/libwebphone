@@ -43,21 +43,6 @@ export default class extends EventEmitter {
     });
   }
 
-  call(target, options = {}) {
-    await mediaDevices = this._libwebphone.getMediaDevices();
-    await mediaStream = mediaDevices.startStreams();
-
-    if (!options.mediaConstraints && !options.mediaStream) {
-          options.mediaStream = mediaStream;                
-    }
-
-    /** This function should return a promise that needs the mediaDevices to be inited,
-     *  the mediaStream to be valid,
-     *  and ua to be connected
-    */
-    this._userAgent.then(ua => ua.call(target, options));
-  }
-
   /** TODO: add inbound call event handers */
 
   /** Init functions */

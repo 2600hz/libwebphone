@@ -9,6 +9,8 @@ export default class extends EventEmitter {
     super();
     this._libwebphone = libwebphone;
     this._target = target;
+    this._active = false;
+    this._onHold = true;
 
     /** 
     await mediaDevices = this._libwebphone.getMediaDevices();
