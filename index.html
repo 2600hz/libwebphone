@@ -253,11 +253,7 @@
 
     <!--Added by Mahfuz [start]-->
     <div style="position:absolute">
-      <button
-        onclick='webphone.getUserAgent().then(ua => ua.call("+14158867903"));'
-      >
-        Call
-      </button>
+     
       <button onclick="webphone.getUserAgent().then(ua => ua.register());">
         Register
       </button>
@@ -265,6 +261,10 @@
         Unregister
       </button>
 
+      <button  onclick='webphone.generateCall().then(cl => cl.call("+14158867903"));'>Call</button>
+      <button  onclick='webphone.generateCall().then(cl => cl.hangup());'>Hang-up</button>
+
+      
       <audio id="audioremote" autoplay loop></audio>
     </div>
 
