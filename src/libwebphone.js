@@ -5,14 +5,14 @@ import lwpKazoo from "./lwpKazoo";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpUserAgent from "./lwpUserAgent";
 import lwpDialpad from "./lwpDialpad";
-import lwpCall from "./lwpCall";
+import Mustache from "mustache";
 
 export default class {
   constructor(config = {}, i18n = null) {
+    this._calls = [];
     this._kazooPromise = new lwpKazoo(this, config, i18n);
     this._mediaDevicesPromise = new lwpMediaDevices(this, config, i18n);
     this._userAgentPromise = new lwpUserAgent(this, config, i18n);
-    this._callGeneratorPromise = new lwpCall(this, config, i18n);
     this._dialpadPromise = new lwpDialpad(this, config, i18n);
   } //end of constructor
 
@@ -33,31 +33,90 @@ export default class {
     return this._dialpadPromise;
   }
 
-  generateCall() {
-    return  this._callGeneratorPromise;
-  }
+  async call(numbertocall = null) {
+    if (!numbertocall) {
+      numbertocall = await this._dialpadPromise.then(dialpad => {
+        let digits = dialpad.digits();
+        dialpad.clear();
+        return digits.join("");
+      });
+    }
 
+    return this._userAgentPromise.then(userAgent => {
+      let ua = userAgent.getUserAgent();
+      console.log("call to: ", numbertocall);
+      console.log("user-agent: ", ua);
+      this.getMediaDevices().then(mediaDevices => {
+        var stream = mediaDevices.startStreams();
+        var options = {
+          mediaStream: stream
+        };
+        var session = ua.call(numbertocall, options);
+        console.log("outbound call, add to session list : ", session);
+      });
+    });
+  }
 
   getCalls() {
-    return [];
+    return this._calls;
   }
 
-  switchCall(index) {
-    call = this._switchCall(index);
-    this.emit("switchCall", call);
-    return call;
+  getCall(callId) {
+    return this._calls.find(call => {
+      return call.getId() == callId;
+    });
   }
 
-  addCall(call) {
-    call.on("end", this.removeCall(call));
-    this._calls.push(call);
+  addCall(newCall) {
+    this._calls.push(newCall);
+    this._renderCalls();
+    console.log("calls: ", this._calls);
   }
 
-  removeCall(call) {
-    this._removeCall(call);
+  removeCall(terminatedCall) {
+    let terminatedId = terminatedCall.getId();
+    this._calls = this._calls.filter(call => {
+      return call.getId() != terminatedId;
+    });
+    this._renderCalls();
+    console.log("calls: ", this._calls);
   }
 
-  _removeCall(call) {}
+  _renderCalls() {
+    let renderConfig = this._calls.map(call => {
+      return {
+        callId: call.getId(),
+        inbound: call.getSession().direction == "incoming"
+      };
+    });
+    let html = Mustache.render(this._callControlTemplate(), {
+      calls: renderConfig
+    });
+    let element = document.getElementById("call_list");
+    element.innerHTML = html;
+  }
 
-  _switchCall(index) {}
+  _callControlTemplate() {
+    return `
+    {{#calls}}
+    <div id={{callId}}>
+     {{callId}}: 
+      <button onclick="webphone.getCall('{{callId}}').hangup();">
+        Hang-up
+      </button>
+      <button onclick="webphone.getCall('{{callId}}').hold();">
+        Hold  
+      </button>
+      <button onclick="webphone.getCall('{{callId}}').unhold();">
+        UnHold
+      </button>      
+      {{#inbound}}
+      <button onclick="webphone.getCall('{{callId}}').answer();">
+        Answer
+      </button>
+      {{/inbound}}
+    </div>
+    {{/calls}}
+    `;
+  }
 } //End of default clas

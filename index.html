@@ -252,8 +252,7 @@
     <div id="dialpad_custom"></div>
 
     <!--Added by Mahfuz [start]-->
-    <div style="position:absolute">
-     
+    <div>
       <button onclick="webphone.getUserAgent().then(ua => ua.register());">
         Register
       </button>
@@ -261,12 +260,14 @@
         Unregister
       </button>
 
-      <button  onclick='webphone.generateCall().then(cl => cl.call("+14158867903"));'>Call</button>
-      <button  onclick='webphone.generateCall().then(cl => cl.hangup());'>Hang-up</button>
+      <button onclick="webphone.call();">
+        Call
+      </button>
 
-      
       <audio id="audioremote" autoplay loop></audio>
     </div>
+
+    <div id="call_list"></div>
 
     <!--Added by Mahfuz [End]-->
   </body>
@@ -329,7 +330,7 @@
 				{{/audioinput.enabled}}
 			</div>
 			`;
-    var customTemplateConfig = {
+    var customTemplateConfig1 = {
       template: template,
       root: {
         elementId: "media_device_custom"
@@ -342,7 +343,7 @@
     };
 
     webphone.getMediaDevices().then(mediaDevices => {
-      mediaDevices.render(customTemplateConfig).then(() => {
+      mediaDevices.render(customTemplateConfig1).then(() => {
         document
           .querySelectorAll("#customized_audio_input > div > input[type=radio]")
           .forEach(radio => {
@@ -369,7 +370,7 @@
 			<label id="{{buttons.zero.elementId}}" data-value="0">{{i18n.zero}}</label>
 			<label id="{{buttons.pound.elementId}}" data-value="#">{{i18n.pound}}</label>
 		</div>`;
-    var customTemplateConfig = {
+    var customTemplateConfig2 = {
       template: template,
       root: {
         elementId: "dialpad_custom"
@@ -377,7 +378,7 @@
     };
 
     webphone.getDialpad().then(dialpad => {
-      dialpad.render(customTemplateConfig);
+      dialpad.render(customTemplateConfig2);
     });
   </script>
 </html>

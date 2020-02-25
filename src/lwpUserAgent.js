@@ -7,12 +7,14 @@ import i18next from "i18next";
 import _ from "lodash";
 import Mustache from "mustache";
 import * as JsSIP from "jssip";
+import lwpCall from "./lwpCall";
 
 export default class extends EventEmitter {
   constructor(libwebphone, config = {}, i18n = null) {
     super();
     this._libwebphone = libwebphone;
     this._sockets = [];
+    this._userAgent = null;
     return this._initInternationalization(config.i18n, i18n)
       .then(() => {
         return this._initProperties(config.userAgent);
@@ -41,6 +43,10 @@ export default class extends EventEmitter {
         all: true
       });
     });
+  }
+
+  getUserAgent() {
+    return this._userAgent;
   }
 
   /** TODO: add inbound call event handers */
@@ -123,7 +129,11 @@ export default class extends EventEmitter {
     };
     this._userAgent = Promise.resolve(new JsSIP.UA(config));
     this._userAgent.then(ua => {
-      ua.start();
+      this._userAgent = ua;
+      this._userAgent.start();
+      this._userAgent.on("newRTCSession", event => {
+        new lwpCall(this._libwebphone, event.session);
+      });
     });
 
     return this._userAgent;
