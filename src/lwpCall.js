@@ -31,6 +31,7 @@ export default class extends EventEmitter {
     return this._session;
   }
 
+
   hold() {
     this._session.hold();
   }
@@ -38,6 +39,7 @@ export default class extends EventEmitter {
   unhold() {
     this._session.unhold();
   }
+  
 
   answer() {
     this._libwebphone.getMediaDevices().then(mediaDevices => {
@@ -56,6 +58,50 @@ export default class extends EventEmitter {
   } //end hangup
 
   /** Util Functions */
+
+
+  mute()
+  {
+    this._session.mute();
+    console.log('call on mute');
+  }
+  
+  unmute()
+  {
+    this._session.unmute();
+    console.log('call on un-muted');
+  }
+
+  renegotiate()
+  {
+    this._session.renegotiate();
+    console.log('call on renegotiate');
+  }
+  
+
+  
+  sendDTMF()
+ {    let tonevalue =  libwebphone._dialpadPromise.then(dialpad => {
+      let digits = dialpad.digits();
+      //dialpad.clear();
+      //return digits.join("");
+      return digits; 
+    });
+  this._session.sendDTMF(tonevalue);
+  console.log('DTMF sent to session: ' + tonevalue);
+ }
+
+
+  transfer() {
+      let numbertotransfer =  libwebphone._dialpadPromise.then(dialpad => {
+      let digits = dialpad.digits();
+      dialpad.clear();
+      return digits.join("");
+    });
+    this._session.refer(numbertotransfer);
+    console.log('Call transfer attempt to : ' + numbertotransfer);    
+  }
+  
 
   _uuid() {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {

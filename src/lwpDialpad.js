@@ -4,6 +4,8 @@ import EventEmitter from "events";
 import i18next from "i18next";
 import _ from "lodash";
 import Mustache from "mustache";
+import {eventfordialpadbutton} from "./lwpdtmftonegenerator";
+
 
 export default class extends EventEmitter {
   constructor(libwebphone, config = {}, i18n = null) {
@@ -30,6 +32,8 @@ export default class extends EventEmitter {
     this._digits.push(digit);
     this.emit("digits", this._digits);
     console.log("Dial pad button pressed: " + digit);
+    eventfordialpadbutton(digit);
+    console.log("DTMF Tone Played For: " + digit); 
     console.log("Dialed so far: " + this._digits);
   }
 

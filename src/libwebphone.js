@@ -6,6 +6,7 @@ import lwpMediaDevices from "./lwpMediaDevices";
 import lwpUserAgent from "./lwpUserAgent";
 import lwpDialpad from "./lwpDialpad";
 import Mustache from "mustache";
+import lwpCallControl from "./lwpCallControl";
 
 export default class {
   constructor(config = {}, i18n = null) {
@@ -14,6 +15,7 @@ export default class {
     this._mediaDevicesPromise = new lwpMediaDevices(this, config, i18n);
     this._userAgentPromise = new lwpUserAgent(this, config, i18n);
     this._dialpadPromise = new lwpDialpad(this, config, i18n);
+    this._callcontrolPromise = new lwpCallControl(this, config, i18n);
   } //end of constructor
 
   getKazoo() {
@@ -24,7 +26,6 @@ export default class {
     return this._mediaDevicesPromise;
   }
 
-  //Added by Mahfuz
   getUserAgent() {
     return this._userAgentPromise;
   }
@@ -58,7 +59,7 @@ export default class {
   }
 
   getCalls() {
-    return this._calls;
+    return this._calls;    
   }
 
   getCall(callId) {
@@ -89,34 +90,14 @@ export default class {
         inbound: call.getSession().direction == "incoming"
       };
     });
-    let html = Mustache.render(this._callControlTemplate(), {
+      let html = Mustache.render(this._callcontrolPromise._callControlTemplate(), {
+
       calls: renderConfig
     });
     let element = document.getElementById("call_list");
     element.innerHTML = html;
   }
 
-  _callControlTemplate() {
-    return `
-    {{#calls}}
-    <div id={{callId}}>
-     {{callId}}: 
-      <button onclick="webphone.getCall('{{callId}}').hangup();">
-        Hang-up
-      </button>
-      <button onclick="webphone.getCall('{{callId}}').hold();">
-        Hold  
-      </button>
-      <button onclick="webphone.getCall('{{callId}}').unhold();">
-        UnHold
-      </button>      
-      {{#inbound}}
-      <button onclick="webphone.getCall('{{callId}}').answer();">
-        Answer
-      </button>
-      {{/inbound}}
-    </div>
-    {{/calls}}
-    `;
-  }
-} //End of default clas
+ 
+  
+} //End of default class
