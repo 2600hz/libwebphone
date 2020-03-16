@@ -7,150 +7,340 @@ import Mustache from "mustache";
 import * as JsSIP from "jssip";
 
 export default class extends EventEmitter {
-  constructor(lwpCall, session) {
+  constructor(libwebphone, config = {}, i18n = null) {
     super();
-    //this._id = this._uuid();
-    this._id = session.getId;
-    console.log('*********' + this._id);
-    this._session = session;
+    this._libwebphone = libwebphone;
+    this._lastCall = "";
+    return this._initInternationalization(config.i18n, i18n)
+      .then(() => {
+        return this._initProperties(config.callControl);
+      })
+      .then(() => {
+        this._libwebphone.on("call.added", () => this.updateControls());
+        this._libwebphone.on("call.updated", () => this.updateControls());
+        this._libwebphone.on("call.removed", () => this.updateControls());
+      })
+      .then(() => {
+        return Promise.all(
+          this._config.renderTargets.map(renderConfig => {
+            return this.render(renderConfig);
+          })
+        );
+      })
+      .then(() => {
+        return this;
+      });
   }
 
-  //getId() {
-   // return this._id;
-  //}
+  async call(numbertocall = null) {
+    if (!numbertocall) {
+      numbertocall = await this._libwebphone.getDialpad().then(dialpad => {
+        let digits = dialpad.digits();
+        dialpad.clear();
+        return digits.join("");
+      });
+      if (!numbertocall) {
+        numbertocall = this._lastCall;
+      } else {
+        this._lastCall = numbertocall;
+      }
+    }
 
-  //getSession() {
-  //  return this._session;
-  //}
+    return this._libwebphone.getUserAgent().then(userAgent => {
+      let ua = userAgent.getUserAgent();
+      console.log("call to: ", numbertocall);
+      console.log("user-agent: ", ua);
+      this._libwebphone.getMediaDevices().then(mediaDevices => {
+        var stream = mediaDevices.startStreams();
+        var options = {
+          mediaStream: stream
+        };
+        var session = ua.call(numbertocall, options);
+        console.log("outbound call, add to session list : ", session);
+      });
+    });
+  }
 
-  /*
+  hangup() {
+    let currentCall = this._currentCall();
+    currentCall.hangup();
+  }
+
+  cancel() {
+    let currentCall = this._currentCall();
+    currentCall.cancel();
+  }
+
   hold() {
-    this._session.hold();
-    console.log('call on hold');
+    let currentCall = this._currentCall();
+    currentCall.hold();
   }
 
   unhold() {
-    this._session.unhold();
-    console.log('call on Un-hold');
+    let currentCall = this._currentCall();
+    currentCall.unhold();
   }
 
-  /*
- sendDTMF()
- {
-  //let tonevalue;
-  //if (!tonevalue) {
-      let tonevalue = await this._dialpadPromise.then(dialpad => {
-      let digits = dialpad.digits();
-      //dialpad.clear();
-      //return digits.join("");
-      return digits; 
-    });
-  //}
-  this._session.sendDTMF(tonevalue);
-  console.log('DTMF sent to session: ' + tonevalue);
- }
-
-
-  transfer() {
-    let numbertotransfer;
-     if (!numbertotransfer) {
-      numbertotransfer = await this._dialpadPromise.then(dialpad => {
-      let digits = dialpad.digits();
-      dialpad.clear();
-      return digits.join("");
-    });
-   }
-    this._session.refer(numbertotransfer);
-    this_session.tr
-    console.log('Call transfer attempt to : ' + numbertotransfer);    
-  }
-  */
-  
-  /*
-  mute()
-  {
-    this._session.mute();
-    console.log('call on mute');
-  }
-  
-  unmute()
-  {
-    this._session.unmute();
-    console.log('call on un-muted');
+  answer() {
+    let currentCall = this._currentCall();
+    currentCall.hangup();
   }
 
-  renegotiate()
-  {
-    this._session.renegotiate();
-    console.log('call on renegotiate');
-  }
-   */
-
-  /** Util Functions */
-
- /*
-  _uuid() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
-      var r = (Math.random() * 16) | 0,
-        v = c == "x" ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
+  updateControls() {
+    this._renders.forEach(render => {
+      render.config.call = this._callRenderConfig();
+      this._renderUpdate(render);
     });
   }
-  */
 
-
-  _renderCalls() {
-    let renderConfig = this._calls.map(call => {
-      return {
-        callId: call.getId(),
-        inbound: call.getSession().direction == "incoming"
+  render(config = {}) {
+    return new Promise(resolve => {
+      let template = config.template || this._defaultTemplate();
+      let renderConfig = this._renderConfig(config);
+      let render = {
+        html: Mustache.render(template, renderConfig),
+        template: template,
+        config: renderConfig
       };
-  });
-    let html = Mustache.render(this._callControlTemplate(), {
-      calls: renderConfig
+      resolve(render);
+    }).then(render => {
+      let buttons = render.config.buttons;
+
+      if (!render.config.root.element && render.config.root.elementId) {
+        render.config.root.element = document.getElementById(
+          render.config.root.elementId
+        );
+      }
+
+      render.config.root.element.innerHTML = render.html;
+
+      Object.keys(buttons).forEach(button => {
+        let elementId = buttons[button].elementId;
+        let element = document.getElementById(elementId);
+        buttons[button].element = element;
+
+        if (element) {
+          Object.keys(buttons[button].events || {}).forEach(event => {
+            let callback = buttons[button].events[event];
+            element[event] = callback;
+          });
+        }
+      });
+
+      this._renders.push(render);
     });
-    let element = document.getElementById("call_list");
-    element.innerHTML = html;
   }
 
+  /** Init functions */
 
+  _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
+    if (i18n) {
+      this._translator = i18n;
+      return Promise.resolve();
+    }
 
-  _callControlTemplate() {
+    var i18nPromise = i18next.init(config);
+    i18next.addResourceBundle("en", "libwebphone", {
+      callcontrol: {
+        call: "Call",
+        cancel: "Cancel",
+        hangup: "Hang Up",
+        hold: "Hold",
+        unhold: "Resume",
+        mute: "Mute",
+        unmute: "Unmute",
+        transfer: "Transfer",
+        answer: "Anwser"
+      }
+    });
+
+    return i18nPromise.then(translator => (this._translator = translator));
+  }
+
+  _initProperties(config) {
+    var defaults = {};
+    this._config = this._merge(defaults, config);
+
+    this._config.renderTargets.forEach((target, index) => {
+      if (typeof target == "string") {
+        this._config.renderTargets[index] = {
+          root: {
+            elementId: target,
+            element: document.getElementById(target)
+          }
+        };
+      }
+    });
+
+    this._renders = [];
+
+    return Promise.resolve();
+  }
+
+  _currentCall() {
+    return this._libwebphone.getCall();
+  }
+
+  _callRenderConfig() {
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      return currentCall.summary();
+    }
+  }
+
+  /** Render Helpers */
+
+  _renderUpdate(render) {
+    render.html = Mustache.render(render.template, render.config);
+    render.config.root.element.innerHTML = render.html;
+    let buttons = render.config.buttons;
+    Object.keys(buttons).forEach(button => {
+      let elementId = buttons[button].elementId;
+      let element = document.getElementById(elementId);
+      buttons[button].element = element;
+
+      if (element) {
+        Object.keys(buttons[button].events || {}).forEach(event => {
+          let callback = buttons[button].events[event];
+          element[event] = callback;
+        });
+      }
+    });
+  }
+
+  _renderConfig(config = {}) {
+    let i18n = this._translator;
+    var randomElementId = () => {
+      return (
+        "lwp" +
+        Math.random()
+          .toString(36)
+          .substr(2, 9)
+      );
+    };
+    var defaults = {
+      i18n: {
+        call: i18n("libwebphone:callcontrol.call"),
+        cancel: i18n("libwebphone:callcontrol.cancel"),
+        hangup: i18n("libwebphone:callcontrol.hangup"),
+        hold: i18n("libwebphone:callcontrol.hold"),
+        unhold: i18n("libwebphone:callcontrol.unhold"),
+        mute: i18n("libwebphone:callcontrol.mute"),
+        unmute: i18n("libwebphone:callcontrol.unmute"),
+        transfer: i18n("libwebphone:callcontrol.transfer"),
+        answer: i18n("libwebphone:callcontrol.answer")
+      },
+      call: this._callRenderConfig(),
+      buttons: {
+        call: {
+          elementId: randomElementId(),
+          events: {
+            onclick: event => {
+              this.call();
+            }
+          }
+        },
+        cancel: {
+          elementId: randomElementId(),
+          events: {
+            onclick: event => {
+              this.cancel();
+            }
+          }
+        },
+        hangup: {
+          elementId: randomElementId(),
+          events: {
+            onclick: event => {
+              this.hangup();
+            }
+          }
+        },
+        hold: {
+          elementId: randomElementId(),
+          events: {
+            onclick: event => {
+              this.hold();
+            }
+          }
+        },
+        unhold: {
+          elementId: randomElementId(),
+          events: {
+            onclick: event => {
+              this.unhold();
+            }
+          }
+        },
+        answer: {
+          elementId: randomElementId(),
+          events: {
+            onclick: event => {
+              this.answer();
+            }
+          }
+        }
+      }
+    };
+
+    return this._merge(defaults, config);
+  }
+
+  _defaultTemplate() {
     return `
-    {{#calls}}
-    <div id={{callId}}>
-     {{callId}}: 
-      <button onclick="webphone.getCall('{{callId}}').hangup();">
-        Hang-up
+    <div>
+      <button id="{{buttons.call.elementId}}">
+        {{i18n.call}}
       </button>
-      <button onclick="webphone.getCall('{{callId}}').hold();">
-        Hold  
+
+      {{#call.progress}}
+      <button id="{{buttons.cancel.elementId}}">
+        {{i18n.cancel}}
       </button>
-      <button onclick="webphone.getCall('{{callId}}').unhold();">
-        UnHold
-      </button>  
-      <button onclick="webphone.getCall('{{callId}}').mute();">
-        Mute
-      </button>  
-      <button onclick="webphone.getCall('{{callId}}').unmute();">
-       Un-Mute
+      {{/call.progress}}   
+
+      {{#call.established}}
+      <button id="{{buttons.hangup.elementId}}">
+        {{i18n.hangup}}
       </button>
-      <button onclick="webphone.getCall('{{callId}}').sendDTMF();">
-      SendDTMF
-     </button>
-      <button onclick="webphone.getCall('{{callId}}').transfer();">
-      Transfer
-     </button>
-     <button onclick="webphone.getCall('{{callId}}').renegotiate();">
-     Renegotiate
-     </button>      
-      {{#inbound}}
-      <button onclick="webphone.getCall('{{callId}}').answer();">
-        Answer
+
+      {{^call.hold}}
+      <button id="{{buttons.hold.elementId}}">
+        {{i18n.hold}}
       </button>
-      {{/inbound}}
+      {{/call.hold}}
+
+      {{#call.hold}}
+      <button id="{{buttons.unhold.elementId}}">
+        {{i18n.unhold}}
+      </button>
+      {{/call.hold}}
+
+      {{^call.mute}}
+      <button id="{{buttons.mute.elementId}}">
+        {{i18n.mute}}
+      </button>
+      {{/call.mute}}
+
+      {{#call.mute}}
+      <button id="{{buttons.unmute.elementId}}">
+        {{i18n.unmute}}
+      </button>
+      {{/call.mute}}
+
+      <button id="{{buttons.transfer.elementId}}">
+        {{i18n.transfer}}
+      </button>
+      {{/call.established}}
+
+      {{#call.terminating}}
+      {{#call.progress}}
+      <button id="{{buttons.answer.elementId}}">
+        {{i18n.answer}}
+      </button>
+      {{/call.progress}}
+      {{/call.terminating}}
     </div>
-    {{/calls}}
     `;
   }
 

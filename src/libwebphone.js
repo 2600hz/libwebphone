@@ -1,5 +1,6 @@
 "use strict";
 
+import EventEmitter from "events";
 import i18next from "i18next";
 import lwpKazoo from "./lwpKazoo";
 import lwpMediaDevices from "./lwpMediaDevices";
@@ -7,15 +8,18 @@ import lwpUserAgent from "./lwpUserAgent";
 import lwpDialpad from "./lwpDialpad";
 import Mustache from "mustache";
 import lwpCallControl from "./lwpCallControl";
+import lwpCallList from "./lwpCallList";
 
-export default class {
+export default class extends EventEmitter {
   constructor(config = {}, i18n = null) {
+    super();
     this._calls = [];
     this._kazooPromise = new lwpKazoo(this, config, i18n);
     this._mediaDevicesPromise = new lwpMediaDevices(this, config, i18n);
     this._userAgentPromise = new lwpUserAgent(this, config, i18n);
     this._dialpadPromise = new lwpDialpad(this, config, i18n);
     this._callcontrolPromise = new lwpCallControl(this, config, i18n);
+    this._callListPromise = new lwpCallList(this, config, i18n);
   } //end of constructor
 
   getKazoo() {
@@ -34,44 +38,38 @@ export default class {
     return this._dialpadPromise;
   }
 
-  async call(numbertocall = null) {
-    if (!numbertocall) {
-      numbertocall = await this._dialpadPromise.then(dialpad => {
-        let digits = dialpad.digits();
-        dialpad.clear();
-        return digits.join("");
-      });
-    }
-
-    return this._userAgentPromise.then(userAgent => {
-      let ua = userAgent.getUserAgent();
-      console.log("call to: ", numbertocall);
-      console.log("user-agent: ", ua);
-      this.getMediaDevices().then(mediaDevices => {
-        var stream = mediaDevices.startStreams();
-        var options = {
-          mediaStream: stream
-        };
-        var session = ua.call(numbertocall, options);
-        console.log("outbound call, add to session list : ", session);
-      });
-    });
+  getCallList() {
+    return this._callListPromise;
   }
 
   getCalls() {
-    return this._calls;    
+    return this._calls;
   }
 
-  getCall(callId) {
+  getCall(callId = null) {
     return this._calls.find(call => {
-      return call.getId() == callId;
+      if (callId) {
+        return call.getId() == callId;
+      } else {
+        return call.isPrimary;
+      }
     });
   }
 
   addCall(newCall) {
+    this._calls.map(call => {
+      if (call.isPrimary) {
+        call.clearPrimary();
+      }
+    });
     this._calls.push(newCall);
-    this._renderCalls();
-    console.log("calls: ", this._calls);
+    this.emit("call.added", this, newCall);
+  }
+
+  switchCall(callid) {
+    let primaryCall;
+
+    this.emit("call.primary", this, primaryCall);
   }
 
   removeCall(terminatedCall) {
@@ -79,25 +77,19 @@ export default class {
     this._calls = this._calls.filter(call => {
       return call.getId() != terminatedId;
     });
-    this._renderCalls();
-    console.log("calls: ", this._calls);
+    this.emit("call.removed", this, terminatedCall);
   }
 
-  _renderCalls() {
-    let renderConfig = this._calls.map(call => {
-      return {
-        callId: call.getId(),
-        inbound: call.getSession().direction == "incoming"
-      };
-    });
-      let html = Mustache.render(this._callcontrolPromise._callControlTemplate(), {
+  _callEvent(type, call, ...data) {
+    switch (type) {
+      case "ended":
+      case "failed":
+        this.removeCall(call);
+        break;
+    }
 
-      calls: renderConfig
-    });
-    let element = document.getElementById("call_list");
-    element.innerHTML = html;
+    console.log("call event " + type, call, ...data);
+    this.emit("call." + type, this, call);
+    this.emit("call.updated", this, call);
   }
-
- 
-  
 } //End of default class

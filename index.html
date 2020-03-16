@@ -39,6 +39,12 @@
         dialpad: {
           renderTargets: ["dialpad"]
         },
+        callList: {
+          renderTargets: ["call_list"]
+        },
+        callControl: {
+          renderTargets: ["call_control"]
+        },
         mediaDevices: {
           videoinput: {
             startMuted: true
@@ -99,6 +105,14 @@
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
+
+      webphone.on("call.added", (lwp, call) =>
+        console.log("call added: ", call)
+      );
+
+      webphone.on("call.removed", (lwp, call) =>
+        console.log("call removed: ", call)
+      );
 
       webphone.getMediaDevices().then(mediaDevices => {
         mediaDevices.on("input.added", (media, track) =>
@@ -260,13 +274,10 @@
         Unregister
       </button>
 
-      <button onclick="webphone.call();">
-        Call
-      </button>
-
       <audio id="audioremote" autoplay loop></audio>
     </div>
 
+    <div id="call_control"></div>
     <div id="call_list"></div>
 
     <!--Added by Mahfuz [End]-->
