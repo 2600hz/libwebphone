@@ -1,70 +1,43 @@
-//Added by Mahfuz
-
 "use strict";
 
-import EventEmitter from "events";
-import i18next from "i18next";
-import _ from "lodash";
-import Mustache from "mustache";
+import { merge } from "./lwpUtils";
 import * as JsSIP from "jssip";
 import lwpCall from "./lwpCall";
 
-export default class extends EventEmitter {
+export default class {
   constructor(libwebphone, config = {}, i18n = null) {
-    super();
     this._libwebphone = libwebphone;
-    this._sockets = [];
-    this._userAgent = null;
-    return this._initInternationalization(config.i18n, i18n)
-      .then(() => {
-        return this._initProperties(config.userAgent);
-      })
-      .then(() => {
-        return this._initSockets();
-      })
-      .then(() => {
-        return this._initUserAgent();
-      })
-      .then(() => {
-        console.log(this);
-        return this;
-      });
+    this._initProperties(config);
+    this._initInternationalization(config.i18n || {});
+    this._initEvents();
+    this._initSockets();
+    this._initUserAgent();
+
+    return this;
   }
 
   register() {
-    return this._userAgent.then(ua => {
-      ua.register();
-    });
+    this._userAgent.register();
   }
 
   unregister() {
-    return this._userAgent.then(ua => {
-      ua.unregister({
-        all: true
-      });
+    this._userAgent.unregister({
+      all: true
     });
   }
 
-  getUserAgent() {
-    return this._userAgent;
+  call(numbertocall, options) {
+    this._userAgent.call(numbertocall, options);
   }
-
-  /** TODO: add inbound call event handers */
 
   /** Init functions */
 
-  _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
-    if (i18n) {
-      this._translator = i18n;
-      return Promise.resolve();
-    }
-
-    var i18nPromise = i18next.init(config);
-    i18next.addResourceBundle("en", "libwebphone", {
-      phoneUtils: {}
-    });
-
-    return i18nPromise.then(translator => (this._translator = translator));
+  _initInternationalization(config) {
+    let defaults = {
+      en: {}
+    };
+    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    this._libwebphone.i18nAddResourceBundles("userAgent", resourceBundles);
   }
 
   _initProperties(config) {
@@ -90,18 +63,19 @@ export default class extends EventEmitter {
       }
     };
 
-    this._config = this._merge(defaults, config);
+    this._config = merge(defaults, config);
 
-    return Promise.resolve();
+    this._sockets = [];
+    this._userAgent = null;
   }
+
+  _initEvents() {}
 
   _initSockets() {
     this._config.transport.sockets.forEach(socket => {
       // TODO: handle when socket is an object with weights...
       this._sockets.push(new JsSIP.WebSocketInterface(socket));
     });
-
-    return Promise.resolve();
   }
 
   _initUserAgent() {
@@ -127,21 +101,13 @@ export default class extends EventEmitter {
       user_agent: this._config.user_agent.user_agent,
       session_timers: false
     };
-    this._userAgent = Promise.resolve(new JsSIP.UA(config));
-    this._userAgent.then(ua => {
-      this._userAgent = ua;
-      this._userAgent.start();
-      this._userAgent.on("newRTCSession", event => {
-        new lwpCall(this._libwebphone, event.session);
-      });
+    console.log(config);
+    this._userAgent = new JsSIP.UA(config);
+    this._userAgent.start();
+    this._userAgent.on("newRTCSession", event => {
+      new lwpCall(this._libwebphone, event.session);
     });
 
     return this._userAgent;
   }
-
-  /** Util Functions */
-
-  _merge(...args) {
-    return _.merge(...args);
-  }
-} //end of lwpPhoneUtils class
+}

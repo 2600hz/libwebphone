@@ -1,44 +1,25 @@
 "use strict";
 
-import EventEmitter from "events";
-import i18next from "i18next";
-import _ from "lodash";
-import Mustache from "mustache";
-import * as JsSIP from "jssip";
+import { merge } from "./lwpUtils";
+import lwpRenderer from "./lwpRenderer";
 
-export default class extends EventEmitter {
-  constructor(libwebphone, config = {}, i18n = null) {
+export default class extends lwpRenderer {
+  constructor(libwebphone, config = {}) {
     super();
     this._libwebphone = libwebphone;
-    this._lastCall = "";
-    return this._initInternationalization(config.i18n, i18n)
-      .then(() => {
-        return this._initProperties(config.callControl);
-      })
-      .then(() => {
-        this._libwebphone.on("call.added", () => this.updateControls());
-        this._libwebphone.on("call.updated", () => this.updateControls());
-        this._libwebphone.on("call.removed", () => this.updateControls());
-      })
-      .then(() => {
-        return Promise.all(
-          this._config.renderTargets.map(renderConfig => {
-            return this.render(renderConfig);
-          })
-        );
-      })
-      .then(() => {
-        return this;
-      });
+    this._initProperties(config);
+    this._initInternationalization(config.i18n || {});
+    this._initEvents();
+    this._initRenderTargets();
+    return this;
   }
 
-  async call(numbertocall = null) {
+  call(numbertocall = null) {
     if (!numbertocall) {
-      numbertocall = await this._libwebphone.getDialpad().then(dialpad => {
-        let digits = dialpad.digits();
-        dialpad.clear();
-        return digits.join("");
-      });
+      let dialpad = this._libwebphone.getDialpad();
+      numbertocall = dialpad.digits().join("");
+      dialpad.clear();
+
       if (!numbertocall) {
         numbertocall = this._lastCall;
       } else {
@@ -46,102 +27,60 @@ export default class extends EventEmitter {
       }
     }
 
-    return this._libwebphone.getUserAgent().then(userAgent => {
-      let ua = userAgent.getUserAgent();
-      console.log("call to: ", numbertocall);
-      console.log("user-agent: ", ua);
-      this._libwebphone.getMediaDevices().then(mediaDevices => {
-        var stream = mediaDevices.startStreams();
-        var options = {
-          mediaStream: stream
-        };
-        var session = ua.call(numbertocall, options);
-        console.log("outbound call, add to session list : ", session);
-      });
+    this._libwebphone.getMediaDevices().then(mediaDevices => {
+      let userAgent = this._libwebphone.getUserAgent();
+      let stream = mediaDevices.startStreams();
+      let options = {
+        mediaStream: stream
+      };
+      userAgent.call(numbertocall, options);
     });
-  }
-
-  hangup() {
-    let currentCall = this._currentCall();
-    currentCall.hangup();
   }
 
   cancel() {
-    let currentCall = this._currentCall();
-    currentCall.cancel();
+    this._currentCall().cancel();
+  }
+
+  hangup() {
+    this._currentCall().hangup();
   }
 
   hold() {
-    let currentCall = this._currentCall();
-    currentCall.hold();
+    this._currentCall().hold();
   }
 
   unhold() {
-    let currentCall = this._currentCall();
-    currentCall.unhold();
+    this._currentCall().unhold();
+  }
+
+  mute() {
+    this._currentCall().mute();
+  }
+
+  unmute() {
+    this._currentCall().unmute();
+  }
+
+  transfer() {
+    this._currentCall().transfer();
   }
 
   answer() {
-    let currentCall = this._currentCall();
-    currentCall.hangup();
+    this._currentCall().answer();
   }
 
   updateControls() {
-    this._renders.forEach(render => {
-      render.config.call = this._callRenderConfig();
-      this._renderUpdate(render);
+    this.renderUpdates(render => {
+      render.data.call = this._callRenderConfig();
     });
-  }
-
-  render(config = {}) {
-    return new Promise(resolve => {
-      let template = config.template || this._defaultTemplate();
-      let renderConfig = this._renderConfig(config);
-      let render = {
-        html: Mustache.render(template, renderConfig),
-        template: template,
-        config: renderConfig
-      };
-      resolve(render);
-    }).then(render => {
-      let buttons = render.config.buttons;
-
-      if (!render.config.root.element && render.config.root.elementId) {
-        render.config.root.element = document.getElementById(
-          render.config.root.elementId
-        );
-      }
-
-      render.config.root.element.innerHTML = render.html;
-
-      Object.keys(buttons).forEach(button => {
-        let elementId = buttons[button].elementId;
-        let element = document.getElementById(elementId);
-        buttons[button].element = element;
-
-        if (element) {
-          Object.keys(buttons[button].events || {}).forEach(event => {
-            let callback = buttons[button].events[event];
-            element[event] = callback;
-          });
-        }
-      });
-
-      this._renders.push(render);
-    });
+    this.render();
   }
 
   /** Init functions */
 
-  _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
-    if (i18n) {
-      this._translator = i18n;
-      return Promise.resolve();
-    }
-
-    var i18nPromise = i18next.init(config);
-    i18next.addResourceBundle("en", "libwebphone", {
-      callcontrol: {
+  _initInternationalization(config) {
+    let defaults = {
+      en: {
         call: "Call",
         cancel: "Cancel",
         hangup: "Hang Up",
@@ -152,88 +91,51 @@ export default class extends EventEmitter {
         transfer: "Transfer",
         answer: "Anwser"
       }
-    });
-
-    return i18nPromise.then(translator => (this._translator = translator));
+    };
+    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    this._libwebphone.i18nAddResourceBundles("callControl", resourceBundles);
   }
 
   _initProperties(config) {
-    var defaults = {};
-    this._config = this._merge(defaults, config);
+    let defaults = {};
+    this._config = merge(defaults, config);
+    this._lastCall = "*97";
+  }
 
-    this._config.renderTargets.forEach((target, index) => {
-      if (typeof target == "string") {
-        this._config.renderTargets[index] = {
-          root: {
-            elementId: target,
-            element: document.getElementById(target)
-          }
-        };
-      }
+  _initEvents() {
+    this._libwebphone.on("call.added", () => this.updateControls());
+    this._libwebphone.on("call.updated", () => this.updateControls());
+    this._libwebphone.on("call.removed", () => this.updateControls());
+    this._libwebphone.on("language.changed", () => this.render());
+  }
+
+  _initRenderTargets() {
+    this._config.renderTargets.map(renderTarget => {
+      return this.renderAddTarget(renderTarget);
     });
-
-    this._renders = [];
-
-    return Promise.resolve();
-  }
-
-  _currentCall() {
-    return this._libwebphone.getCall();
-  }
-
-  _callRenderConfig() {
-    let currentCall = this._currentCall();
-    if (currentCall) {
-      return currentCall.summary();
-    }
   }
 
   /** Render Helpers */
 
-  _renderUpdate(render) {
-    render.html = Mustache.render(render.template, render.config);
-    render.config.root.element.innerHTML = render.html;
-    let buttons = render.config.buttons;
-    Object.keys(buttons).forEach(button => {
-      let elementId = buttons[button].elementId;
-      let element = document.getElementById(elementId);
-      buttons[button].element = element;
-
-      if (element) {
-        Object.keys(buttons[button].events || {}).forEach(event => {
-          let callback = buttons[button].events[event];
-          element[event] = callback;
-        });
-      }
-    });
-  }
-
-  _renderConfig(config = {}) {
-    let i18n = this._translator;
-    var randomElementId = () => {
-      return (
-        "lwp" +
-        Math.random()
-          .toString(36)
-          .substr(2, 9)
-      );
-    };
-    var defaults = {
+  _renderDefaultConfig() {
+    return {
+      template: this._renderDefaultTemplate(),
       i18n: {
-        call: i18n("libwebphone:callcontrol.call"),
-        cancel: i18n("libwebphone:callcontrol.cancel"),
-        hangup: i18n("libwebphone:callcontrol.hangup"),
-        hold: i18n("libwebphone:callcontrol.hold"),
-        unhold: i18n("libwebphone:callcontrol.unhold"),
-        mute: i18n("libwebphone:callcontrol.mute"),
-        unmute: i18n("libwebphone:callcontrol.unmute"),
-        transfer: i18n("libwebphone:callcontrol.transfer"),
-        answer: i18n("libwebphone:callcontrol.answer")
+        call: "libwebphone:callControl.call",
+        cancel: "libwebphone:callControl.cancel",
+        hangup: "libwebphone:callControl.hangup",
+        hold: "libwebphone:callControl.hold",
+        unhold: "libwebphone:callControl.unhold",
+        mute: "libwebphone:callControl.mute",
+        unmute: "libwebphone:callControl.unmute",
+        transfer: "libwebphone:callControl.transfer",
+        answer: "libwebphone:callControl.answer"
       },
-      call: this._callRenderConfig(),
-      buttons: {
+      data: {
+        call: this._callRenderConfig()
+      },
+      by_id: {
         call: {
-          elementId: randomElementId(),
           events: {
             onclick: event => {
               this.call();
@@ -241,7 +143,6 @@ export default class extends EventEmitter {
           }
         },
         cancel: {
-          elementId: randomElementId(),
           events: {
             onclick: event => {
               this.cancel();
@@ -249,7 +150,6 @@ export default class extends EventEmitter {
           }
         },
         hangup: {
-          elementId: randomElementId(),
           events: {
             onclick: event => {
               this.hangup();
@@ -257,7 +157,6 @@ export default class extends EventEmitter {
           }
         },
         hold: {
-          elementId: randomElementId(),
           events: {
             onclick: event => {
               this.hold();
@@ -265,15 +164,27 @@ export default class extends EventEmitter {
           }
         },
         unhold: {
-          elementId: randomElementId(),
           events: {
             onclick: event => {
               this.unhold();
             }
           }
         },
+        mute: {
+          events: {
+            onclick: event => {
+              this.mute();
+            }
+          }
+        },
+        unmute: {
+          events: {
+            onclick: event => {
+              this.unmute();
+            }
+          }
+        },
         answer: {
-          elementId: randomElementId(),
           events: {
             onclick: event => {
               this.answer();
@@ -282,69 +193,79 @@ export default class extends EventEmitter {
         }
       }
     };
-
-    return this._merge(defaults, config);
   }
 
-  _defaultTemplate() {
+  _renderDefaultTemplate() {
     return `
     <div>
-      <button id="{{buttons.call.elementId}}">
+      {{^data.call.hasSession}}
+      <button id="{{by_id.call.elementId}}">
         {{i18n.call}}
       </button>
+      {{/data.call.hasSession}}
 
-      {{#call.progress}}
-      <button id="{{buttons.cancel.elementId}}">
+      {{#data.call.progress}}
+      <button id="{{by_id.cancel.elementId}}">
         {{i18n.cancel}}
       </button>
-      {{/call.progress}}   
+      {{/data.call.progress}}   
 
-      {{#call.established}}
-      <button id="{{buttons.hangup.elementId}}">
+      {{#data.call.established}}
+      <button id="{{by_id.hangup.elementId}}">
         {{i18n.hangup}}
       </button>
 
-      {{^call.hold}}
-      <button id="{{buttons.hold.elementId}}">
+      {{^data.call.hold}}
+      <button id="{{by_id.hold.elementId}}">
         {{i18n.hold}}
       </button>
-      {{/call.hold}}
+      {{/data.call.hold}}
 
-      {{#call.hold}}
-      <button id="{{buttons.unhold.elementId}}">
+      {{#data.call.hold}}
+      <button id="{{by_id.unhold.elementId}}">
         {{i18n.unhold}}
       </button>
-      {{/call.hold}}
+      {{/data.call.hold}}
 
-      {{^call.mute}}
-      <button id="{{buttons.mute.elementId}}">
+      {{^data.call.mute}}
+      <button id="{{by_id.mute.elementId}}">
         {{i18n.mute}}
       </button>
-      {{/call.mute}}
+      {{/data.call.mute}}
 
-      {{#call.mute}}
-      <button id="{{buttons.unmute.elementId}}">
+      {{#data.call.mute}}
+      <button id="{{by_id.unmute.elementId}}">
         {{i18n.unmute}}
       </button>
-      {{/call.mute}}
+      {{/data.call.mute}}
 
-      <button id="{{buttons.transfer.elementId}}">
+      <button id="{{by_id.transfer.elementId}}">
         {{i18n.transfer}}
       </button>
-      {{/call.established}}
+      {{/data.call.established}}
 
-      {{#call.terminating}}
-      {{#call.progress}}
-      <button id="{{buttons.answer.elementId}}">
+      {{#data.call.terminating}}
+      {{#data.call.progress}}
+      <button id="{{by_id.answer.elementId}}">
         {{i18n.answer}}
       </button>
-      {{/call.progress}}
-      {{/call.terminating}}
+      {{/data.call.progress}}
+      {{/data.call.terminating}}
     </div>
     `;
   }
 
-  _merge(...args) {
-    return _.merge(...args);
+  /** Helper functions */
+
+  _currentCall() {
+    let call = this._libwebphone.getCallList().getCall();
+    return call;
   }
-} //end of lwpPhoneUtils class
+
+  _callRenderConfig() {
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      return currentCall.summary();
+    }
+  }
+}

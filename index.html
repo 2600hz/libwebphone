@@ -106,14 +106,6 @@
 
       var webphone = new libwebphone(config);
 
-      webphone.on("call.added", (lwp, call) =>
-        console.log("call added: ", call)
-      );
-
-      webphone.on("call.removed", (lwp, call) =>
-        console.log("call removed: ", call)
-      );
-
       webphone.getMediaDevices().then(mediaDevices => {
         mediaDevices.on("input.added", (media, track) =>
           console.log("input added: ", track)
@@ -126,270 +118,291 @@
   </head>
   <body>
     <div class="container-fluid">
-      <div class="row">
-        <div class="col" style="border: solid;">
-          <div class="row">
-            <div
-              class="col"
-              style="text-align: center; border-bottom: dashed; padding: 10px;"
+      <div class="row" style="border: solid;">
+        <div class="col" style="border-right: dashed;">
+          Audio Input:
+          <span id="audio_mute_status">UNMUTED</span>
+          <script type="text/javascript">
+            webphone.getMediaDevices().then(mediaDevices => {
+              mediaDevices.on(
+                "audio.input.muted",
+                () =>
+                  (document.querySelector("#audio_mute_status").innerHTML =
+                    "MUTED  ")
+              );
+              mediaDevices.on(
+                "audio.input.unmuted",
+                () =>
+                  (document.querySelector("#audio_mute_status").innerHTML =
+                    "UNMUTED")
+              );
+            });
+          </script>
+          <div>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('audioinput'));"
             >
-              Audio Input:
-              <span id="audio_mute_status">UNMUTED</span>
-              <script type="text/javascript">
-                webphone.getMediaDevices().then(mediaDevices => {
-                  mediaDevices.on(
-                    "audio.input.muted",
-                    () =>
-                      (document.querySelector("#audio_mute_status").innerHTML =
-                        "MUTED  ")
-                  );
-                  mediaDevices.on(
-                    "audio.input.unmuted",
-                    () =>
-                      (document.querySelector("#audio_mute_status").innerHTML =
-                        "UNMUTED")
-                  );
-                });
-              </script>
-              <div>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('audioinput'));"
-                >
-                  Mute Audio
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('audioinput'));"
-                >
-                  Unmute Audio
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('audioinput'));"
-                >
-                  Toggle Audio Mute
-                </button>
-              </div>
-            </div>
-            <div
-              class="col"
-              style="text-align: center; border-bottom: dashed; padding: 10px;"
+              Mute Audio
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('audioinput'));"
             >
-              Video Input:
-              <span id="video_mute_status">UNMUTED</span>
-              <script type="text/javascript">
-                webphone.getMediaDevices().then(mediaDevices => {
-                  mediaDevices.on(
-                    "video.input.muted",
-                    () =>
-                      (document.querySelector("#video_mute_status").innerHTML =
-                        "MUTED  ")
-                  );
-                  mediaDevices.on(
-                    "video.input.unmuted",
-                    () =>
-                      (document.querySelector("#video_mute_status").innerHTML =
-                        "UNMUTED")
-                  );
-                });
-              </script>
-              <div>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('videoinput'));"
-                >
-                  Mute Video
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('videoinput'));"
-                >
-                  Unmute Video
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('videoinput'));"
-                >
-                  Toggle Video Mute
-                </button>
-              </div>
-            </div>
-            <div
-              class="col"
-              style="text-align: center; border-bottom: dashed; padding: 10px;"
+              Unmute Audio
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('audioinput'));"
             >
-              <span id="video_mute_status">State Control</span>
-              <div>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startPreviews());"
-                >
-                  Start Preview
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopPreviews());"
-                >
-                  Stop Preview
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startStreams());"
-                >
-                  Start Call Streams
-                </button>
-                <button
-                  onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopStreams());"
-                >
-                  Stop Call Streams
-                </button>
-              </div>
-            </div>
+              Toggle Audio Mute
+            </button>
           </div>
-          <div class="row">
-            <div class="col" style="border-right: dashed;">
-              <div id="media_device_preview"></div>
-            </div>
-            <div class="col" style="border-right: dashed;">
-              <div id="media_device_selector"></div>
-            </div>
-            <div class="col">
-              <div id="media_device_custom"></div>
-            </div>
+        </div>
+        <div class="col" style="border-right: dashed;">
+          Video Input:
+          <span id="video_mute_status">UNMUTED</span>
+          <script type="text/javascript">
+            webphone.getMediaDevices().then(mediaDevices => {
+              mediaDevices.on(
+                "video.input.muted",
+                () =>
+                  (document.querySelector("#video_mute_status").innerHTML =
+                    "MUTED  ")
+              );
+              mediaDevices.on(
+                "video.input.unmuted",
+                () =>
+                  (document.querySelector("#video_mute_status").innerHTML =
+                    "UNMUTED")
+              );
+            });
+          </script>
+          <div>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('videoinput'));"
+            >
+              Mute Video
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('videoinput'));"
+            >
+              Unmute Video
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('videoinput'));"
+            >
+              Toggle Video Mute
+            </button>
+          </div>
+        </div>
+        <div class="col" style="border-right: dashed;">
+          <span id="video_mute_status">State Control</span>
+          <div>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startPreviews());"
+            >
+              Start Preview
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopPreviews());"
+            >
+              Stop Preview
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startStreams());"
+            >
+              Start Call Streams
+            </button>
+            <button
+              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopStreams());"
+            >
+              Stop Call Streams
+            </button>
           </div>
         </div>
       </div>
+
+      <!-- Media Devices-->
+      <div class="row" style="border: solid;">
+        <div class="col" style="border-right: dashed;">
+          <div id="media_device_preview"></div>
+        </div>
+        <div class="col" style="border-right: dashed;">
+          <div id="media_device_selector"></div>
+        </div>
+        <div class="col">
+          <div id="media_device_custom"></div>
+          <script type="text/javascript">
+            var template = `
+              <div>
+                <legend>{{i18n.legend}}</legend>
+        
+                {{#videoinput.enabled}}          
+                  <div>
+                    <label for="{{selectors.videoinput.elementId}}">
+                      {{i18n.videoinput}}
+                    </label>                
+                    <select id="{{selectors.videoinput.elementId}}">
+                      {{#videoinput.devices}}
+                        {{#connected}}
+                          <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                        {{/connected}}
+                      {{/videoinput.devices}}
+                    </select>
+                  </div>
+                {{/videoinput.enabled}}
+        
+                {{#audiooutput.enabled}}
+                  <div>
+                    Hello World!
+                    <label for="{{selectors.audiooutput.elementId}}" style="display: inline-block">
+                      {{i18n.audiooutput}}:
+                    </label>
+                    <span id="{{selectors.audiooutput.elementId}}">
+                      {{#audiooutput.devices}}
+                        {{#active}}
+                          {{name}}
+                        {{/active}}
+                      {{/audiooutput.devices}}
+                    </span>
+                  </div>
+                {{/audiooutput.enabled}}
+        
+                {{#audioinput.enabled}}
+                  <div>
+                    <label for="{{selectors.audioinput.elementId}}">
+                      {{i18n.audioinput}}:
+                    </label>
+                    <div id="{{selectors.audioinput.elementId}}">
+                      {{#audioinput.devices}}
+                        {{#connected}}
+                          <div>
+                            <input type="radio" name="audioinput" value="{{id}}" {{#active}}checked="checked"{{/active}}
+                            onclick="webphone.getMediaDevices().then(mediaDevices => {
+                                  mediaDevices.changeDevice('audioinput', event.target.value);
+                                });
+                            ">
+                            <label>{{name}}</label>
+                          </div>
+                        {{/connected}}    
+                      {{/audioinput.devices}}
+                    </div>               
+                  </div>
+                {{/audioinput.enabled}}
+              </div>
+              `;
+            var customTemplateConfig1 = {
+              template: template,
+              root: {
+                elementId: "media_device_custom"
+              },
+              selectors: {
+                audioinput: {
+                  elementId: "customized_audio_input"
+                }
+              }
+            };
+
+            webphone.getMediaDevices().then(mediaDevices => {
+              mediaDevices.render(customTemplateConfig1).then(() => {
+                document
+                  .querySelectorAll(
+                    "#customized_audio_input > div > input[type=radio]"
+                  )
+                  .forEach(radio => {
+                    console.log(
+                      "found radio button after render succeeded: ",
+                      radio
+                    );
+                  });
+              });
+            });
+            //Added by Mahfuz
+          </script>
+        </div>
+      </div>
+
+      <!-- Dialpad -->
+      <div class="row" style="border: solid;">
+        <div class="col" style="border-right: dashed;">
+          <div id="dialed"></div>
+          <div id="dialpad"></div>
+          <script>
+            webphone.on("dialpad.updated", (lwp, dialpad) => {
+              document.querySelector(
+                "#dialed"
+              ).innerHTML = dialpad.digits().join("");
+            });
+          </script>
+        </div>
+        <div class="col" style="border-right: dashed;">
+          <div id="dialed_custom"></div>
+          <div id="dialpad_custom"></div>
+          <script type="text/javascript">
+            var template = `
+              <div>
+                <p id="{{inputs.one.elementId}}" data-value="one">{{i18n.one}}</p>
+                <p id="{{inputs.two.elementId}}" data-value="two">{{i18n.two}}</p>
+                <p id="{{inputs.three.elementId}}" data-value="three">{{i18n.three}}</p>
+                <p id="{{inputs.four.elementId}}" data-value="four">{{i18n.four}}</p>
+                <p id="{{inputs.five.elementId}}" data-value="five">{{i18n.five}}</p>
+                <p id="{{inputs.six.elementId}}" data-value="six">{{i18n.six}}</p>
+                <p id="{{inputs.seven.elementId}}" data-value="seven">{{i18n.seven}}</p>
+                <p id="{{inputs.eight.elementId}}" data-value="eight">{{i18n.eight}}</p> 
+                <p id="{{inputs.nine.elementId}}" data-value="nine">{{i18n.nine}}</p>
+                <p id="{{inputs.astrisk.elementId}}" data-value="astrisk">{{i18n.astrisk}}</p>
+                <p id="{{inputs.zero.elementId}}" data-value="zero">{{i18n.zero}}</p>
+                <p id="{{inputs.pound.elementId}}" data-value="pound">{{i18n.pound}}</p>
+              </div>`;
+            var customTemplateConfig = {
+              template: template,
+              root: {
+                elementId: "dialpad_custom"
+              }
+            };
+
+            webphone.getDialpad().renderAddTarget(customTemplateConfig);
+            webphone.on("dialpad.updated", (lwp, dialpad) => {
+              document.querySelector(
+                "#dialed"
+              ).innerHTML = dialpad.digits().join("");
+            });
+          </script>
+        </div>
+        <div class="col"></div>
+      </div>
+
+      <!-- User Agent-->
+      <div class="row" style="border: solid;">
+        <div class="col" style="border-right: dashed;">
+          <div>
+            <button onclick="webphone.getUserAgent().register();">
+              Register
+            </button>
+            <button onclick="webphone.getUserAgent().unregister();">
+              Unregister
+            </button>
+
+            <audio id="audioremote" autoplay loop></audio>
+          </div>
+        </div>
+        <div class="col" style="border-right: dashed;"></div>
+        <div class="col"></div>
+      </div>
+
+      <!-- Call Control -->
+      <div class="row" style="border: solid;">
+        <div class="col" style="border-right: dashed;">
+          <div id="call_control"></div>
+        </div>
+        <div class="col" style="border-right: dashed;"></div>
+        <div class="col"></div>
+      </div>
+
+      <!-- Call List -->
+      <div class="row" style="border: solid;">
+        <div class="col">
+          <div id="call_list"></div>
+        </div>
+      </div>
     </div>
-
-    <div id="dialed"></div>
-    <script>
-      webphone.getDialpad().then(dialpad => {
-        dialpad.on("digits", digits => {
-          document.querySelector("#dialed").innerHTML = digits.toString();
-        });
-      });
-    </script>
-
-    <div id="dialpad"></div>
-    <div id="dialpad_custom"></div>
-
-    <!--Added by Mahfuz [start]-->
-    <div>
-      <button onclick="webphone.getUserAgent().then(ua => ua.register());">
-        Register
-      </button>
-      <button onclick="webphone.getUserAgent().then(ua => ua.unregister());">
-        Unregister
-      </button>
-
-      <audio id="audioremote" autoplay loop></audio>
-    </div>
-
-    <div id="call_control"></div>
-    <div id="call_list"></div>
-
-    <!--Added by Mahfuz [End]-->
   </body>
-  <script type="text/javascript">
-    var template = `
-			<div>
-				<legend>{{i18n.legend}}</legend>
-
-				{{#videoinput.enabled}}          
-					<div>
-						<label for="{{selectors.videoinput.elementId}}">
-							{{i18n.videoinput}}
-						</label>                
-						<select id="{{selectors.videoinput.elementId}}">
-							{{#videoinput.devices}}
-								{{#connected}}
-									<option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-								{{/connected}}
-							{{/videoinput.devices}}
-						</select>
-					</div>
-				{{/videoinput.enabled}}
-
-				{{#audiooutput.enabled}}
-					<div>
-						Hello World!
-						<label for="{{selectors.audiooutput.elementId}}" style="display: inline-block">
-							{{i18n.audiooutput}}:
-						</label>
-						<span id="{{selectors.audiooutput.elementId}}">
-							{{#audiooutput.devices}}
-								{{#active}}
-									{{name}}
-								{{/active}}
-							{{/audiooutput.devices}}
-						</span>
-					</div>
-				{{/audiooutput.enabled}}
-
-				{{#audioinput.enabled}}
-					<div>
-						<label for="{{selectors.audioinput.elementId}}">
-							{{i18n.audioinput}}:
-						</label>
-						<div id="{{selectors.audioinput.elementId}}">
-							{{#audioinput.devices}}
-								{{#connected}}
-									<div>
-										<input type="radio" name="audioinput" value="{{id}}" {{#active}}checked="checked"{{/active}}
-										onclick="webphone.getMediaDevices().then(mediaDevices => {
-													mediaDevices.changeDevice('audioinput', event.target.value);
-												});
-										">
-										<label>{{name}}</label>
-									</div>
-								{{/connected}}    
-							{{/audioinput.devices}}
-						</div>               
-					</div>
-				{{/audioinput.enabled}}
-			</div>
-			`;
-    var customTemplateConfig1 = {
-      template: template,
-      root: {
-        elementId: "media_device_custom"
-      },
-      selectors: {
-        audioinput: {
-          elementId: "customized_audio_input"
-        }
-      }
-    };
-
-    webphone.getMediaDevices().then(mediaDevices => {
-      mediaDevices.render(customTemplateConfig1).then(() => {
-        document
-          .querySelectorAll("#customized_audio_input > div > input[type=radio]")
-          .forEach(radio => {
-            console.log("found radio button after render succeeded: ", radio);
-          });
-      });
-    });
-    //Added by Mahfuz
-  </script>
-
-  <script type="text/javascript">
-    var template = `
-		<div>
-			<label id="{{buttons.one.elementId}}" data-value="1">{{i18n.one}}</label>
-			<label id="{{buttons.two.elementId}}" data-value="2">{{i18n.two}}</label>
-			<label id="{{buttons.three.elementId}}" data-value="3">{{i18n.three}}</label>
-			<label id="{{buttons.four.elementId}}" data-value="4">{{i18n.four}}</label>
-			<label id="{{buttons.five.elementId}}" data-value="5">{{i18n.five}}</label>
-			<label id="{{buttons.six.elementId}}" data-value="6">{{i18n.six}}</label>
-			<label id="{{buttons.seven.elementId}}" data-value="7">{{i18n.seven}}</label>
-			<label id="{{buttons.eight.elementId}}" data-value="8">{{i18n.eight}}</label> 
-			<label id="{{buttons.nine.elementId}}" data-value="9">{{i18n.nine}}</label>
-			<label id="{{buttons.astrisk.elementId}}" data-value="*">{{i18n.astrisk}}</label>
-			<label id="{{buttons.zero.elementId}}" data-value="0">{{i18n.zero}}</label>
-			<label id="{{buttons.pound.elementId}}" data-value="#">{{i18n.pound}}</label>
-		</div>`;
-    var customTemplateConfig2 = {
-      template: template,
-      root: {
-        elementId: "dialpad_custom"
-      }
-    };
-
-    webphone.getDialpad().then(dialpad => {
-      dialpad.render(customTemplateConfig2);
-    });
-  </script>
 </html>

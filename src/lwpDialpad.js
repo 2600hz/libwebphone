@@ -1,100 +1,43 @@
 "use strict";
 
-import EventEmitter from "events";
-import i18next from "i18next";
-import _ from "lodash";
-import Mustache from "mustache";
-import {eventfordialpadbutton} from "./lwpdtmftonegenerator";
+import { merge } from "./lwpUtils";
+import lwpRenderer from "./lwpRenderer";
 
-
-export default class extends EventEmitter {
-  constructor(libwebphone, config = {}, i18n = null) {
+export default class extends lwpRenderer {
+  constructor(libwebphone, config = {}) {
     super();
     this._libwebphone = libwebphone;
-    this._digits = [];
-    return this._initInternationalization(config.i18n, i18n)
-      .then(() => {
-        return this._initProperties(config.dialpad);
-      })
-      .then(() => {
-        return Promise.all(
-          this._config.renderTargets.map(renderConfig => {
-            return this.render(renderConfig);
-          })
-        );
-      })
-      .then(() => {
-        return this;
-      });
+    this._initProperties(config);
+    this._initInternationalization(config.i18n || {});
+    this._initEvents();
+    this._initRenderTargets();
+    return this;
   }
 
   dial(digit) {
-    this._digits.push(digit);
-    this.emit("digits", this._digits);
-    console.log("Dial pad button pressed: " + digit);
-    eventfordialpadbutton(digit);
-    console.log("DTMF Tone Played For: " + digit); 
-    console.log("Dialed so far: " + this._digits);
+    let call = this._libwebphone.getCallList().getCall();
+    if (call.hasSession()) {
+      call.sendDTMF(digit);
+    } else {
+      this._digits.push(digit);
+    }
+    this._libwebphone._dialpadEvent("dial", this, digit);
   }
 
   clear() {
     this._digits = [];
+    this._libwebphone._dialpadEvent("clear", this);
   }
 
   digits() {
     return this._digits;
   }
 
-  render(config = {}) {
-    return new Promise(resolve => {
-      let template = config.template || this._defaultTemplate();
-      let renderConfig = this._renderConfig(config);
-      let render = {
-        html: Mustache.render(template, renderConfig),
-        template: template,
-        config: renderConfig
-      };
-      resolve(render);
-    }).then(render => {
-      console.log(render);
-      let buttons = render.config.buttons;
-
-      if (!render.config.root.element && render.config.root.elementId) {
-        render.config.root.element = document.getElementById(
-          render.config.root.elementId
-        );
-      }
-
-      render.config.root.element.innerHTML = render.html;
-
-      Object.keys(buttons).forEach(button => {
-        let elementId = buttons[button].elementId;
-        let element = document.getElementById(elementId);
-        buttons[button].element = element;
-
-        if (element) {
-          Object.keys(buttons[button].events || {}).forEach(event => {
-            let callback = buttons[button].events[event];
-            element[event] = callback;
-          });
-        }
-      });
-
-      this._renders.push(render);
-    });
-  }
-
   /** Init functions */
 
-  _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
-    if (i18n) {
-      this._translator = i18n;
-      return Promise.resolve();
-    }
-
-    var i18nPromise = i18next.init(config);
-    i18next.addResourceBundle("en", "libwebphone", {
-      dialpad: {
+  _initInternationalization(config) {
+    let defaults = {
+      en: {
         zero: "0",
         one: "1",
         two: "2",
@@ -106,50 +49,238 @@ export default class extends EventEmitter {
         eight: "8",
         nine: "9",
         pound: "#",
-        astrisk: "*"
+        astrisk: "*",
+        clear: "clear"
       }
-    });
-
-    return i18nPromise.then(translator => (this._translator = translator));
+    };
+    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    this._libwebphone.i18nAddResourceBundles("dialpad", resourceBundles);
   }
 
   _initProperties(config) {
-    var defaults = {
+    let defaults = {
       tones: {
-        "1": [1336, 697],
-        "2": [1336, 697],
-        "3": [1336, 697],
-        A: [1336, 697],
-        "4": [1336, 697],
-        "5": [1336, 697],
-        "6": [1336, 697],
-        B: [1336, 697],
-        "7": [1336, 697],
-        "8": [1336, 697],
-        "9": [1336, 697],
-        C: [1336, 697],
-        "*": [1336, 697],
-        "0": [1336, 697],
-        "#": [1336, 697],
-        D: [1336, 697]
+        zero: [1336, 697],
+        one: [1336, 697],
+        two: [1336, 697],
+        three: [1336, 697],
+        four: [1336, 697],
+        five: [1336, 697],
+        six: [1336, 697],
+        seven: [1336, 697],
+        eight: [1336, 697],
+        nine: [1336, 697],
+        pound: [1336, 697],
+        astrisk: [1336, 697]
       }
     };
-    this._config = this._merge(defaults, config);
+    this._config = merge(defaults, config);
+    this._digits = [];
+  }
 
-    this._config.renderTargets.forEach((target, index) => {
-      if (typeof target == "string") {
-        this._config.renderTargets[index] = {
-          root: {
-            elementId: target,
-            element: document.getElementById(target)
-          }
-        };
-      }
+  _initEvents() {
+    this._libwebphone.on("language.changed", () => this.render());
+  }
+
+  _initRenderTargets() {
+    this._config.renderTargets.map(renderTarget => {
+      return this.renderAddTarget(renderTarget);
     });
+  }
 
-    this._renders = [];
+  /** Render Helpers */
 
-    return Promise.resolve();
+  _renderDefaultConfig() {
+    return {
+      template: this._renderDefaultTemplate(),
+      i18n: {
+        zero: "libwebphone:dialpad.zero",
+        one: "libwebphone:dialpad.one",
+        two: "libwebphone:dialpad.two",
+        three: "libwebphone:dialpad.three",
+        four: "libwebphone:dialpad.four",
+        five: "libwebphone:dialpad.five",
+        six: "libwebphone:dialpad.six",
+        seven: "libwebphone:dialpad.seven",
+        eight: "libwebphone:dialpad.eight",
+        nine: "libwebphone:dialpad.nine",
+        pound: "libwebphone:dialpad.pound",
+        astrisk: "libwebphone:dialpad.astrisk",
+        clear: "libwebphone:dialpad.clear"
+      },
+      by_id: {
+        zero: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        one: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        two: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        three: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        four: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        five: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        six: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        seven: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        eight: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        nine: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        pound: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        astrisk: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let digit = this._valueToDigit(element.dataset.value);
+              this.dial(digit);
+            }
+          }
+        },
+        clear: {
+          events: {
+            onclick: event => {
+              this.clear();
+            }
+          }
+        }
+      }
+    };
+  }
+
+  _renderDefaultTemplate() {
+    return `
+    <div>
+      <input type="text" id="{{by_id.dialed}}" />
+      <div>
+      <button id="{{by_id.one.elementId}}" data-value="one">{{i18n.one}}</button>
+      <button id="{{by_id.two.elementId}}" data-value="two">{{i18n.two}}</button>
+      <button id="{{by_id.three.elementId}}" data-value="three">{{i18n.three}}</button>
+      </div>
+
+      <div>
+      <button id="{{by_id.four.elementId}}" data-value="four">{{i18n.four}}</button>
+      <button id="{{by_id.five.elementId}}" data-value="five">{{i18n.five}}</button>
+      <button id="{{by_id.six.elementId}}" data-value="six">{{i18n.six}}</button>
+      </div>
+
+      <div>
+      <button id="{{by_id.seven.elementId}}" data-value="seven">{{i18n.seven}}</button>
+      <button id="{{by_id.eight.elementId}}" data-value="eight">{{i18n.eight}}</button> 
+      <button id="{{by_id.nine.elementId}}" data-value="nine">{{i18n.nine}}</button>
+      </div>
+
+      <div>
+      <button id="{{by_id.astrisk.elementId}}" data-value="astrisk">{{i18n.astrisk}}</button>
+      <button id="{{by_id.zero.elementId}}" data-value="zero">{{i18n.zero}}</button>
+      <button id="{{by_id.pound.elementId}}" data-value="pound">{{i18n.pound}}</button>
+      </div>
+
+      <div>
+      <button id="{{by_id.clear.elementId}}" data-value="clear">{{i18n.clear}}</button>
+      </div>
+	  </div>
+    `;
+  }
+
+  /** Helper functions */
+
+  _valueToDigit(key) {
+    let dictionary = {
+      zero: "0",
+      one: "1",
+      two: "2",
+      three: "3",
+      four: "4",
+      five: "5",
+      six: "6",
+      seven: "7",
+      eight: "8",
+      nine: "9",
+      pound: "#",
+      astrisk: "*"
+    };
+    return dictionary[key];
   }
 
   eventfordialpadbutton(val) {
@@ -207,208 +338,4 @@ export default class extends EventEmitter {
     if (!window.__context__) window.__context__ = context;
     return Promise.resolve();
   } //End of eventfordialpadbutton
-
-  /** Util Functions */
-  _merge(...args) {
-    return _.merge(...args);
-  }
-
-  _renderConfig(config = {}) {
-    let i18n = this._translator;
-    var randomElementId = () => {
-      return (
-        "lwp" +
-        Math.random()
-          .toString(36)
-          .substr(2, 9)
-      );
-    };
-    var defaults = {
-      i18n: {
-        zero: i18n("libwebphone:dialpad.zero"),
-        one: i18n("libwebphone:dialpad.one"),
-        two: i18n("libwebphone:dialpad.two"),
-        three: i18n("libwebphone:dialpad.three"),
-        four: i18n("libwebphone:dialpad.four"),
-        five: i18n("libwebphone:dialpad.five"),
-        six: i18n("libwebphone:dialpad.six"),
-        seven: i18n("libwebphone:dialpad.seven"),
-        eight: i18n("libwebphone:dialpad.eight"),
-        nine: i18n("libwebphone:dialpad.nine"),
-        pound: i18n("libwebphone:dialpad.pound"),
-        astrisk: i18n("libwebphone:dialpad.astrisk")
-      },
-      buttons: {
-        zero: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            },
-            onmousedown: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this._libwebphone.getMediaDevices().then(mediaDevices => {
-                mediaDevices.startPlayTone(this._config.tones[digit]);
-              });
-            },
-            onmouseup: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this._libwebphone.getMediaDevices().then(mediaDevices => {
-                mediaDevices.stopPlayTone(this._config.tones[digit]);
-              });
-            }
-          }
-        },
-        one: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            },
-            onmousedown: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this._libwebphone.getMediaDevices().then(mediaDevices => {
-                mediaDevices.startPlayTone(this._config.tones[digit]);
-              });
-            },
-            onmouseup: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this._libwebphone.getMediaDevices().then(mediaDevices => {
-                mediaDevices.stopPlayTone(this._config.tones[digit]);
-              });
-            }
-          }
-        },
-        two: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        three: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        four: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        five: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        six: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        seven: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        eight: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        nine: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        pound: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        },
-        astrisk: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              let digit = element.dataset.value;
-              this.dial(digit);
-            }
-          }
-        }
-      }
-    };
-
-    return this._merge(defaults, config);
-  }
-
-  _defaultTemplate() {
-    return `
-    <div>
-      <button id="{{buttons.one.elementId}}" data-value="1">{{i18n.one}}</button>
-      <button id="{{buttons.two.elementId}}" data-value="2">{{i18n.two}}</button>
-      <button id="{{buttons.three.elementId}}" data-value="3">{{i18n.three}}</button>
-      <button id="{{buttons.four.elementId}}" data-value="4">{{i18n.four}}</button>
-      <button id="{{buttons.five.elementId}}" data-value="5">{{i18n.five}}</button>
-      <button id="{{buttons.six.elementId}}" data-value="6">{{i18n.six}}</button>
-      <button id="{{buttons.seven.elementId}}" data-value="7">{{i18n.seven}}</button>
-      <button id="{{buttons.eight.elementId}}" data-value="8">{{i18n.eight}}</button> 
-      <button id="{{buttons.nine.elementId}}" data-value="9">{{i18n.nine}}</button>
-      <button id="{{buttons.astrisk.elementId}}" data-value="*">{{i18n.astrisk}}</button>
-      <button id="{{buttons.zero.elementId}}" data-value="0">{{i18n.zero}}</button>
-      <button id="{{buttons.pound.elementId}}" data-value="#">{{i18n.pound}}</button>
-	  </div>
-    `;
-  }
 }

@@ -1,145 +1,153 @@
 "use strict";
 
-import EventEmitter from "events";
-import i18next from "i18next";
-import _ from "lodash";
-import Mustache from "mustache";
-import * as JsSIP from "jssip";
+import { merge } from "./lwpUtils";
+import lwpRenderer from "./lwpRenderer";
+import lwpCall from "./lwpCall";
 
-export default class extends EventEmitter {
-  constructor(libwebphone, config = {}, i18n = null) {
+export default class extends lwpRenderer {
+  constructor(libwebphone, config = {}) {
     super();
     this._libwebphone = libwebphone;
-    return this._initInternationalization(config.i18n, i18n)
-      .then(() => {
-        return this._initProperties(config.callList);
-      })
-      .then(() => {
-        return Promise.all(
-          this._config.renderTargets.map(renderConfig => {
-            return this.render(renderConfig);
-          })
-        );
-      })
-      .then(() => {
-        this._libwebphone.on("call.added", () => this.updateCalls());
-        this._libwebphone.on("call.updated", () => this.updateCalls());
-        this._libwebphone.on("call.removed", () => this.updateCalls());
-      })
-      .then(() => {
-        return this;
-      });
+    this._initProperties(config);
+    this._initInternationalization(config.i18n || {});
+    this._initEvents();
+    this._initRenderTargets();
+    return this;
+  }
+
+  getCalls() {
+    return this._calls;
+  }
+
+  getCall(callId = null) {
+    return this._calls.find(call => {
+      if (callId) {
+        return call.getId() == callId;
+      } else {
+        return call.isPrimary();
+      }
+    });
+  }
+
+  addCall(newCall) {
+    this._calls.map(call => {
+      if (call.isPrimary) {
+        call.clearPrimary();
+      }
+    });
+    newCall.setPrimary();
+    /** TODO: save a timestamp to the primary call,
+     * during remoteCall attempt to switch to the call
+     * wiht a session that has the largest timestamp
+     * if the removed call was a primary
+     */
+    this._calls.push(newCall);
   }
 
   switchCall(callid) {
-    return this._libwebphone.switchCall(callid);
-  }
-
-  updateCalls() {
-    let calls = this._getCalls();
-    this._renders.forEach(render => {
-      render.config.calls = calls;
-      this._renderUpdate(render);
-    });
-  }
-
-  render(config = {}) {
-    return new Promise(resolve => {
-      let template = config.template || this._defaultTemplate();
-      let renderConfig = this._renderConfig(config);
-      let render = {
-        html: Mustache.render(template, renderConfig),
-        template: template,
-        config: renderConfig
-      };
-      resolve(render);
-    }).then(render => {
-      let buttons = render.config.buttons;
-
-      if (!render.config.root.element && render.config.root.elementId) {
-        render.config.root.element = document.getElementById(
-          render.config.root.elementId
-        );
+    this._calls.map(call => {
+      if (call.isPrimary) {
+        call.clearPrimary();
       }
-
-      render.config.root.element.innerHTML = render.html;
-
-      Object.keys(buttons).forEach(button => {
-        let elementId = buttons[button].elementId;
-        let element = document.getElementById(elementId);
-        buttons[button].element = element;
-
-        if (element) {
-          Object.keys(buttons[button].events || {}).forEach(event => {
-            let callback = buttons[button].events[event];
-            element[event] = callback;
-          });
-        }
-      });
-
-      this._renders.push(render);
     });
+    let primaryCall = this.getCall(callid);
+    if (primaryCall) {
+      primaryCall.setPrimary();
+    }
+    /** TODO: save a timestamp to the primary call,
+     * during remoteCall attempt to switch to the call
+     * wiht a session that has the largest timestamp
+     * if the removed call was a primary
+     */
+    this.updateRenders();
+  }
+
+  removeCall(terminatedCall) {
+    let terminatedId = terminatedCall.getId();
+
+    this._calls = this._calls.filter(call => {
+      return call.getId() != terminatedId;
+    });
+
+    if (terminatedCall.isPrimary) {
+      let withSession = this._calls.find(call => {
+        call.hasSession();
+      });
+      if (withSession) {
+        withSession.setPrimary();
+      } else if (this._calls.length > 0) {
+        this._calls[0].setPrimary();
+      }
+    }
+  }
+
+  updateRenders() {
+    let calls = this._getCallSummaries();
+    this.renderUpdates(render => {
+      render.data.calls = calls;
+    });
+    this.render();
   }
 
   /** Init functions */
 
-  _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
-    if (i18n) {
-      this._translator = i18n;
-      return Promise.resolve();
-    }
-
-    var i18nPromise = i18next.init(config);
-    i18next.addResourceBundle("en", "libwebphone", {
-      calllist: {}
-    });
-
-    return i18nPromise.then(translator => (this._translator = translator));
+  _initInternationalization(config) {
+    let defaults = {
+      en: {
+        new: "New Call"
+      }
+    };
+    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    this._libwebphone.i18nAddResourceBundles("callList", resourceBundles);
   }
 
   _initProperties(config) {
-    var defaults = {};
-    this._config = this._merge(defaults, config);
+    let defaults = {};
+    this._config = merge(defaults, config);
 
-    this._config.renderTargets.forEach((target, index) => {
-      if (typeof target == "string") {
-        this._config.renderTargets[index] = {
-          root: {
-            elementId: target,
-            element: document.getElementById(target)
-          }
-        };
-      }
+    let newCall = new lwpCall(this._libwebphone);
+    newCall.setPrimary();
+    this._calls = [newCall];
+  }
+
+  _initEvents() {
+    this._libwebphone.on("call.created", (lwp, call) => {
+      this.addCall(call);
+      this.updateRenders();
     });
+    this._libwebphone.on("call.failed", (lwp, call) => {
+      this.removeCall(call);
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.ended", (lwp, call) => {
+      this.removeCall(call);
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.updated", () => this.updateRenders());
+    this._libwebphone.on("language.changed", () => this.render());
+  }
 
-    this._renders = [];
-
-    return Promise.resolve();
+  _initRenderTargets() {
+    this._config.renderTargets.map(renderTarget => {
+      return this.renderAddTarget(renderTarget);
+    });
   }
 
   /** Render Helpers */
 
-  _renderUpdate(render) {
-    render.html = Mustache.render(render.template, render.config);
-    render.config.root.element.innerHTML = render.html;
-  }
-
-  _renderConfig(config = {}) {
-    let i18n = this._translator;
-    var randomElementId = () => {
-      return (
-        "lwp" +
-        Math.random()
-          .toString(36)
-          .substr(2, 9)
-      );
-    };
-    var defaults = {
-      i18n: {},
-      calls: this._getCalls(),
-      buttons: {
-        call: {
-          elementId: randomElementId(),
+  _renderDefaultConfig() {
+    let i18n = this._libwebphone.i18nTranslator();
+    return {
+      template: this._renderDefaultTemplate(),
+      i18n: {
+        new: "libwebphone:callList.new"
+      },
+      data: {
+        calls: this._getCallSummaries(),
+        primary: this.getCall()
+      },
+      by_name: {
+        calls: {
           events: {
             onclick: event => {
               let element = event.srcElement;
@@ -150,35 +158,58 @@ export default class extends EventEmitter {
         }
       }
     };
-
-    return this._merge(defaults, config);
   }
 
-  _defaultTemplate() {
+  _renderDefaultTemplate() {
     return `
-      {{#calls}}
+      {{#data.calls}}
 
-      {{#primary}}
-      <input type="radio" name="lwpcalllist" value="{{callId}}" selected>
-      {{/primary}}
+      {{^hasSession}}
+        {{#primary}}
+        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}" checked="checked">
+        <label for="{{callId}}">{{i18n.new}}</label>
+        {{/primary}}
+
+        {{^primary}}
+        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}">
+        <label for="{{callId}}">{{i18n.new}}</label>
+        {{/primary}}
+      {{/hasSession}}
+
+      {{#hasSession}}
+
+        {{#primary}}
+        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}" checked="checked">
+        {{/primary}}
+
+        {{^primary}}
+        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}">
+        {{/primary}}
+
+        <label for="{{callId}}">{{local_identity}} -> {{remote_identity}}
+          <ul>
+            <li>call id: {{callId}}</li>
+            <li>primary: {{primary}}</li>
+            <li>progress: {{progress}}</li>
+            <li>established: {{established}}</li>
+            <li>hold: {{hold}}</li>
+            <li>muted: {{muted}}</li>
+            <li>ended: {{ended}}</li>
+            <li>direction: {{direction}}</li>
+          </ul>
+        </label>
+      {{/hasSession}}
+      {{/data.calls}}
 
 
-      {{^primary}}
-      <input type="radio" name="lwpcalllist" value="{{callId}}">
-      {{/primary}}
-
-      <label for="{{callId}}">progress: {{progress}} established: {{established}} hold: {{hold}} muted: {{muted}} ended: {{ended}}  direction: {{direction}}</label><br>
-      {{/calls}}
     `;
   }
 
-  _merge(...args) {
-    return _.merge(...args);
-  }
+  /** Helper functions */
 
-  _getCalls() {
-    return this._libwebphone.getCalls().map(call => {
+  _getCallSummaries() {
+    return this.getCalls().map(call => {
       return call.summary();
     });
   }
-} //end of lwpPhoneUtils class
+}

@@ -1,21 +1,218 @@
 "use strict";
 
-import EventEmitter from "events";
-import i18next from "i18next";
-import _ from "lodash";
-import Mustache from "mustache";
-import * as JsSIP from "jssip";
+import { uuid } from "./lwpUtils";
 
-export default class extends EventEmitter {
-  constructor(libwebphone, session) {
-    super();
-    this._id = this._uuid();
+export default class {
+  constructor(libwebphone, session = null) {
     this._libwebphone = libwebphone;
     this._session = session;
-    this._primary = true;
+    this._primary = false;
+    this._id = uuid();
+    this._initEvents();
+    this._libwebphone._callEvent("created", this);
+  }
 
+  getId() {
+    return this._id;
+  }
+
+  getSession() {
+    return this._session;
+  }
+
+  hasSession() {
+    return this._session != null;
+  }
+
+  isPrimary() {
+    return this._primary;
+  }
+
+  setPrimary() {
+    this._primary = true;
+    if (this.isEstablished() && this.isOnHold()) {
+      this.unhold();
+    }
+    this._libwebphone._callEvent("setPrimary", this);
+  }
+
+  clearPrimary() {
+    this._primary = false;
+    if (this.isEstablished()) {
+      this.hold();
+    }
+    this._libwebphone._callEvent("clearPrimary", this);
+  }
+
+  isInProgress() {
+    if (this.hasSession()) {
+      return this._session.isInProgress();
+    }
+    return false;
+  }
+
+  isEstablished() {
+    if (this.hasSession()) {
+      return this._session.isEstablished();
+    }
+    return false;
+  }
+
+  isEnded() {
+    if (this.hasSession()) {
+      return this._session.isEnded();
+    }
+    return false;
+  }
+
+  isOnHold() {
+    if (this.hasSession()) {
+      return this._session.isOnHold();
+    }
+    return { local: false, remote: false };
+  }
+
+  isMuted() {
+    if (this.hasSession()) {
+      return this._session.isMuted();
+    }
+    return { audio: false, video: false };
+  }
+
+  getDirection() {
+    if (this.hasSession()) {
+      if (this._session.direction == "incoming") {
+        return "terminating";
+      } else {
+        return "originating";
+      }
+    }
+    return "originating";
+  }
+
+  localIdentity() {
+    if (this.hasSession()) {
+      return this._session.local_identity;
+    }
+  }
+
+  remoteIdentity() {
+    if (this.hasSession()) {
+      return this._session.remote_identity;
+    }
+  }
+
+  cancel() {
+    if (this.hasSession()) {
+      this._session.terminate();
+    }
+  }
+
+  hangup() {
+    if (this.hasSession()) {
+      this._session.terminate();
+    }
+  }
+
+  hold() {
+    if (this.hasSession()) {
+      this._session.hold();
+    }
+  }
+
+  unhold() {
+    if (this.hasSession()) {
+      this._session.unhold();
+    }
+  }
+
+  mute() {
+    if (this.hasSession()) {
+      this._session.mute();
+    }
+  }
+
+  unmute() {
+    if (this.hasSession()) {
+      this._session.unmute();
+    }
+  }
+
+  transfer() {
+    if (this.hasSession()) {
+      let numbertotransfer = libwebphone._dialpadPromise.then(dialpad => {
+        let digits = dialpad.digits();
+        dialpad.clear();
+        return digits.join("");
+      });
+      this._session.refer(numbertotransfer);
+      console.log("Call transfer attempt to : " + numbertotransfer);
+    }
+  }
+
+  answer() {
+    if (this.hasSession()) {
+      this._libwebphone.getMediaDevices().then(mediaDevices => {
+        const stream = mediaDevices.startStreams();
+        const options = {
+          mediaStream: stream
+        };
+        this._session.answer(options);
+        console.log("inbound session answered: ", this._session);
+      });
+    }
+  }
+
+  reject() {
+    if (this.hasSession()) {
+      this._session.terminate();
+      console.log("reject session: ", this._session);
+    }
+  }
+
+  renegotiate() {
+    if (this.hasSession()) {
+      this._session.renegotiate();
+      console.log("call on renegotiate");
+    }
+  }
+
+  sendDTMF(tone) {
+    if (this.hasSession()) {
+      this._session.sendDTMF(tone);
+    }
+  }
+
+  summary() {
+    const direction = this.getDirection();
+    const hold = this.isOnHold();
+    const muted = this.isMuted();
+    return {
+      callId: this.getId(),
+      hasSession: this.hasSession(),
+      progress: this.isInProgress(),
+      established: this.isEstablished(),
+      ended: this.isEnded(),
+      hold: hold.local || hold.remote,
+      muted: muted.audio || muted.video,
+      primary: this.isPrimary(),
+      terminating: direction == "terminating",
+      originating: direction == "originating",
+      local_identity: this.localIdentity(),
+      remote_identity: this.remoteIdentity()
+    };
+  }
+
+  _initEvents() {
+    if (!this.hasSession()) {
+      return;
+    }
     this._session.on("peerconnection", (...event) => {
+      console.log("peerconnection");
       this._libwebphone._callEvent("peerconnection", this, ...event);
+    });
+    this._session.on("addstream", event => {
+      console.log("addstream");
     });
     this._session.on("connecting", (...event) => {
       this._libwebphone._callEvent("connecting", this, ...event);
@@ -31,6 +228,11 @@ export default class extends EventEmitter {
     });
     this._session.on("confirmed", (...event) => {
       this._libwebphone._callEvent("confirmed", this, ...event);
+      /*
+      if (!this.isPrimary()) {
+        this.hold();
+      }
+      */
     });
     this._session.on("newDTMF", (...event) => {
       this._libwebphone._callEvent("dtmf", this, ...event);
@@ -59,158 +261,5 @@ export default class extends EventEmitter {
     this._session.on("failed", (...event) => {
       this._libwebphone._callEvent("failed", this, ...event);
     });
-    this._libwebphone.addCall(this);
   }
-
-  getId() {
-    return this._id;
-  }
-
-  getSession() {
-    return this._session;
-  }
-
-  isPrimary() {
-    return this._primary;
-  }
-
-  setPrimary() {
-    this._primary = true;
-  }
-
-  clearPrimary() {
-    this._primary = false;
-    if (this._session.isEstablished()) {
-      this.hold();
-    }
-  }
-
-  isInProgress() {
-    return this._session.isInProgress();
-  }
-
-  isEstablished() {
-    return this._session.isEstablished();
-  }
-
-  isEnded() {
-    return this._session.isEnded();
-  }
-
-  isOnHold() {
-    return this._session.isOnHold();
-  }
-
-  isMuted() {
-    return this._session.isMuted();
-  }
-
-  getDirection() {
-    if (this._session.direction == "incoming") {
-      return "terminating";
-    } else {
-      return "originating";
-    }
-  }
-
-  hold() {
-    this._session.hold();
-  }
-
-  unhold() {
-    this._session.unhold();
-  }
-
-  answer() {
-    this._libwebphone.getMediaDevices().then(mediaDevices => {
-      var stream = mediaDevices.startStreams();
-      var options = {
-        mediaStream: stream
-      };
-      this._session.answer(options);
-      console.log("inbound session answered: ", this._session);
-    });
-  }
-
-  hangup() {
-    this._session.terminate();
-    console.log("hangup session: ", this._session);
-  } //end hangup
-
-  cancel() {
-    this._session.terminate();
-    console.log("cancel session: ", this._session);
-  }
-
-  reject() {
-    this._session.terminate();
-    console.log("reject session: ", this._session);
-  }
-
-  /** Util Functions */
-
-  mute() {
-    this._session.mute();
-    console.log("call on mute");
-  }
-
-  unmute() {
-    this._session.unmute();
-    console.log("call on un-muted");
-  }
-
-  renegotiate() {
-    this._session.renegotiate();
-    console.log("call on renegotiate");
-  }
-
-  sendDTMF() {
-    let tonevalue = libwebphone._dialpadPromise.then(dialpad => {
-      let digits = dialpad.digits();
-      //dialpad.clear();
-      //return digits.join("");
-      return digits;
-    });
-    this._session.sendDTMF(tonevalue);
-    console.log("DTMF sent to session: " + tonevalue);
-  }
-
-  transfer() {
-    let numbertotransfer = libwebphone._dialpadPromise.then(dialpad => {
-      let digits = dialpad.digits();
-      dialpad.clear();
-      return digits.join("");
-    });
-    this._session.refer(numbertotransfer);
-    console.log("Call transfer attempt to : " + numbertotransfer);
-  }
-
-  summary() {
-    let direction = this.getDirection();
-    let hold = this.isOnHold();
-    let muted = this.isMuted();
-    return {
-      callId: this.getId(),
-      progress: this.isInProgress(),
-      established: this.isEstablished(),
-      ended: this.isEnded(),
-      hold: hold.local || hold.remote,
-      muted: muted.audio || muted.video,
-      primary: this.isPrimary,
-      terminating: direction == "terminating",
-      originating: direction == "originating"
-    };
-  }
-
-  _uuid() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
-      var r = (Math.random() * 16) | 0,
-        v = c == "x" ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
-  }
-
-  _merge(...args) {
-    return _.merge(...args);
-  }
-} //end of lwpPhoneUtils class
+}

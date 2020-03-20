@@ -1,26 +1,44 @@
 "use strict";
 
-import EventEmitter from "events";
 import i18next from "i18next";
+import EventEmitter from "events";
 import lwpKazoo from "./lwpKazoo";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpUserAgent from "./lwpUserAgent";
 import lwpDialpad from "./lwpDialpad";
-import Mustache from "mustache";
 import lwpCallControl from "./lwpCallControl";
 import lwpCallList from "./lwpCallList";
 
 export default class extends EventEmitter {
-  constructor(config = {}, i18n = null) {
+  constructor(config = {}) {
     super();
-    this._calls = [];
-    this._kazooPromise = new lwpKazoo(this, config, i18n);
-    this._mediaDevicesPromise = new lwpMediaDevices(this, config, i18n);
-    this._userAgentPromise = new lwpUserAgent(this, config, i18n);
-    this._dialpadPromise = new lwpDialpad(this, config, i18n);
-    this._callcontrolPromise = new lwpCallControl(this, config, i18n);
-    this._callListPromise = new lwpCallList(this, config, i18n);
+
+    this._initInternationalization(config.i18n);
+
+    this._callList = new lwpCallList(this, config.callList);
+    this._callControl = new lwpCallControl(this, config.callControl);
+    this._dialpad = new lwpDialpad(this, config.dialpad);
+    this._userAgent = new lwpUserAgent(this, config.userAgent);
+
+    this._kazooPromise = new lwpKazoo(this, config);
+    this._mediaDevicesPromise = new lwpMediaDevices(this, config);
   } //end of constructor
+
+  getCallControl() {
+    return this._callControl;
+  }
+
+  getCallList() {
+    return this._callList;
+  }
+
+  getDialpad() {
+    return this._dialpad;
+  }
+
+  getUserAgent() {
+    return this._userAgent;
+  }
 
   getKazoo() {
     return this._kazooPromise;
@@ -30,66 +48,40 @@ export default class extends EventEmitter {
     return this._mediaDevicesPromise;
   }
 
-  getUserAgent() {
-    return this._userAgentPromise;
+  geti18n() {
+    return i18next;
   }
 
-  getDialpad() {
-    return this._dialpadPromise;
+  i18nAddResourceBundles(module, resources) {
+    for (let lang in resources) {
+      this.i18nAddResourceBundle(module, lang, resources[lang]);
+    }
   }
 
-  getCallList() {
-    return this._callListPromise;
+  i18nAddResourceBundle(module, lang, resource) {
+    let bundle = {};
+    bundle[module] = resource;
+    i18next.addResourceBundle(lang, "libwebphone", bundle, true);
   }
 
-  getCalls() {
-    return this._calls;
-  }
-
-  getCall(callId = null) {
-    return this._calls.find(call => {
-      if (callId) {
-        return call.getId() == callId;
-      } else {
-        return call.isPrimary;
-      }
-    });
-  }
-
-  addCall(newCall) {
-    this._calls.map(call => {
-      if (call.isPrimary) {
-        call.clearPrimary();
-      }
-    });
-    this._calls.push(newCall);
-    this.emit("call.added", this, newCall);
-  }
-
-  switchCall(callid) {
-    let primaryCall;
-
-    this.emit("call.primary", this, primaryCall);
-  }
-
-  removeCall(terminatedCall) {
-    let terminatedId = terminatedCall.getId();
-    this._calls = this._calls.filter(call => {
-      return call.getId() != terminatedId;
-    });
-    this.emit("call.removed", this, terminatedCall);
+  i18nTranslator() {
+    return this._translator;
   }
 
   _callEvent(type, call, ...data) {
-    switch (type) {
-      case "ended":
-      case "failed":
-        this.removeCall(call);
-        break;
-    }
-
-    console.log("call event " + type, call, ...data);
     this.emit("call." + type, this, call);
     this.emit("call.updated", this, call);
+  }
+
+  _dialpadEvent(type, dialpad, ...data) {
+    this.emit("dialpad." + type, this, dialpad);
+    this.emit("dialpad.updated", this, dialpad);
+  }
+
+  _initInternationalization(config = { fallbackLng: "en" }) {
+    this._i18nPromise = i18next.init(config).then(translator => {
+      this._translator = translator;
+      this.emit("language.changed", this, translator);
+    });
   }
 } //End of default class
