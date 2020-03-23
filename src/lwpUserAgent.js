@@ -9,7 +9,7 @@ export default class {
     this._libwebphone = libwebphone;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
-    this._initEvents();
+    this._initEventBindings();
     this._initSockets();
     this._initUserAgent();
 
@@ -69,7 +69,7 @@ export default class {
     this._userAgent = null;
   }
 
-  _initEvents() {}
+  _initEventBindings() {}
 
   _initSockets() {
     this._config.transport.sockets.forEach(socket => {
@@ -101,7 +101,7 @@ export default class {
       user_agent: this._config.user_agent.user_agent,
       session_timers: false
     };
-    console.log(config);
+
     this._userAgent = new JsSIP.UA(config);
     this._userAgent.start();
     this._userAgent.on("newRTCSession", event => {

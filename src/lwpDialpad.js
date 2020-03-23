@@ -9,7 +9,7 @@ export default class extends lwpRenderer {
     this._libwebphone = libwebphone;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
-    this._initEvents();
+    this._initEventBindings();
     this._initRenderTargets();
     return this;
   }
@@ -78,7 +78,7 @@ export default class extends lwpRenderer {
     this._digits = [];
   }
 
-  _initEvents() {
+  _initEventBindings() {
     this._libwebphone.on("language.changed", () => this.render());
   }
 

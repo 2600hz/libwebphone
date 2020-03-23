@@ -2,7 +2,6 @@
 
 import i18next from "i18next";
 import EventEmitter from "events";
-import lwpKazoo from "./lwpKazoo";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpUserAgent from "./lwpUserAgent";
 import lwpDialpad from "./lwpDialpad";
@@ -19,9 +18,7 @@ export default class extends EventEmitter {
     this._callControl = new lwpCallControl(this, config.callControl);
     this._dialpad = new lwpDialpad(this, config.dialpad);
     this._userAgent = new lwpUserAgent(this, config.userAgent);
-
-    this._kazooPromise = new lwpKazoo(this, config);
-    this._mediaDevicesPromise = new lwpMediaDevices(this, config);
+    this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
   } //end of constructor
 
   getCallControl() {
@@ -40,12 +37,8 @@ export default class extends EventEmitter {
     return this._userAgent;
   }
 
-  getKazoo() {
-    return this._kazooPromise;
-  }
-
   getMediaDevices() {
-    return this._mediaDevicesPromise;
+    return this._mediaDevices;
   }
 
   geti18n() {

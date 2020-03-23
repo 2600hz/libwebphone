@@ -8,7 +8,8 @@ export default class {
     this._session = session;
     this._primary = false;
     this._id = uuid();
-    this._initEvents();
+    this._initEventBindings();
+    this._remoteAudio = document.createElement("audio");
     this._libwebphone._callEvent("created", this);
   }
 
@@ -33,6 +34,9 @@ export default class {
     if (this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
+    if (this._remoteAudio.srcObject) {
+      this._remoteAudio.play();
+    }
     this._libwebphone._callEvent("setPrimary", this);
   }
 
@@ -40,6 +44,9 @@ export default class {
     this._primary = false;
     if (this.isEstablished()) {
       this.hold();
+    }
+    if (this._remoteAudio.srcObject) {
+      this._remoteAudio.pause();
     }
     this._libwebphone._callEvent("clearPrimary", this);
   }
@@ -203,16 +210,25 @@ export default class {
     };
   }
 
-  _initEvents() {
+  _initEventBindings() {
     if (!this.hasSession()) {
       return;
     }
+
+    if (this._session.connection) {
+      this._session.connection.addEventListener("addstream", event => {
+        // set remote audio stream
+        this._remoteAudio.srcObject = event.stream;
+        if (this.isPrimary()) {
+          this._remoteAudio.play();
+        } else {
+          this._remoteAudio.pause();
+        }
+      });
+    }
+
     this._session.on("peerconnection", (...event) => {
-      console.log("peerconnection");
       this._libwebphone._callEvent("peerconnection", this, ...event);
-    });
-    this._session.on("addstream", event => {
-      console.log("addstream");
     });
     this._session.on("connecting", (...event) => {
       this._libwebphone._callEvent("connecting", this, ...event);
@@ -228,6 +244,7 @@ export default class {
     });
     this._session.on("confirmed", (...event) => {
       this._libwebphone._callEvent("confirmed", this, ...event);
+      console.log(this._session.connection);
       /*
       if (!this.isPrimary()) {
         this.hold();
