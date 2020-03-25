@@ -1,54 +1,29 @@
 "use strict";
 
-import EventEmitter from "events";
-import _ from "lodash";
-import i18next from "i18next";
-import Mustache from "mustache";
+import { merge } from "./lwpUtils";
+import lwpRenderer from "./lwpRenderer";
 import Tone from "tone";
 import AudioStreamMeter from "audio-stream-meter";
 import { Mutex } from "async-mutex";
 import adapter from "webrtc-adapter";
 
-class lwpMediaDevices extends EventEmitter {
-  constructor(libwebphone, config = {}, i18n = null) {
-    super();
+class lwpMediaDevices extends lwpRenderer {
+  constructor(libwebphone, config = {}) {
+    super(libwebphone);
     this._libwebphone = libwebphone;
-    return this._initInternationalization(config.i18n, i18n)
-      .then(() => {
-        return this._initProperties(config.mediaDevices);
-      })
-      .then(() => {
-        return this._initInputStreams();
-      })
-      .then(() => {
-        return this._initOutputStreams();
-      })
-      .then(() => {
-        return this._initAudioPreviewMeter();
-      })
-      .then(() => {
-        return this._initAvailableDevices();
-      })
-      .then(() => {
-        return this._initEventBindings();
-      })
-      .then(() => {
-        return Promise.all(
-          this._config.renderTargets.map(renderConfig => {
-            return this.render(renderConfig);
-          })
-        );
-      })
-      .then(() => {
-        if (this._config.startPreview) {
-          this.startPreviews();
-        } else {
-          this.stopPreviews();
-        }
-
-        console.log("media device init complete", this);
-        return this;
-      });
+    this._initProperties(config);
+    this._initInternationalization(config.i18n || {});
+    this._initInputStreams();
+    this._initOutputStreams();
+    this._initAvailableDevices();
+    this._initEventBindings();
+    this._initRenderTargets();
+    if (this._config.startPreview) {
+      this.startPreviews();
+    } else {
+      this.stopPreviews();
+    }
+    return this;
   }
 
   startPreviews(show = true) {
@@ -56,13 +31,16 @@ class lwpMediaDevices extends EventEmitter {
 
     if (show) {
       this._renders.forEach(render => {
-        Object.keys(render.config.previews).forEach(deviceKind => {
-          let preview = render.config.previews[deviceKind];
-          if (
-            preview.element &&
-            (!preview.element.style || preview.element.style.display == "none")
-          ) {
-            preview.element.style.display = preview.displayValue || "block";
+        Object.keys(render.by_id).forEach(deviceKind => {
+          if (render.by_id[deviceKind].preview) {
+            let preview = render.by_id[deviceKind];
+            if (
+              preview.element &&
+              (!preview.element.style ||
+                preview.element.style.display == "none")
+            ) {
+              preview.element.style.display = preview.displayValue || "block";
+            }
           }
         });
       });
@@ -71,9 +49,7 @@ class lwpMediaDevices extends EventEmitter {
     // TODO: ensure this._outputStreams is active and
     //   associated with the selected output
 
-    return this._mediaStreamPromise.then(mediaStream => {
-      return this._startInputStreams(mediaStream);
-    });
+    this._startInputStreams();
   }
 
   stopPreviews(hide = true) {
@@ -81,14 +57,17 @@ class lwpMediaDevices extends EventEmitter {
 
     if (hide) {
       this._renders.forEach(render => {
-        Object.keys(render.config.previews).forEach(deviceKind => {
-          let preview = render.config.previews[deviceKind];
-          if (
-            preview.element &&
-            (!preview.element.style || preview.element.style.display != "none")
-          ) {
-            preview.displayValue = preview.element.style.display || "block";
-            preview.element.style.display = "none";
+        Object.keys(render.by_id).forEach(deviceKind => {
+          if (render.by_id[deviceKind].preview) {
+            let preview = render.by_id[deviceKind];
+            if (
+              preview.element &&
+              (!preview.element.style ||
+                preview.element.style.display != "none")
+            ) {
+              preview.displayValue = preview.element.style.display || "block";
+              preview.element.style.display = "none";
+            }
           }
         });
       });
@@ -107,15 +86,14 @@ class lwpMediaDevices extends EventEmitter {
     // TODO: ensure this._outputStreams is active and
     //   associated with the selected output
 
-    return this._mediaStreamPromise.then(mediaStream => {
-      let startMuted = [];
-      Object.keys(this._config).forEach(category => {
-        if (this._config[category].startMuted) {
-          startMuted.push(this._deviceKindtoTrackKind(category));
-        }
-      });
-      return this._startInputStreams(mediaStream, null, startMuted);
+    let startMuted = [];
+    Object.keys(this._config).forEach(category => {
+      if (this._config[category].startMuted) {
+        startMuted.push(this._deviceKindtoTrackKind(category));
+      }
     });
+
+    return this._startInputStreams(null, startMuted);
   }
 
   stopStreams() {
@@ -124,76 +102,6 @@ class lwpMediaDevices extends EventEmitter {
     if (!this._previewActive) {
       this._stopAllInputs();
     }
-  }
-
-  startPlayTone(tone) {
-    console.log("start playing tone " + tone);
-  }
-
-  stopPlayTone(tone) {
-    console.log("stop playing tone " + tone);
-  }
-
-  startRinging() {}
-
-  stopRinging() {}
-
-  async changeDevice(deviceKind, deviceId) {
-    const release = await this._changeStreamMutex.acquire();
-    return new Promise((resolve, reject) => {
-      let preferedDevice = this._findAvailableDevice(deviceKind, deviceId);
-
-      if (!preferedDevice) {
-        // TODO: create a meaningful return/error
-        release();
-        reject();
-      }
-
-      if (!preferedDevice.connected) {
-        // TODO: create a meaningful return/error
-        release();
-        reject();
-      }
-
-      var maxPreference = this._availableDevices[deviceKind].reduce(
-        (max, availableDevice) => {
-          if (
-            (availableDevice.preference || 0) > max &&
-            availableDevice.id != preferedDevice.id
-          ) {
-            return availableDevice.preference;
-          }
-          return max;
-        },
-        0
-      );
-      preferedDevice.preference = maxPreference + 1;
-      this._sortAvailableDevices();
-
-      switch (deviceKind) {
-        case "audiooutput":
-          return this._changeOutputDevice(preferedDevice)
-            .then(() => {
-              this._renders.forEach(render => this._renderUpdate(render));
-            })
-            .then(() => {
-              release();
-              resolve();
-            });
-        default:
-          return this._changeInputDevice(preferedDevice)
-            .then(() => {
-              this._renders.forEach(render => this._renderUpdate(render));
-            })
-            .then(() => {
-              release();
-              resolve();
-            });
-      }
-    }).catch(error => {
-      release();
-      throw error;
-    });
   }
 
   mute(deviceKind = null) {
@@ -223,12 +131,70 @@ class lwpMediaDevices extends EventEmitter {
     }
   }
 
-  async refreshAvailableDevices() {
-    const release = await this._changeStreamMutex.acquire();
-    var alteredTrackKinds = [];
+  startPlayTone(tone) {
+    console.log("start playing tone " + tone);
+  }
 
+  stopPlayTone(tone) {
+    console.log("stop playing tone " + tone);
+  }
+
+  startRinging() {}
+
+  stopRinging() {}
+
+  async changeDevice(deviceKind, deviceId) {
+    let preferedDevice = this._findAvailableDevice(deviceKind, deviceId);
+
+    if (!preferedDevice) {
+      // TODO: create a meaningful return/error
+      return;
+    }
+
+    if (!preferedDevice.connected) {
+      // TODO: create a meaningful return/error
+      return;
+    }
+
+    let release = await this._changeStreamMutex.acquire();
+    let maxPreference = this._availableDevices[deviceKind].reduce(
+      (max, availableDevice) => {
+        if (
+          (availableDevice.preference || 0) > max &&
+          availableDevice.id != preferedDevice.id
+        ) {
+          return availableDevice.preference;
+        }
+        return max;
+      },
+      0
+    );
+    preferedDevice.preference = maxPreference + 1;
+
+    this._sortAvailableDevices();
+
+    switch (deviceKind) {
+      case "audiooutput":
+        this._changeOutputDevice(preferedDevice).then(() => {
+          this.renderUpdates(render => this.updateRender(render));
+          this.render();
+          release();
+        });
+      default:
+        return this._changeInputDevice(preferedDevice).then(() => {
+          this.renderUpdates(render => this.updateRender(render));
+          this.render();
+          release();
+        });
+    }
+  }
+
+  async refreshAvailableDevices() {
     return this._shimEnumerateDevices()
-      .then(devices => {
+      .then(async devices => {
+        let release = await this._changeStreamMutex.acquire();
+        let alteredTrackKinds = [];
+
         // NOTE: assume all devices are disconnected then transition
         //  each back to connected if enumerated
         this._forEachAvailableDevice(availableDevice => {
@@ -304,115 +270,76 @@ class lwpMediaDevices extends EventEmitter {
             }
           });
 
-          return this._startInputStreams(
-            mediaStream,
-            alteredConstraints,
-            startMuted
-          );
+          release();
+
+          return this._startInputStreams(alteredConstraints, startMuted);
         });
       })
       .then(() => {
-        return this._sortAvailableDevices();
-      })
-      .then(() => {
-        this._renders.forEach(render => this._renderUpdate(render));
-        release();
-      })
-      .catch(error => {
-        release();
-        throw error;
+        this._sortAvailableDevices();
+        this.renderUpdates(render => this.updateRender(render));
+        this.render();
       });
   }
 
-  render(config = {}) {
-    return new Promise(resolve => {
-      let template = config.template || this._defaultTemplate();
-      let renderConfig = this._renderConfig(config);
-      Object.keys(this._availableDevices).forEach(deviceKind => {
-        let devices = this._availableDevices[deviceKind].slice(0);
-        devices.sort((a, b) => {
-          return a.displayOrder - b.displayOrder;
-        });
-        renderConfig[deviceKind].devices = devices;
-      });
-      let render = {
-        html: Mustache.render(template, renderConfig),
-        template: template,
-        config: renderConfig
-      };
-      resolve(render);
-    }).then(render => {
-      let selectors = render.config.selectors;
-      let previews = render.config.previews;
+  updateRender(render) {
+    render.data.loaded = this._loaded;
 
-      if (!render.config.root.element && render.config.root.elementId) {
-        render.config.root.element = document.getElementById(
-          render.config.root.elementId
+    Object.keys(this._availableDevices).forEach(deviceKind => {
+      let devices = this._availableDevices[deviceKind].slice(0);
+      devices.sort((a, b) => {
+        return a.displayOrder - b.displayOrder;
+      });
+      render.data[deviceKind].devices = devices;
+    });
+
+    this._mediaStreamPromise.then(mediaStream => {
+      let audioTrack = mediaStream.getTracks().find(track => {
+        return track.kind == "audio" && track.readyState == "live";
+      });
+
+      if (render.previewAudioMeter) {
+        render.previewAudioMeter.close();
+      }
+
+      if (audioTrack) {
+        let previewAudioContext = new AudioContext();
+        let previewMediaStream = previewAudioContext.createMediaStreamSource(
+          mediaStream
         );
+        render.previewAudioMeter = AudioStreamMeter.audioStreamProcessor(
+          previewAudioContext,
+          () => {
+            if (
+              render.by_id.audioinputpreview &&
+              render.by_id.audioinputpreview.element
+            ) {
+              let element = render.by_id.audioinputpreview.element.children[0];
+
+              element.style.width = render.previewAudioMeter.volume * 100 + "%";
+            }
+          }
+        );
+        previewMediaStream.connect(render.previewAudioMeter);
       }
-
-      render.config.root.element.innerHTML = render.html;
-
-      Object.keys(selectors).forEach(selector => {
-        let elementId = selectors[selector].elementId;
-        let element = document.getElementById(elementId);
-        selectors[selector].element = element;
-
-        if (element) {
-          Object.keys(selectors[selector].events || {}).forEach(event => {
-            let callback = selectors[selector].events[event];
-            element[event] = callback;
-          });
-        }
-      });
-
-      Object.keys(previews).forEach(preview => {
-        let elementId = previews[preview].elementId;
-        let element = document.getElementById(elementId);
-        previews[preview].element = element;
-
-        if (element) {
-          Object.keys(previews[preview].events || {}).forEach(event => {
-            let callback = previews[preview].events[event];
-            element[event] = callback;
-          });
-        }
-      });
-
-      if (previews.videoinput.element) {
-        this._mediaStreamPromise.then(mediaStream => {
-          previews.videoinput.element.srcObject = mediaStream;
-        });
-      }
-
-      this._renders.push(render);
     });
   }
 
   /** Init functions */
 
-  _initInternationalization(config = { fallbackLng: "en" }, i18n = null) {
-    /*
-        if (i18n) {
-            this._translator = i18n;
-            return Promise.resolve();
-        }
-
-        var i18nPromise = i18next.init(config);
-        i18next.addResourceBundle('en', 'libwebphone', {
-            mediaDevices: {
-                legend: 'Select your devices',
-                none: 'None',
-                audiooutput: 'Speaker',
-                audioinput: 'Microphone',
-                videoinput: 'Camera'
-            }
-        });
-
-        return i18nPromise.then(translator => this._translator = translator);
-        */
-    this._translator = key => key;
-    return Promise.resolve();
+  _initInternationalization(config) {
+    let defaults = {
+      en: {
+        legend: "Select your devices",
+        none: "None",
+        audiooutput: "Speaker",
+        audioinput: "Microphone",
+        videoinput: "Camera",
+        loading: "Finding media devices..."
+      }
+    };
+    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    this._libwebphone.i18nAddResourceBundles("mediaDevices", resourceBundles);
   }
 
   _initProperties(config) {
@@ -442,17 +369,7 @@ class lwpMediaDevices extends EventEmitter {
       startPreview: true,
       startStreams: false
     };
-    this._config = this._merge(defaults, config);
-    this._config.renderTargets.forEach((target, index) => {
-      if (typeof target == "string") {
-        this._config.renderTargets[index] = {
-          root: {
-            elementId: target,
-            element: document.getElementById(target)
-          }
-        };
-      }
-    });
+    this._config = merge(defaults, config);
 
     // NOTE: it makes more since if configured with highest priority to
     //   lowest, but we use the index number to represent that so flip it
@@ -462,163 +379,287 @@ class lwpMediaDevices extends EventEmitter {
 
     this._inputActive = false;
     this._previewActive = false;
-    this._renders = [];
+
     this._availableDevices = {
       audiooutput: [],
       audioinput: [],
       videoinput: [
         this._deviceParameters({
           deviceId: "none",
-          label: this._translator("libwebphone:mediaDevices.none"),
+          label: "libwebphone:mediaDevices.none",
           kind: "videoinput"
         })
       ]
     };
-    this._changeStreamMutex = new Mutex();
 
-    return Promise.resolve();
+    (this._loaded = false), (this._changeStreamMutex = new Mutex());
   }
 
   _initInputStreams() {
     let constraints = {
       audio: this._config["audioinput"].enabled,
-      video: this._config["audioinput"].enabled
+      video: this._config["videoinput"].enabled
     };
 
     this._mediaStreamPromise = this._shimGetUserMedia(constraints);
+    console.log("here 1.1", this._mediaStreamPromise);
 
     return this._mediaStreamPromise;
   }
 
   _initOutputStreams() {
-    // NOTE: work in progress
-    return Promise.resolve();
-  }
-
-  _initAudioPreviewMeter() {
-    // TODO: there is likely something cleaner we can do with the
-    //   Tone library, maybe https://tonejs.github.io/examples/mic.html
-    return this._mediaStreamPromise.then(mediaStream => {
-      let audioTrack = mediaStream.getTracks().find(track => {
-        return track.kind == "audio" && track.readyState == "live";
-      });
-
-      if (this._previewAudioMeter) {
-        this._previewAudioMeter.close();
-      }
-
-      if (audioTrack) {
-        let previewAudioContext = new AudioContext();
-        let previewMediaStream = previewAudioContext.createMediaStreamSource(
-          mediaStream
-        );
-        this._previewAudioMeter = AudioStreamMeter.audioStreamProcessor(
-          previewAudioContext,
-          () => {
-            this._renders.forEach(render => {
-              if (
-                render.config.previews.audioinput &&
-                render.config.previews.audioinput.element
-              ) {
-                let element =
-                  render.config.previews.audioinput.element.children[0];
-                element.style.width =
-                  this._previewAudioMeter.volume * 100 + "%";
-              }
-            });
-          }
-        );
-        previewMediaStream.connect(this._previewAudioMeter);
-      }
-    });
+    this._outputAudio = document.createElement("audio");
   }
 
   _initAvailableDevices() {
-    return this._mediaStreamPromise.then(mediaStream => {
-      return this._shimEnumerateDevices()
-        .then(devices => {
-          this._importInputDevices(devices);
-          this._sortAvailableDevices();
-          return mediaStream;
-        })
-        .then(mediaStream => {
-          mediaStream.getTracks().forEach(track => {
-            let trackParameters = this._trackParameters(track);
-            let deviceKind = trackParameters.deviceKind;
-            let deviceId = trackParameters.settings.deviceId;
-            let availableDevice = this._findAvailableDevice(
-              deviceKind,
-              deviceId
-            );
-
-            if (availableDevice) {
-              Object.assign(availableDevice, trackParameters, { active: true });
-            }
-
-            if (!this._config.startPreview && !this._config.startStreams) {
-              track.enabled = false;
-              track.stop();
-              mediaStream.removeTrack(track);
-            }
-          });
-          Object.keys(this._availableDevices).forEach(deviceKind => {
-            let activeDevice = this._availableDevices[deviceKind].find(
-              availableDevice => {
-                return availableDevice.active;
-              }
-            );
-            if (!activeDevice) {
-              let availableDevice = this._availableDevices[deviceKind][0];
-              if (availableDevice) {
-                availableDevice.active = true;
-              }
-            }
-          });
+    this._mediaStreamPromise.then(mediaStream => {
+      this._shimEnumerateDevices().then(devices => {
+        console.log("here 1");
+        this._importInputDevices(devices);
+        console.log("here 2");
+        this._sortAvailableDevices();
+        console.log("here 3");
+        mediaStream.getTracks().forEach(track => {
+          console.log("here 4");
+          let trackParameters = this._trackParameters(track);
+          let deviceKind = trackParameters.deviceKind;
+          let deviceId = trackParameters.settings.deviceId;
+          let availableDevice = this._findAvailableDevice(deviceKind, deviceId);
+          console.log("here 5");
+          if (availableDevice) {
+            Object.assign(availableDevice, trackParameters, { active: true });
+          }
+          console.log("here 6");
+          if (!this._config.startPreview && !this._config.startStreams) {
+            track.enabled = false;
+            track.stop();
+            mediaStream.removeTrack(track);
+          }
         });
+
+        console.log("here 7");
+        Object.keys(this._availableDevices).forEach(deviceKind => {
+          let activeDevice = this._availableDevices[deviceKind].find(
+            availableDevice => {
+              return availableDevice.active;
+            }
+          );
+          console.log("here 8");
+          if (!activeDevice) {
+            let availableDevice = this._availableDevices[deviceKind][0];
+            if (availableDevice) {
+              availableDevice.active = true;
+            }
+          }
+        });
+        console.log("here 9");
+        this._loaded = true;
+        this.renderUpdates(render => this.updateRender(render));
+        this.render();
+      });
     });
   }
 
   _initEventBindings() {
-    return new Promise(resolve => {
-      if (this._config.detectDeviceChanges) {
-        this._shimOnDeviceChange = event => {
-          this.refreshAvailableDevices();
-        };
-      }
+    if (this._config.detectDeviceChanges) {
+      navigator.mediaDevices.ondevicechange = event => {
+        this.refreshAvailableDevices();
+      };
+    }
+  }
 
-      resolve();
+  _initRenderTargets() {
+    this._config.renderTargets.map(renderTarget => {
+      return this.renderAddTarget(renderTarget);
     });
   }
 
-  /** Util Functions */
+  /** Render Helpers */
+
+  _renderDefaultConfig() {
+    return {
+      template: this._renderDefaultTemplate(),
+      i18n: {
+        legend: "libwebphone:mediaDevices.legend",
+        none: "libwebphone:mediaDevices.none",
+        audiooutput: "libwebphone:mediaDevices.audiooutput",
+        audioinput: "libwebphone:mediaDevices.audioinput",
+        videoinput: "libwebphone:mediaDevices.videoinput",
+        loading: "libwebphone:mediaDevices.loading"
+      },
+      by_id: {
+        audiooutput: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              if (element.options) {
+                let deviceId = element.options[element.selectedIndex].value;
+                this.changeDevice("audiooutput", deviceId);
+              }
+            }
+          }
+        },
+        audioinput: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              if (element.options) {
+                let deviceId = element.options[element.selectedIndex].value;
+                this.changeDevice("audioinput", deviceId);
+              }
+            }
+          }
+        },
+        videoinput: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              if (element.options) {
+                let deviceId = element.options[element.selectedIndex].value;
+                this.changeDevice("videoinput", deviceId);
+              }
+            }
+          }
+        },
+        audiooutputpreview: {
+          preview: "audiooutput",
+          events: {
+            onclick: event => {
+              let synth = new Tone.Synth().toMaster();
+              synth.triggerAttackRelease("C4", "8n");
+            }
+          }
+        },
+        audioinputpreview: {
+          preview: "audioinput"
+        },
+        videoinputpreview: {
+          preview: "videoinput"
+        }
+      },
+      data: {
+        loaded: this._loaded,
+        audiooutput: this._config.audiooutput,
+        audioinput: this._config.audioinput,
+        videoinput: this._config.videoinput
+      }
+    };
+  }
+
+  _renderDefaultTemplate() {
+    // TODO: render advanced settings from capabilities
+    return `
+        <div>
+            <legend>{{i18n.legend}}</legend>
+
+            {{#data.loaded}}
+            {{#data.audiooutput.enabled}}
+                <div>
+                    <label for="{{by_id.audiooutput.elementId}}">
+                        {{i18n.audiooutput}}
+                    </label>
+                    <select id="{{by_id.audiooutput.elementId}}">
+                        {{#data.audiooutput.devices}}
+                            {{#connected}}
+                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                            {{/connected}}
+                        {{/data.audiooutput.devices}}
+                    </select>
+                    {{#data.audiooutput.livePreview}}
+                        <a id="{{by_id.audiooutputpreview.elementId}}" href="#">Test</a>
+                    {{/data.audiooutput.livePreview}}
+                </div>
+            {{/data.audiooutput.enabled}}
+
+            {{#data.audioinput.enabled}}
+                <div>
+                    <label for="{{by_id.audioinput.elementId}}">
+                        {{i18n.audioinput}}
+                    </label>
+                    <select id="{{by_id.audioinput.elementId}}">
+                        {{#data.audioinput.devices}}
+                            {{#connected}}
+                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                            {{/connected}}    
+                        {{/data.audioinput.devices}}
+                    </select>
+                    {{#data.audioinput.livePreview}}
+                        <div id="{{by_id.audioinputpreview.elementId}}" style="width:300px;height:10px;background-color: lightgray;margin: 10px 0px;">
+                            <div style="height:10px; background-color: #00aeef;"></div>
+                        </div>
+                    {{/data.audioinput.livePreview}}                    
+                </div>
+            {{/data.audioinput.enabled}}
+
+            {{#data.videoinput.enabled}}
+                {{#data.videoinput.livePreview}}
+                    <div>
+                        <video id="{{videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
+                    </div>
+                {{/data.videoinput.livePreview}}               
+                <div>
+                    <label for="{{by_id.videoinput.elementId}}">
+                        {{i18n.videoinput}}
+                    </label>                
+                    <select id="{{by_id.videoinput.elementId}}">
+                        {{#data.videoinput.devices}}
+                            {{#connected}}
+                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                            {{/connected}}
+                        {{/data.videoinput.devices}}
+                    </select>
+                </div>
+            {{/data.videoinput.enabled}}
+            {{/data.loaded}}
+
+            {{^data.loaded}}
+            <div style="margin: 50px 5px;">
+              <div class="spinner">
+                <div class="bounce1"></div>
+                <div class="bounce2"></div>
+                <div class="bounce3"></div>
+              </div>
+              <div style="text-align: center;">{{i18n.loading}}</div>
+            </div>
+            {{/data.loaded}}
+        </div>
+        `;
+  }
+
+  /** Helper functions */
 
   _changeOutputDevice(deviceKind, deviceId) {
     // TODO: clean this up...
-    return new Promise(resolve => {
-      this._availableDevices["audiooutput"].forEach(device => {
-        if (device.id == deviceId) {
-          device.prefered = true;
-        } else {
-          device.prefered = false;
-        }
-      });
-      this._previewOutputAudio.setSinkId(deviceId).then(() => {
-        this._renders.forEach(render => this._renderUpdate(render));
-      });
-
-      resolve();
+    this._availableDevices["audiooutput"].forEach(device => {
+      if (device.id == deviceId) {
+        device.prefered = true;
+      } else {
+        device.prefered = false;
+      }
     });
+
+    this._libwebphone._mediaDevicesEvent(
+      "audio.output.changed",
+      this,
+      deviceId
+    );
   }
 
   _muteInput(deviceKind = null) {
     return this._mediaStreamPromise.then(mediaStream => {
       let trackKind = this._deviceKindtoTrackKind(deviceKind);
+
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
           track.enabled = false;
-          this.emit(track.kind + ".input.muted", this, track);
+          this._libwebphone._mediaDevicesEvent(
+            track.kind + ".input.muted",
+            this,
+            track
+          );
         }
       });
+
       return mediaStream;
     });
   }
@@ -626,12 +667,18 @@ class lwpMediaDevices extends EventEmitter {
   _unmuteInput(deviceKind = null) {
     return this._mediaStreamPromise.then(mediaStream => {
       let trackKind = this._deviceKindtoTrackKind(deviceKind);
+
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
           track.enabled = true;
-          this.emit(track.kind + ".input.unmuted", this, track);
+          this._libwebphone._mediaDevicesEvent(
+            track.kind + ".input.unmuted",
+            this,
+            track
+          );
         }
       });
+
       return mediaStream;
     });
   }
@@ -639,23 +686,35 @@ class lwpMediaDevices extends EventEmitter {
   _toggleMuteInput(deviceKind = null) {
     return this._mediaStreamPromise.then(mediaStream => {
       let trackKind = this._deviceKindtoTrackKind(deviceKind);
+
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
           track.enabled = !track.enabled;
+
           if (track.enabled) {
-            this.emit(track.kind + ".input.unmuted", this, track);
+            this._libwebphone._mediaDevicesEvent(
+              track.kind + ".input.unmuted",
+              this,
+              track
+            );
           } else {
-            this.emit(track.kind + ".input.muted", this, track);
+            this._libwebphone._mediaDevicesEvent(
+              track.kind + ".input.muted",
+              this,
+              track
+            );
           }
         }
       });
+
       return mediaStream;
     });
   }
 
   _stopAllInputs(deviceKind = null) {
     return this._mediaStreamPromise.then(mediaStream => {
-      var trackKind = this._deviceKindtoTrackKind(deviceKind);
+      let trackKind = this._deviceKindtoTrackKind(deviceKind);
+
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
           track.enabled = false;
@@ -663,6 +722,7 @@ class lwpMediaDevices extends EventEmitter {
           mediaStream.removeTrack(track);
         }
       });
+
       return mediaStream;
     });
   }
@@ -697,20 +757,22 @@ class lwpMediaDevices extends EventEmitter {
       if (trackConstraints) {
         let constraints = {};
         constraints[trackKind] = trackConstraints;
-        return this._startInputStreams(
-          mediaStream,
-          constraints,
-          mutedInputs
-        ).then(() => {
+        return this._startInputStreams(constraints, mutedInputs).then(() => {
           if (!this._inputActive && !this._previewActive) {
             this._stopAllInputs();
           }
         });
       }
+
+      this._libwebphone._mediaDevicesEvent(
+        trackKind + ".input.changed",
+        this,
+        preferedDevice
+      );
     });
   }
 
-  _startInputStreams(mediaStream, constraints = null, mutedInputs = []) {
+  _startInputStreams(constraints = null, mutedInputs = []) {
     if (!constraints) {
       constraints = this._createConstraints();
     }
@@ -774,20 +836,14 @@ class lwpMediaDevices extends EventEmitter {
       let preferedAudioConstraints = preferedAudioDevice.constraints || {};
       preferedAudioConstraints.deviceId = {};
       preferedAudioConstraints.deviceId.exact = preferedAudioDevice.id;
-      constraints.audio = this._merge(
-        constraints.audio,
-        preferedAudioConstraints
-      );
+      constraints.audio = merge(constraints.audio, preferedAudioConstraints);
     }
 
     if (preferedVideoDevice) {
       let preferedVideoConstraints = preferedVideoDevice.constraints || {};
       preferedVideoConstraints.deviceId = {};
       preferedVideoConstraints.deviceId.exact = preferedVideoDevice.id;
-      constraints.video = this._merge(
-        constraints.video,
-        preferedVideoConstraints
-      );
+      constraints.video = merge(constraints.video, preferedVideoConstraints);
     }
 
     if (
@@ -811,10 +867,6 @@ class lwpMediaDevices extends EventEmitter {
     return constraints;
   }
 
-  _merge(...args) {
-    return _.merge(...args);
-  }
-
   /** MediaStream Helpers */
 
   _addTrack(mediaStream, track) {
@@ -836,13 +888,24 @@ class lwpMediaDevices extends EventEmitter {
       }
     );
 
-    if (this._inputActive || this._previewActive) {
-      this.emit("input.added", this, this._trackParameters(track));
-      if (track.enabled) {
-        this.emit(track.kind + ".input.unmuted", this, track);
-      } else {
-        this.emit(track.kind + ".input.muted", this, track);
-      }
+    this._libwebphone._mediaDevicesEvent(
+      track.kind + ".input.added",
+      this,
+      this._trackParameters(track)
+    );
+
+    if (track.enabled) {
+      this._libwebphone._mediaDevicesEvent(
+        track.kind + ".input.unmuted",
+        this,
+        track
+      );
+    } else {
+      this._libwebphone._mediaDevicesEvent(
+        track.kind + ".input.muted",
+        this,
+        track
+      );
     }
   }
 
@@ -866,9 +929,11 @@ class lwpMediaDevices extends EventEmitter {
       }
     );
 
-    if (this._inputActive || this._previewActive) {
-      this.emit("input.removed", this, this._trackParameters(track));
-    }
+    this._libwebphone._mediaDevicesEvent(
+      track.kind + ".input.removed",
+      this,
+      track
+    );
   }
 
   _trackParameters(track) {
@@ -961,7 +1026,7 @@ class lwpMediaDevices extends EventEmitter {
     var i18nKey = "libwebphone:mediaDevices." + deviceKind;
     return (
       device.label ||
-      i18n(i18nKey) + " " + (this._availableDevices[deviceKind].length + 1)
+      i18nKey + " " + (this._availableDevices[deviceKind].length + 1)
     );
   }
 
@@ -976,185 +1041,6 @@ class lwpMediaDevices extends EventEmitter {
     }
   }
 
-  /** Render Helpers */
-
-  _renderUpdate(render) {
-    var renderConfig = render.config;
-    var selectors = render.config.selectors;
-
-    Object.keys(this._availableDevices).forEach(deviceKind => {
-      let devices = this._availableDevices[deviceKind].slice(0);
-      devices.sort((a, b) => {
-        return a.displayOrder - b.displayOrder;
-      });
-      renderConfig[deviceKind].devices = devices;
-    });
-
-    (render.html = Mustache.render(render.template, renderConfig)),
-      // NOTE: copy the html fragements into each selector
-      //   so that we don't loose the even callbacks
-      Object.keys(selectors).forEach(selector => {
-        let elementId = selectors[selector].elementId;
-        let element = selectors[selector].element;
-        let renderedElements = document.createElement("div");
-        let fragment = document.createDocumentFragment();
-        renderedElements.innerHTML = render.html;
-        fragment.appendChild(renderedElements);
-
-        if (element) {
-          element.innerHTML = fragment.getElementById(elementId).innerHTML;
-        }
-      });
-  }
-
-  _renderConfig(config = {}) {
-    let i18n = this._translator;
-    var randomElementId = () => {
-      return (
-        "lwp" +
-        Math.random()
-          .toString(36)
-          .substr(2, 9)
-      );
-    };
-    var defaults = {
-      i18n: {
-        legend: i18n("libwebphone:mediaDevices.legend"),
-        none: i18n("libwebphone:mediaDevices.none"),
-        audiooutput: i18n("libwebphone:mediaDevices.audiooutput"),
-        audioinput: i18n("libwebphone:mediaDevices.audioinput"),
-        videoinput: i18n("libwebphone:mediaDevices.videoinput")
-      },
-      selectors: {
-        audiooutput: {
-          elementId: randomElementId(),
-          events: {
-            onchange: event => {
-              let element = event.srcElement;
-              if (element.options) {
-                let deviceId = element.options[element.selectedIndex].value;
-                this.changeDevice("audiooutput", deviceId);
-              }
-            }
-          }
-        },
-        audioinput: {
-          elementId: randomElementId(),
-          events: {
-            onchange: event => {
-              let element = event.srcElement;
-              if (element.options) {
-                let deviceId = element.options[element.selectedIndex].value;
-                this.changeDevice("audioinput", deviceId);
-              }
-            }
-          }
-        },
-        videoinput: {
-          elementId: randomElementId(),
-          events: {
-            onchange: event => {
-              let element = event.srcElement;
-              if (element.options) {
-                let deviceId = element.options[element.selectedIndex].value;
-                this.changeDevice("videoinput", deviceId);
-              }
-            }
-          }
-        }
-      },
-      previews: {
-        audiooutput: {
-          elementId: randomElementId(),
-          events: {
-            onclick: event => {
-              let synth = new Tone.Synth().toMaster();
-              synth.triggerAttackRelease("C4", "8n");
-            }
-          }
-        },
-        audioinput: {
-          elementId: randomElementId()
-        },
-        videoinput: {
-          elementId: randomElementId()
-        }
-      },
-      audiooutput: this._config.audiooutput,
-      audioinput: this._config.audioinput,
-      videoinput: this._config.videoinput
-    };
-
-    return this._merge(defaults, config);
-  }
-
-  _defaultTemplate() {
-    // TODO: render advanced settings from capabilities
-    return `
-        <div>
-            <legend>{{i18n.legend}}</legend>
-
-            {{#audiooutput.enabled}}
-                <div>
-                    <label for="{{selectors.audiooutput.elementId}}">
-                        {{i18n.audiooutput}}
-                    </label>
-                    <select id="{{selectors.audiooutput.elementId}}">
-                        {{#audiooutput.devices}}
-                            {{#connected}}
-                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                            {{/connected}}
-                        {{/audiooutput.devices}}
-                    </select>
-                    {{#audiooutput.livePreview}}
-                        <a id="{{previews.audiooutput.elementId}}" href="#">Test</a>
-                    {{/audiooutput.livePreview}}
-                </div>
-            {{/audiooutput.enabled}}
-
-            {{#audioinput.enabled}}
-                <div>
-                    <label for="{{selectors.audioinput.elementId}}">
-                        {{i18n.audioinput}}
-                    </label>
-                    <select id="{{selectors.audioinput.elementId}}">
-                        {{#audioinput.devices}}
-                            {{#connected}}
-                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                            {{/connected}}    
-                        {{/audioinput.devices}}
-                    </select>
-                    {{#audioinput.livePreview}}
-                        <div id="{{previews.audioinput.elementId}}" style="width:300px;height:10px;background-color: lightgray;margin: 10px 0px;">
-                            <div style="height:10px; background-color: #00aeef;"></div>
-                        </div>
-                    {{/audioinput.livePreview}}                    
-                </div>
-            {{/audioinput.enabled}}
-
-            {{#videoinput.enabled}}
-                {{#videoinput.livePreview}}
-                    <div>
-                        <video id="{{previews.videoinput.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
-                    </div>
-                {{/videoinput.livePreview}}               
-                <div>
-                    <label for="{{selectors.videoinput.elementId}}">
-                        {{i18n.videoinput}}
-                    </label>                
-                    <select id="{{selectors.videoinput.elementId}}">
-                        {{#videoinput.devices}}
-                            {{#connected}}
-                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                            {{/connected}}
-                        {{/videoinput.devices}}
-                    </select>
-                </div>
-            {{/videoinput.enabled}}
-        </div>
-        `;
-  }
-
   /** Shims */
 
   _shimEnumerateDevices() {
@@ -1162,11 +1048,18 @@ class lwpMediaDevices extends EventEmitter {
   }
 
   _shimGetUserMedia(constraints) {
-    return navigator.mediaDevices.getUserMedia(constraints);
-  }
-
-  set _shimOnDeviceChange(value) {
-    return (navigator.mediaDevices.ondevicechange = value);
+    console.log(constraints);
+    return navigator.mediaDevices.getUserMedia(constraints).catch(error => {
+      if (this._config.videoinput.enabled) {
+        this._config.videoinput.enabled = false;
+        delete constraints.video;
+        console.log(error);
+        console.log(constraints);
+        return navigator.mediaDevices.getUserMedia(constraints);
+      } else {
+        throw error;
+      }
+    });
   }
 }
 

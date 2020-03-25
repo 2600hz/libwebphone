@@ -15,10 +15,15 @@ export default class extends EventEmitter {
     this._initInternationalization(config.i18n);
 
     this._callList = new lwpCallList(this, config.callList);
+    console.log("call list startted");
     this._callControl = new lwpCallControl(this, config.callControl);
+    console.log("call control startted");
     this._dialpad = new lwpDialpad(this, config.dialpad);
+    console.log("call dialpad startted");
     this._userAgent = new lwpUserAgent(this, config.userAgent);
+    console.log("useragent startted");
     this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
+    console.log("media devices startted");
   } //end of constructor
 
   getCallControl() {
@@ -61,6 +66,13 @@ export default class extends EventEmitter {
     return this._translator;
   }
 
+  _initInternationalization(config = { fallbackLng: "en" }) {
+    this._i18nPromise = i18next.init(config).then(translator => {
+      this._translator = translator;
+      this.emit("language.changed", this, translator);
+    });
+  }
+
   _callEvent(type, call, ...data) {
     this.emit("call." + type, this, call);
     this.emit("call.updated", this, call);
@@ -71,10 +83,8 @@ export default class extends EventEmitter {
     this.emit("dialpad.updated", this, dialpad);
   }
 
-  _initInternationalization(config = { fallbackLng: "en" }) {
-    this._i18nPromise = i18next.init(config).then(translator => {
-      this._translator = translator;
-      this.emit("language.changed", this, translator);
-    });
+  _mediaDevicesEvent(type, mediaDevices, ...data) {
+    this.emit("mediaDevices." + type, this, mediaDevices);
+    this.emit("mediaDevices.updated", this, mediaDevices);
   }
 } //End of default class

@@ -18,6 +18,56 @@
         font-size: 14px;
         border-radius: 50%;
       }
+      .spinner {
+        margin: 100px auto 0;
+        width: 70px;
+        text-align: center;
+      }
+
+      .spinner > div {
+        width: 18px;
+        height: 18px;
+        background-color: #333;
+
+        border-radius: 100%;
+        display: inline-block;
+        -webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+        animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+      }
+
+      .spinner .bounce1 {
+        -webkit-animation-delay: -0.32s;
+        animation-delay: -0.32s;
+      }
+
+      .spinner .bounce2 {
+        -webkit-animation-delay: -0.16s;
+        animation-delay: -0.16s;
+      }
+
+      @-webkit-keyframes sk-bouncedelay {
+        0%,
+        80%,
+        100% {
+          -webkit-transform: scale(0);
+        }
+        40% {
+          -webkit-transform: scale(1);
+        }
+      }
+
+      @keyframes sk-bouncedelay {
+        0%,
+        80%,
+        100% {
+          -webkit-transform: scale(0);
+          transform: scale(0);
+        }
+        40% {
+          -webkit-transform: scale(1);
+          transform: scale(1);
+        }
+      }
     </style>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
@@ -105,15 +155,6 @@
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
-
-      webphone.getMediaDevices().then(mediaDevices => {
-        mediaDevices.on("input.added", (media, track) =>
-          console.log("input added: ", track)
-        );
-        mediaDevices.on("input.removed", (media, track) =>
-          console.log("input removed: ", track)
-        );
-      });
     </script>
   </head>
   <body>
@@ -123,34 +164,28 @@
           Audio Input:
           <span id="audio_mute_status">UNMUTED</span>
           <script type="text/javascript">
-            webphone.getMediaDevices().then(mediaDevices => {
-              mediaDevices.on(
-                "audio.input.muted",
-                () =>
-                  (document.querySelector("#audio_mute_status").innerHTML =
-                    "MUTED  ")
-              );
-              mediaDevices.on(
-                "audio.input.unmuted",
-                () =>
-                  (document.querySelector("#audio_mute_status").innerHTML =
-                    "UNMUTED")
-              );
-            });
+            webphone.on(
+              "mediaDevices.audio.input.muted",
+              () =>
+                (document.querySelector("#audio_mute_status").innerHTML =
+                  "MUTED  ")
+            );
+            webphone.on(
+              "mediaDevices.audio.input.unmuted",
+              () =>
+                (document.querySelector("#audio_mute_status").innerHTML =
+                  "UNMUTED")
+            );
           </script>
           <div>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('audioinput'));"
-            >
+            <button onclick="webphone.getMediaDevices().mute('audioinput');">
               Mute Audio
             </button>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('audioinput'));"
-            >
+            <button onclick="webphone.getMediaDevices().unmute('audioinput');">
               Unmute Audio
             </button>
             <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('audioinput'));"
+              onclick="webphone.getMediaDevices().toggleMute('audioinput');"
             >
               Toggle Audio Mute
             </button>
@@ -160,34 +195,28 @@
           Video Input:
           <span id="video_mute_status">UNMUTED</span>
           <script type="text/javascript">
-            webphone.getMediaDevices().then(mediaDevices => {
-              mediaDevices.on(
-                "video.input.muted",
-                () =>
-                  (document.querySelector("#video_mute_status").innerHTML =
-                    "MUTED  ")
-              );
-              mediaDevices.on(
-                "video.input.unmuted",
-                () =>
-                  (document.querySelector("#video_mute_status").innerHTML =
-                    "UNMUTED")
-              );
-            });
+            webphone.on(
+              "mediaDevices.video.input.muted",
+              () =>
+                (document.querySelector("#video_mute_status").innerHTML =
+                  "MUTED  ")
+            );
+            webphone.on(
+              "mediaDevices.video.input.unmuted",
+              () =>
+                (document.querySelector("#video_mute_status").innerHTML =
+                  "UNMUTED")
+            );
           </script>
           <div>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.mute('videoinput'));"
-            >
+            <button onclick="webphone.getMediaDevices().mute('videoinput');">
               Mute Video
             </button>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.unmute('videoinput'));"
-            >
+            <button onclick="webphone.getMediaDevices().unmute('videoinput');">
               Unmute Video
             </button>
             <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.toggleMute('videoinput'));"
+              onclick="webphone.getMediaDevices().toggleMute('videoinput');"
             >
               Toggle Video Mute
             </button>
@@ -196,24 +225,16 @@
         <div class="col" style="border-right: dashed;">
           <span id="video_mute_status">State Control</span>
           <div>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startPreviews());"
-            >
+            <button onclick="webphone.getMediaDevices().startPreviews();">
               Start Preview
             </button>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopPreviews());"
-            >
+            <button onclick="webphone.getMediaDevices().stopPreviews();">
               Stop Preview
             </button>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.startStreams());"
-            >
+            <button onclick="webphone.getMediaDevices().startStreams();">
               Start Call Streams
             </button>
-            <button
-              onclick="webphone.getMediaDevices().then(mediaDevices => mediaDevices.stopStreams());"
-            >
+            <button onclick="webphone.getMediaDevices().stopStreams();">
               Stop Call Streams
             </button>
           </div>
@@ -301,6 +322,7 @@
               }
             };
 
+            /*
             webphone.getMediaDevices().then(mediaDevices => {
               mediaDevices.render(customTemplateConfig1).then(() => {
                 document
@@ -315,6 +337,8 @@
                   });
               });
             });
+            */
+
             //Added by Mahfuz
           </script>
         </div>

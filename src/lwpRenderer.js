@@ -4,13 +4,16 @@ import Mustache from "mustache";
 import { merge, randomElementId } from "./lwpUtils";
 
 export default class {
-  constructor() {
+  constructor(libwebphone) {
     this._renders = [];
     this._loaded = false;
+    libwebphone.on("language.changed", () => {
+      this._loaded = true;
+      this.render();
+    });
     /*
     window.addEventListener("load", () => {
       this._loaded = true;
-      this.render();
     });
     */
   }
@@ -79,6 +82,8 @@ export default class {
       by_name: render.by_name,
       i18n: this._i18nTranslate(render.i18n)
     };
+
+    console.log(renderConfig);
 
     render.html = Mustache.render(render.template, renderConfig);
 

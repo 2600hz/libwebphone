@@ -5,7 +5,7 @@ import lwpRenderer from "./lwpRenderer";
 
 export default class extends lwpRenderer {
   constructor(libwebphone, config = {}) {
-    super();
+    super(libwebphone);
     this._libwebphone = libwebphone;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
@@ -59,6 +59,7 @@ export default class extends lwpRenderer {
 
   _initProperties(config) {
     let defaults = {
+      renderTargets: [],
       tones: {
         zero: [1336, 697],
         one: [1336, 697],
@@ -78,9 +79,7 @@ export default class extends lwpRenderer {
     this._digits = [];
   }
 
-  _initEventBindings() {
-    this._libwebphone.on("language.changed", () => this.render());
-  }
+  _initEventBindings() {}
 
   _initRenderTargets() {
     this._config.renderTargets.map(renderTarget => {

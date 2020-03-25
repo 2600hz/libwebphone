@@ -5,7 +5,7 @@ import lwpRenderer from "./lwpRenderer";
 
 export default class extends lwpRenderer {
   constructor(libwebphone, config = {}) {
-    super();
+    super(libwebphone);
     this._libwebphone = libwebphone;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
@@ -27,11 +27,11 @@ export default class extends lwpRenderer {
       }
     }
 
-    this._libwebphone.getMediaDevices().then(mediaDevices => {
-      let userAgent = this._libwebphone.getUserAgent();
-      let stream = mediaDevices.startStreams();
+    let mediaDevices = this._libwebphone.getMediaDevices();
+    let userAgent = this._libwebphone.getUserAgent();
+    mediaDevices.startStreams().then(streams => {
       let options = {
-        mediaStream: stream
+        mediaStream: streams
       };
       userAgent.call(numbertocall, options);
     });
@@ -97,7 +97,9 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {};
+    let defaults = {
+      renderTargets: []
+    };
     this._config = merge(defaults, config);
     this._lastCall = "*97";
   }
@@ -106,7 +108,6 @@ export default class extends lwpRenderer {
     this._libwebphone.on("call.added", () => this.updateControls());
     this._libwebphone.on("call.updated", () => this.updateControls());
     this._libwebphone.on("call.removed", () => this.updateControls());
-    this._libwebphone.on("language.changed", () => this.render());
   }
 
   _initRenderTargets() {

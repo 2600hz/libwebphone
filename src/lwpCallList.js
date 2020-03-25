@@ -6,7 +6,7 @@ import lwpCall from "./lwpCall";
 
 export default class extends lwpRenderer {
   constructor(libwebphone, config = {}) {
-    super();
+    super(libwebphone);
     this._libwebphone = libwebphone;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
@@ -102,7 +102,9 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {};
+    let defaults = {
+      renderTargets: []
+    };
     this._config = merge(defaults, config);
 
     let newCall = new lwpCall(this._libwebphone);
@@ -124,7 +126,6 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
     this._libwebphone.on("call.updated", () => this.updateRenders());
-    this._libwebphone.on("language.changed", () => this.render());
   }
 
   _initRenderTargets() {

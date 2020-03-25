@@ -6,7 +6,7 @@ import AudioStreamMeter from "audio-stream-meter";
 
 class lwpMediaDevices extends EventEmitter {
   constructor(libwebphone, config = {}, i18n = null) {
-    super();
+    super(libwebphone);
     this._libwebphone = libwebphone;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
@@ -25,6 +25,76 @@ class lwpMediaDevices extends EventEmitter {
 
     return this;
   }
+
+  /** Init functions */
+
+  _initInternationalization(config) {
+    let defaults = {
+      en: {
+        new: "New Call"
+      }
+    };
+    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    this._libwebphone.i18nAddResourceBundles("callList", resourceBundles);
+  }
+
+  _initProperties(config) {
+    let defaults = {};
+    this._config = merge(defaults, config);
+
+    let newCall = new lwpCall(this._libwebphone);
+    newCall.setPrimary();
+    this._calls = [newCall];
+  }
+
+  _initEventBindings() {
+    this._libwebphone.on(
+      "mediaDevices.audiooutput.change",
+      (lwp, mediaDevices, DeviceId) => {
+        this.updateRenders();
+      }
+    );
+  }
+
+  _initRenderTargets() {
+    this._config.renderTargets.map(renderTarget => {
+      return this.renderAddTarget(renderTarget);
+    });
+  }
+
+  /** Render Helpers */
+
+  _renderDefaultConfig() {
+    let i18n = this._libwebphone.i18nTranslator();
+    return {
+      template: this._renderDefaultTemplate(),
+      i18n: {
+        new: "libwebphone:callList.new"
+      },
+      data: {
+        calls: this._getCallSummaries(),
+        primary: this.getCall()
+      },
+      by_name: {
+        calls: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let callid = element.value;
+              this.switchCall(callid);
+            }
+          }
+        }
+      }
+    };
+  }
+
+  _renderDefaultTemplate() {
+    return `
+    `;
+  }
+
+  /** Helper functions */
 
   _initInternationalization(config) {
     let defaults = {
