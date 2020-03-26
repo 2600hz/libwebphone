@@ -16,12 +16,17 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  dial(digit) {
+  dial(value) {
+    let digit = this._valueToDigit(value);
     let call = this._libwebphone.getCallList().getCall();
     if (call.hasSession()) {
       call.sendDTMF(digit);
     } else {
       this._digits.push(digit);
+    }
+    let tones = this._config.tones[value];
+    if (tones) {
+      this._libwebphone.getMediaDevices().startPlayTone(tones);
     }
     this._emit("dial", this, digit);
   }
@@ -63,18 +68,18 @@ export default class extends lwpRenderer {
     let defaults = {
       renderTargets: [],
       tones: {
-        zero: [1336, 697],
-        one: [1336, 697],
+        zero: [1336, 941],
+        one: [1209, 697],
         two: [1336, 697],
-        three: [1336, 697],
-        four: [1336, 697],
-        five: [1336, 697],
-        six: [1336, 697],
-        seven: [1336, 697],
-        eight: [1336, 697],
-        nine: [1336, 697],
-        pound: [1336, 697],
-        astrisk: [1336, 697]
+        three: [1477, 697],
+        four: [1209, 770],
+        five: [1336, 770],
+        six: [1477, 697],
+        seven: [1209, 852],
+        eight: [1336, 852],
+        nine: [1477, 852],
+        pound: [1477, 941],
+        astrisk: [1209, 941]
       }
     };
     this._config = merge(defaults, config);
@@ -114,8 +119,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -123,8 +127,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -132,8 +135,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -141,8 +143,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -150,8 +151,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -159,8 +159,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -168,8 +167,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -177,8 +175,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -186,8 +183,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -195,8 +191,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -204,8 +199,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -213,8 +207,7 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              let digit = this._valueToDigit(element.dataset.value);
-              this.dial(digit);
+              this.dial(element.dataset.value);
             }
           }
         },
@@ -283,60 +276,4 @@ export default class extends lwpRenderer {
     };
     return dictionary[key];
   }
-
-  eventfordialpadbutton(val) {
-    if (window.__pushed__) return;
-
-    const context = window.__context__ || new AudioContext();
-    const sampleRate = 3000;
-    const buffer = context.createBuffer(2, sampleRate, sampleRate);
-    const data = buffer.getChannelData(0);
-    const data1 = buffer.getChannelData(1);
-    let currentTime = 0;
-
-    //same frequency for same button
-    const keymaps = {
-      "1": [1336, 697],
-      "2": [1336, 697],
-      "3": [1336, 697],
-      A: [1336, 697],
-      "4": [1336, 697],
-      "5": [1336, 697],
-      "6": [1336, 697],
-      B: [1336, 697],
-      "7": [1336, 697],
-      "8": [1336, 697],
-      "9": [1336, 697],
-      C: [1336, 697],
-      "*": [1336, 697],
-      "0": [1336, 697],
-      "#": [1336, 697],
-      D: [1336, 697]
-    };
-
-    if (!keymaps[val]) return;
-
-    for (let i = 0; i < 0.5 * sampleRate; i++) {
-      data[i] = Math.sin(2 * Math.PI * keymaps[val][0] * (i / sampleRate));
-    }
-
-    for (let i = 0; i < 0.5 * sampleRate; i++) {
-      data1[i] = Math.sin(2 * Math.PI * keymaps[val][1] * (i / sampleRate));
-    }
-
-    const gainNode = context.createGain();
-    gainNode.connect(context.destination);
-
-    const src = context.createBufferSource();
-    src.buffer = buffer;
-    src.connect(gainNode);
-    src.start(currentTime);
-
-    window.__pushed__ = true;
-    setTimeout(() => {
-      window.__pushed__ = false;
-    }, 100);
-    if (!window.__context__) window.__context__ = context;
-    return Promise.resolve();
-  } //End of eventfordialpadbutton
 }

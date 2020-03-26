@@ -7,15 +7,22 @@ export default class {
   constructor(libwebphone) {
     this._renders = [];
     this._loaded = false;
+    this._i18nReady = false;
+    this._ready = false;
     libwebphone.on("language.changed", () => {
-      this._loaded = true;
-      this.render();
+      this._i18nReady = true;
+      if (this._loaded && this._i18nReady) {
+        this._ready = true;
+        this.render();
+      }
     });
-    /*
     window.addEventListener("load", () => {
       this._loaded = true;
+      if (this._loaded && this._i18nReady) {
+        this._ready = true;
+        this.render();
+      }
     });
-    */
   }
 
   renderAddTarget(config) {
@@ -54,7 +61,7 @@ export default class {
 
     this._emit("render.new", this, render);
 
-    if (this._loaded) {
+    if (this._ready) {
       this._render(render);
     }
 
@@ -69,7 +76,7 @@ export default class {
 
   _render(render) {
     return new Promise(resolve => {
-      if (!this._loaded) {
+      if (!this._ready) {
         resolve(render);
         return;
       }

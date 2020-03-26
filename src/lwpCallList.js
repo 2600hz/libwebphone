@@ -77,8 +77,11 @@ export default class extends lwpRenderer {
       });
       if (withSession) {
         withSession.setPrimary();
-      } else if (this._calls.length > 0) {
-        this._calls[0].setPrimary();
+      } else {
+        this._libwebphone.getMediaDevices().stopStreams();
+        if (this._calls.length > 0) {
+          this._calls[0].setPrimary();
+        }
       }
     }
   }

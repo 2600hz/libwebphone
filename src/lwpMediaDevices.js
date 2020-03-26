@@ -18,19 +18,23 @@ class lwpMediaDevices extends lwpRenderer {
     this._initAvailableDevices();
     this._initEventBindings();
     this._initRenderTargets();
-    if (this._config.startPreview) {
-      this.startPreviews();
-    } else {
-      this.stopPreviews();
-    }
     this._emit("started", this);
     return this;
   }
 
+  startAudioContext() {
+    if (!this._started) {
+      this._started = true;
+      this._previewAudio.oscillatorNode.start();
+      this._outputAudio.element.play();
+    }
+  }
+
   startPreviews() {
+    this.startAudioContext();
     this._previewActive = true;
 
-    if (this._config.audiooutput.previewLoopbackDefault) {
+    if (this._config.audiooutput.preview.loopback.startOnPreview) {
       this.startPreviewOutputLoopback();
     }
 
@@ -42,15 +46,18 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   startPreviewOutputTone() {
-    let currentTime = this._outputAudio.context.currentTime;
     this._previewAudio.oscillatorGainNode.gain.value = 1;
+
     this.updateRenders();
+
     this._emit("preview.tone.start", this);
   }
 
   stopPreviewOutputTone() {
     this._previewAudio.oscillatorGainNode.gain.value = 0;
+
     this.updateRenders();
+
     this._emit("preview.tone.stop", this);
   }
 
@@ -60,13 +67,17 @@ class lwpMediaDevices extends lwpRenderer {
 
   startPreviewOutputLoopback() {
     this._previewAudio.loopbackDelayGainNode.gain.value = 1;
+
     this.updateRenders();
+
     this._emit("preview.loopback.start", this);
   }
 
   stopPreviewOutputLoopback() {
     this._previewAudio.loopbackDelayGainNode.gain.value = 0;
+
     this.updateRenders();
+
     this._emit("preview.loopback.stop", this);
   }
 
@@ -99,12 +110,11 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   startStreams() {
+    this.startAudioContext();
+
     this._inputActive = true;
 
-    this._remoteAudio.remoteGainNode.gain.setValueAtTime(
-      1,
-      this._outputAudio.context.currentTime
-    );
+    this._remoteAudio.remoteGainNode.gain.value = 1;
 
     let startMuted = [];
     Object.keys(this._config).forEach(category => {
@@ -130,10 +140,7 @@ class lwpMediaDevices extends lwpRenderer {
   stopStreams() {
     this._inputActive = false;
 
-    this._remoteAudio.remoteGainNode.gain.setValueAtTime(
-      0,
-      this._outputAudio.context.currentTime
-    );
+    this._remoteAudio.remoteGainNode.gain.value = 0;
 
     if (!this._previewActive) {
       this._stopAllInputs();
@@ -143,20 +150,29 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   changeMasterVolume(volume) {
+    volume = volume.toFixed(2);
     this._emit("volume.master.change", this, volume);
+
     this._outputAudio.volumeGainNode.gain.value = volume;
+
     this.updateRenders();
   }
 
   changeRingerVolume(volume) {
+    volume = volume.toFixed(2);
     this._emit("volume.ringer.change", this, volume);
+
     this._notificationAudio.ringGainNode.gain.value = volume;
+
     this.updateRenders();
   }
 
   changeDTMFVolume(volume) {
+    volume = volume.toFixed(2);
     this._emit("volume.dtmf.change", this, volume);
+
     this._notificationAudio.dtmfGainNode.gain.value = volume;
+
     this.updateRenders();
   }
 
@@ -187,8 +203,28 @@ class lwpMediaDevices extends lwpRenderer {
     }
   }
 
-  startPlayTone(tone) {
-    console.log("start playing tone " + tone);
+  startPlayTone(...tones) {
+    this.startAudioContext();
+    tones = tones[0];
+
+    let sampleRate = this._outputAudio.context.sampleRate;
+    let buffer = this._outputAudio.context.createBuffer(
+      tones.length,
+      sampleRate,
+      sampleRate
+    );
+
+    for (let index = 0; index < tones.length; index++) {
+      let channel = buffer.getChannelData(index);
+      for (let i = 0; i < 0.5 * sampleRate; i++) {
+        channel[i] = Math.sin(2 * Math.PI * tones[index] * (i / sampleRate));
+      }
+    }
+
+    let src = this._outputAudio.context.createBufferSource();
+    src.buffer = buffer;
+    src.connect(this._notificationAudio.dtmfGainNode);
+    src.start();
   }
 
   stopPlayTone(tone) {
@@ -326,14 +362,13 @@ class lwpMediaDevices extends lwpRenderer {
         render.data.loaded = this._loaded;
         render.data.active = this._inputActive;
         render.data.preview = this._previewActive;
-        render.data.volume = this._config.volume;
         render.data.volume.master.value =
           this._outputAudio.volumeGainNode.gain.value * 1000;
         render.data.volume.ringer.value =
           this._notificationAudio.ringGainNode.gain.value * 1000;
         render.data.volume.dtmf.value =
           this._notificationAudio.dtmfGainNode.gain.value * 1000;
-        render.data.volume.max = 1100;
+        render.data.volume.max = 1000;
         render.data.volume.min = 0;
         render.data.audiooutput.preview.loopback.active = this.isPreviewOutputLoopbackActive();
         render.data.audiooutput.preview.tone.active = this.isPreviewOutputToneActive();
@@ -517,7 +552,6 @@ class lwpMediaDevices extends lwpRenderer {
     this._previewAudio.loopbackDelayGainNode.gain.value = 0;
     this._previewAudio.oscillatorNode.frequency.value = this._config.audiooutput.preview.tone.frequency;
     this._previewAudio.oscillatorNode.type = this._config.audiooutput.preview.tone.type;
-    this._previewAudio.oscillatorNode.start();
     this._previewAudio.oscillatorNode.connect(
       this._previewAudio.oscillatorGainNode
     );
@@ -548,7 +582,6 @@ class lwpMediaDevices extends lwpRenderer {
       this._outputAudio.destinationStream
     );
     this._outputAudio.element.srcObject = this._outputAudio.destinationStream.stream;
-    this._outputAudio.element.play();
 
     this._previewAudio.loopbackDelayGainNode.connect(
       this._outputAudio.merger,
@@ -785,7 +818,8 @@ class lwpMediaDevices extends lwpRenderer {
         loaded: this._loaded,
         audiooutput: this._config.audiooutput,
         audioinput: this._config.audioinput,
-        videoinput: this._config.videoinput
+        videoinput: this._config.videoinput,
+        volume: this._config.volume
       }
     };
   }
