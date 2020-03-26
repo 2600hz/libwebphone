@@ -7,10 +7,12 @@ export default class extends lwpRenderer {
   constructor(libwebphone, config = {}) {
     super(libwebphone);
     this._libwebphone = libwebphone;
+    this._emit = this._libwebphone._callControlEvent;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
     this._initEventBindings();
     this._initRenderTargets();
+    this._emit("started", this);
     return this;
   }
 
@@ -70,10 +72,10 @@ export default class extends lwpRenderer {
   }
 
   updateControls() {
-    this.renderUpdates(render => {
+    this.render(render => {
       render.data.call = this._callRenderConfig();
+      return render;
     });
-    this.render();
   }
 
   /** Init functions */

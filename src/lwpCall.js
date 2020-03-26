@@ -5,12 +5,14 @@ import { uuid } from "./lwpUtils";
 export default class {
   constructor(libwebphone, session = null) {
     this._libwebphone = libwebphone;
+    this._emit = this._libwebphone._callEvent;
     this._session = session;
     this._primary = false;
     this._id = uuid();
     this._initEventBindings();
-    this._remoteAudio = document.createElement("audio");
-    this._libwebphone._callEvent("created", this);
+    this._remoteStream = null;
+    this._remoteAudio = null;
+    this._emit("created", this);
   }
 
   getId() {
@@ -34,10 +36,10 @@ export default class {
     if (this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
-    if (this._remoteAudio.srcObject) {
-      this._remoteAudio.play();
+    if (this._remoteAudio) {
+      this._libwebphone.getMediaDevices().setRemoteAudio(this._remoteAudio);
     }
-    this._libwebphone._callEvent("setPrimary", this);
+    this._emit("setPrimary", this);
   }
 
   clearPrimary() {
@@ -45,10 +47,12 @@ export default class {
     if (this.isEstablished()) {
       this.hold();
     }
-    if (this._remoteAudio.srcObject) {
-      this._remoteAudio.pause();
+    /*
+    if (this._remoteStream.srcObject) {
+      this._remoteStream.pause();
     }
-    this._libwebphone._callEvent("clearPrimary", this);
+    */
+    this._emit("clearPrimary", this);
   }
 
   isInProgress() {
@@ -217,33 +221,40 @@ export default class {
 
     if (this._session.connection) {
       this._session.connection.addEventListener("addstream", event => {
-        // set remote audio stream
-        this._remoteAudio.srcObject = event.stream;
+        let element = document.createElement("audio");
+        element.srcObject = event.stream;
+        element.muted = true;
+        element.play();
+
+        this._remoteStream = event.stream;
+
+        this._remoteAudio = this._libwebphone
+          .getMediaDevices()
+          .createRemoteAudio(this._remoteStream);
+
         if (this.isPrimary()) {
-          this._remoteAudio.play();
-        } else {
-          this._remoteAudio.pause();
+          this._libwebphone.getMediaDevices().setRemoteAudio(this._remoteAudio);
         }
       });
     }
 
     this._session.on("peerconnection", (...event) => {
-      this._libwebphone._callEvent("peerconnection", this, ...event);
+      this._emit("peerconnection", this, ...event);
     });
     this._session.on("connecting", (...event) => {
-      this._libwebphone._callEvent("connecting", this, ...event);
+      this._emit("connecting", this, ...event);
     });
     this._session.on("sending", (...event) => {
-      this._libwebphone._callEvent("sending", this, ...event);
+      this._emit("sending", this, ...event);
     });
     this._session.on("progress", (...event) => {
-      this._libwebphone._callEvent("progress", this, ...event);
+      this._emit("progress", this, ...event);
     });
     this._session.on("accepted", (...event) => {
-      this._libwebphone._callEvent("accepted", this, ...event);
+      this._emit("accepted", this, ...event);
     });
     this._session.on("confirmed", (...event) => {
-      this._libwebphone._callEvent("confirmed", this, ...event);
+      this._emit("confirmed", this, ...event);
       console.log(this._session.connection);
       /*
       if (!this.isPrimary()) {
@@ -252,31 +263,31 @@ export default class {
       */
     });
     this._session.on("newDTMF", (...event) => {
-      this._libwebphone._callEvent("dtmf", this, ...event);
+      this._emit("dtmf", this, ...event);
     });
     this._session.on("newInfo", (...event) => {
-      this._libwebphone._callEvent("info", this, ...event);
+      this._emit("info", this, ...event);
     });
     this._session.on("hold", (...event) => {
-      this._libwebphone._callEvent("hold", this, ...event);
+      this._emit("hold", this, ...event);
     });
     this._session.on("unhold", (...event) => {
-      this._libwebphone._callEvent("unhold", this, ...event);
+      this._emit("unhold", this, ...event);
     });
     this._session.on("muted", (...event) => {
-      this._libwebphone._callEvent("muted", this, ...event);
+      this._emit("muted", this, ...event);
     });
     this._session.on("unmuted", (...event) => {
-      this._libwebphone._callEvent("unmuted", this, ...event);
+      this._emit("unmuted", this, ...event);
     });
     this._session.on("reinvite", (...event) => {
-      this._libwebphone._callEvent("reinvite", this, ...event);
+      this._emit("reinvite", this, ...event);
     });
     this._session.on("ended", (...event) => {
-      this._libwebphone._callEvent("ended", this, ...event);
+      this._emit("ended", this, ...event);
     });
     this._session.on("failed", (...event) => {
-      this._libwebphone._callEvent("failed", this, ...event);
+      this._emit("failed", this, ...event);
     });
   }
 }

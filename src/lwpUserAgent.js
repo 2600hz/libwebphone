@@ -7,12 +7,13 @@ import lwpCall from "./lwpCall";
 export default class {
   constructor(libwebphone, config = {}, i18n = null) {
     this._libwebphone = libwebphone;
+    this._emit = this._libwebphone._userAgentEvent;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
-    this._initEventBindings();
     this._initSockets();
     this._initUserAgent();
-
+    this._initEventBindings();
+    this._emit("started", this);
     return this;
   }
 
@@ -69,8 +70,6 @@ export default class {
     this._userAgent = null;
   }
 
-  _initEventBindings() {}
-
   _initSockets() {
     this._config.transport.sockets.forEach(socket => {
       // TODO: handle when socket is an object with weights...
@@ -110,4 +109,6 @@ export default class {
 
     return this._userAgent;
   }
+
+  _initEventBindings() {}
 }

@@ -7,10 +7,12 @@ export default class extends lwpRenderer {
   constructor(libwebphone, config = {}) {
     super(libwebphone);
     this._libwebphone = libwebphone;
+    this._emit = this._libwebphone._dialpadEvent;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
     this._initEventBindings();
     this._initRenderTargets();
+    this._emit("started", this);
     return this;
   }
 
@@ -21,12 +23,12 @@ export default class extends lwpRenderer {
     } else {
       this._digits.push(digit);
     }
-    this._libwebphone._dialpadEvent("dial", this, digit);
+    this._emit("dial", this, digit);
   }
 
   clear() {
     this._digits = [];
-    this._libwebphone._dialpadEvent("clear", this);
+    this._emit("clear", this);
   }
 
   digits() {
