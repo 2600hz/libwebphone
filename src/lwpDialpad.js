@@ -16,28 +16,54 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  dial(value) {
-    let digit = this._valueToDigit(value);
+  call() {
+    let numbertocall = this._digits.join("");
+    this.clear();
+
+    this._libwebphone.getUserAgent().call(numbertocall);
+
+    this._emit("call", this, numbertocall);
+  }
+
+  dial(digit, tones) {
     let call = this._libwebphone.getCallList().getCall();
+
     if (call.hasSession()) {
       call.sendDTMF(digit);
     } else {
       this._digits.push(digit);
     }
-    let tones = this._config.tones[value];
+
     if (tones) {
-      this._libwebphone.getMediaDevices().startPlayTone(tones);
+      this._libwebphone.getMediaDevices().startPlayTone(...tones);
     }
-    this._emit("dial", this, digit);
+
+    this.updateRenders();
+
+    this._emit("digits.updated", this, this._digits);
+  }
+
+  backspace() {
+    this._digits.pop();
+    this.updateRenders();
+    this._emit("digits.backspace", this, this._digits);
   }
 
   clear() {
     this._digits = [];
-    this._emit("clear", this);
+    this.updateRenders();
+    this._emit("digits.clear", this);
   }
 
   digits() {
     return this._digits;
+  }
+
+  updateRenders(postrender = render => render) {
+    this.render(render => {
+      render.data.digits = this._digits.join("");
+      return render;
+    }, postrender);
   }
 
   /** Init functions */
@@ -57,7 +83,9 @@ export default class extends lwpRenderer {
         nine: "9",
         pound: "#",
         astrisk: "*",
-        clear: "clear"
+        clear: "clear",
+        backspace: "<-",
+        call: "Call"
       }
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
@@ -100,7 +128,6 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        zero: "libwebphone:dialpad.zero",
         one: "libwebphone:dialpad.one",
         two: "libwebphone:dialpad.two",
         three: "libwebphone:dialpad.three",
@@ -110,16 +137,27 @@ export default class extends lwpRenderer {
         seven: "libwebphone:dialpad.seven",
         eight: "libwebphone:dialpad.eight",
         nine: "libwebphone:dialpad.nine",
-        pound: "libwebphone:dialpad.pound",
         astrisk: "libwebphone:dialpad.astrisk",
-        clear: "libwebphone:dialpad.clear"
+        zero: "libwebphone:dialpad.zero",
+        pound: "libwebphone:dialpad.pound",
+        clear: "libwebphone:dialpad.clear",
+        backspace: "libwebphone:dialpad.backspace",
+        call: "libwebphone:dialpad.call"
       },
+      data: {},
       by_id: {
-        zero: {
+        dialed: {
           events: {
-            onclick: event => {
-              let element = event.srcElement;
-              this.dial(element.dataset.value);
+            oninput: event => {
+              this._syncElementValue(event);
+            },
+            onkeypress: event => {
+              // On enter...
+              if (event.keyCode == 13) {
+                if (this._digits.length > 0) {
+                  this.call();
+                }
+              }
             }
           }
         },
@@ -127,7 +165,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -135,7 +174,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -143,7 +183,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -151,7 +192,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -159,7 +201,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -167,7 +210,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -175,7 +219,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -183,11 +228,30 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
         nine: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
+            }
+          }
+        },
+        astrisk: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
+            }
+          }
+        },
+        zero: {
           events: {
             onclick: event => {
               let element = event.srcElement;
@@ -199,15 +263,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
-            }
-          }
-        },
-        astrisk: {
-          events: {
-            onclick: event => {
-              let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },
@@ -215,6 +272,20 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               this.clear();
+            }
+          }
+        },
+        backspace: {
+          events: {
+            onclick: event => {
+              this.backspace();
+            }
+          }
+        },
+        call: {
+          events: {
+            onclick: event => {
+              this.call();
             }
           }
         }
@@ -225,7 +296,12 @@ export default class extends lwpRenderer {
   _renderDefaultTemplate() {
     return `
     <div>
-      <input type="text" id="{{by_id.dialed}}" />
+      <div>
+      <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />        
+        <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
+        <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
+      </div>
+
       <div>
       <button id="{{by_id.one.elementId}}" data-value="one">{{i18n.one}}</button>
       <button id="{{by_id.two.elementId}}" data-value="two">{{i18n.two}}</button>
@@ -251,7 +327,7 @@ export default class extends lwpRenderer {
       </div>
 
       <div>
-      <button id="{{by_id.clear.elementId}}" data-value="clear">{{i18n.clear}}</button>
+      <button id="{{by_id.call.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.call}}</button>
       </div>
 	  </div>
     `;
@@ -259,9 +335,29 @@ export default class extends lwpRenderer {
 
   /** Helper functions */
 
-  _valueToDigit(key) {
-    let dictionary = {
-      zero: "0",
+  _valueToChar(value) {
+    return this._charDictionary()[value];
+  }
+
+  _valueToTone(value) {
+    return this._config.tones[value];
+  }
+
+  _charToValue(char) {
+    let dictionary = this._charDictionary();
+    let flipped = Object.keys(dictionary).reduce((flipped, key) => {
+      flipped[dictionary[key]] = key;
+      return flipped;
+    }, {});
+    return flipped[char];
+  }
+
+  _charToTone(char) {
+    return this._valueToTone(this._charToValue(char));
+  }
+
+  _charDictionary() {
+    return {
       one: "1",
       two: "2",
       three: "3",
@@ -271,9 +367,37 @@ export default class extends lwpRenderer {
       seven: "7",
       eight: "8",
       nine: "9",
-      pound: "#",
-      astrisk: "*"
+      astrisk: "*",
+      zero: "0",
+      pound: "#"
     };
-    return dictionary[key];
+  }
+
+  _syncElementValue(event) {
+    let element = event.srcElement;
+    let tones = this._charToTone(event.data);
+    let call = this._libwebphone.getCallList().getCall();
+
+    if (call.hasSession()) {
+      if (event.data) {
+        call.sendDTMF(event.data);
+      }
+    } else {
+      this._digits = element.value.split("");
+    }
+
+    if (tones) {
+      this._libwebphone.getMediaDevices().startPlayTone(...tones);
+    }
+
+    this.updateRenders(render => {
+      if (element.id == render.by_id.dialed.elementId) {
+        let position = element.selectionStart;
+        render.by_id.dialed.element.focus();
+        render.by_id.dialed.element.setSelectionRange(position, position);
+      }
+    });
+
+    this._emit("digits.updated", this, event.data);
   }
 }

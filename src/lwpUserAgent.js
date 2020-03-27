@@ -27,8 +27,34 @@ export default class {
     });
   }
 
-  call(numbertocall, options) {
-    this._userAgent.call(numbertocall, options);
+  redial() {
+    return this.call(this._redialNumber);
+  }
+
+  getRedial() {
+    return this._redialNumber;
+  }
+
+  setRedial(number) {
+    this._redialNumber = number;
+    this._emit("redial.update", this, this._redialNumber);
+  }
+
+  call(numbertocall = null) {
+    if (!numbertocall) {
+      return;
+    }
+
+    this.setRedial(numbertocall);
+
+    let mediaDevices = this._libwebphone.getMediaDevices();
+    mediaDevices.startStreams().then(streams => {
+      let options = {
+        mediaStream: streams
+      };
+
+      this._userAgent.call(numbertocall, options);
+    });
   }
 
   /** Init functions */
@@ -60,7 +86,8 @@ export default class {
         no_answer_timeout: 60,
         register: true,
         register_expires: 300,
-        user_agent: "libwebphone 2.x - dev"
+        user_agent: "libwebphone 2.x - dev",
+        redial: "*97"
       }
     };
 
@@ -68,6 +95,9 @@ export default class {
 
     this._sockets = [];
     this._userAgent = null;
+    this.setRedial(this._config.user_agent.redial);
+
+    this._emit("lastcall.update", this, this._redialNumber);
   }
 
   _initSockets() {
@@ -100,12 +130,26 @@ export default class {
       user_agent: this._config.user_agent.user_agent,
       session_timers: false
     };
+    JsSIP.debug.enable("JsSIP:*");
 
     this._userAgent = new JsSIP.UA(config);
     this._userAgent.start();
     this._userAgent.on("newRTCSession", event => {
       new lwpCall(this._libwebphone, event.session);
     });
+
+    this._userAgent.receiveRequest = request => {
+      /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
+      let config_user = this._userAgent._configuration.uri.user;
+      let ruri_user = request.ruri.user;
+      if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
+        request.ruri.user = config_user;
+      }
+      return this._userAgent.__proto__.receiveRequest.call(
+        this._userAgent,
+        request
+      );
+    };
 
     return this._userAgent;
   }

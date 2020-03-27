@@ -347,15 +347,7 @@
       <!-- Dialpad -->
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
-          <div id="dialed"></div>
           <div id="dialpad"></div>
-          <script>
-            webphone.on("dialpad.updated", (lwp, dialpad) => {
-              document.querySelector(
-                "#dialed"
-              ).innerHTML = dialpad.digits().join("");
-            });
-          </script>
         </div>
         <div class="col" style="border-right: dashed;">
           <div id="dialed_custom"></div>
@@ -363,18 +355,18 @@
           <script type="text/javascript">
             var template = `
               <div>
-                <p id="{{inputs.one.elementId}}" data-value="one">{{i18n.one}}</p>
-                <p id="{{inputs.two.elementId}}" data-value="two">{{i18n.two}}</p>
-                <p id="{{inputs.three.elementId}}" data-value="three">{{i18n.three}}</p>
-                <p id="{{inputs.four.elementId}}" data-value="four">{{i18n.four}}</p>
-                <p id="{{inputs.five.elementId}}" data-value="five">{{i18n.five}}</p>
-                <p id="{{inputs.six.elementId}}" data-value="six">{{i18n.six}}</p>
-                <p id="{{inputs.seven.elementId}}" data-value="seven">{{i18n.seven}}</p>
-                <p id="{{inputs.eight.elementId}}" data-value="eight">{{i18n.eight}}</p> 
-                <p id="{{inputs.nine.elementId}}" data-value="nine">{{i18n.nine}}</p>
-                <p id="{{inputs.astrisk.elementId}}" data-value="astrisk">{{i18n.astrisk}}</p>
-                <p id="{{inputs.zero.elementId}}" data-value="zero">{{i18n.zero}}</p>
-                <p id="{{inputs.pound.elementId}}" data-value="pound">{{i18n.pound}}</p>
+                <p id="{{by_id.one.elementId}}" data-value="one">{{i18n.one}}</p>
+                <p id="{{by_id.two.elementId}}" data-value="two">{{i18n.two}}</p>
+                <p id="{{by_id.three.elementId}}" data-value="three">{{i18n.three}}</p>
+                <p id="{{by_id.four.elementId}}" data-value="four">{{i18n.four}}</p>
+                <p id="{{by_id.five.elementId}}" data-value="five">{{i18n.five}}</p>
+                <p id="{{by_id.six.elementId}}" data-value="six">{{i18n.six}}</p>
+                <p id="{{by_id.seven.elementId}}" data-value="seven">{{i18n.seven}}</p>
+                <p id="{{by_id.eight.elementId}}" data-value="eight">{{i18n.eight}}</p> 
+                <p id="{{by_id.nine.elementId}}" data-value="nine">{{i18n.nine}}</p>
+                <p id="{{by_id.astrisk.elementId}}" data-value="astrisk">{{i18n.astrisk}}</p>
+                <p id="{{by_id.zero.elementId}}" data-value="zero">{{i18n.zero}}</p>
+                <p id="{{by_id.pound.elementId}}" data-value="pound">{{i18n.pound}}</p>
               </div>`;
             var customTemplateConfig = {
               template: template,
@@ -384,11 +376,6 @@
             };
 
             webphone.getDialpad().renderAddTarget(customTemplateConfig);
-            webphone.on("dialpad.updated", (lwp, dialpad) => {
-              document.querySelector(
-                "#dialed"
-              ).innerHTML = dialpad.digits().join("");
-            });
           </script>
         </div>
         <div class="col"></div>
@@ -403,6 +390,10 @@
             </button>
             <button onclick="webphone.getUserAgent().unregister();">
               Unregister
+            </button>
+
+            <button onclick="webphone.getUserAgent().call('6683');">
+              Move
             </button>
 
             <audio id="audioremote" autoplay loop></audio>

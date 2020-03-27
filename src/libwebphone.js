@@ -15,10 +15,10 @@ export default class extends EventEmitter {
 
     this._initInternationalization(config.i18n);
 
+    this._userAgent = new lwpUserAgent(this, config.userAgent);
     this._callList = new lwpCallList(this, config.callList);
     this._callControl = new lwpCallControl(this, config.callControl);
     this._dialpad = new lwpDialpad(this, config.dialpad);
-    this._userAgent = new lwpUserAgent(this, config.userAgent);
     this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
   } //end of constructor
 
@@ -119,7 +119,6 @@ export default class extends EventEmitter {
   }
 
   _emit(...args) {
-    console.log(...args);
     this.emit(...args);
   }
 } //End of default class

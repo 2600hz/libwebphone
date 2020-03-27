@@ -16,27 +16,8 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  call(numbertocall = null) {
-    if (!numbertocall) {
-      let dialpad = this._libwebphone.getDialpad();
-      numbertocall = dialpad.digits().join("");
-      dialpad.clear();
-
-      if (!numbertocall) {
-        numbertocall = this._lastCall;
-      } else {
-        this._lastCall = numbertocall;
-      }
-    }
-
-    let mediaDevices = this._libwebphone.getMediaDevices();
-    let userAgent = this._libwebphone.getUserAgent();
-    mediaDevices.startStreams().then(streams => {
-      let options = {
-        mediaStream: streams
-      };
-      userAgent.call(numbertocall, options);
-    });
+  redial() {
+    this._libwebphone.getUserAgent().redial();
   }
 
   cancel() {
@@ -74,6 +55,7 @@ export default class extends lwpRenderer {
   updateControls() {
     this.render(render => {
       render.data.call = this._callRenderConfig();
+      render.data.redial = this._libwebphone.getUserAgent().getRedial();
       return render;
     });
   }
@@ -83,7 +65,7 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
-        call: "Call",
+        redial: "Redial",
         cancel: "Cancel",
         hangup: "Hang Up",
         hold: "Hold",
@@ -103,7 +85,6 @@ export default class extends lwpRenderer {
       renderTargets: []
     };
     this._config = merge(defaults, config);
-    this._lastCall = "*97";
   }
 
   _initEventBindings() {
@@ -124,7 +105,7 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        call: "libwebphone:callControl.call",
+        redial: "libwebphone:callControl.redial",
         cancel: "libwebphone:callControl.cancel",
         hangup: "libwebphone:callControl.hangup",
         hold: "libwebphone:callControl.hold",
@@ -135,13 +116,14 @@ export default class extends lwpRenderer {
         answer: "libwebphone:callControl.answer"
       },
       data: {
-        call: this._callRenderConfig()
+        call: this._callRenderConfig(),
+        redial: this._libwebphone.getUserAgent().getRedial()
       },
       by_id: {
-        call: {
+        redial: {
           events: {
             onclick: event => {
-              this.call();
+              this.redial();
             }
           }
         },
@@ -202,9 +184,11 @@ export default class extends lwpRenderer {
     return `
     <div>
       {{^data.call.hasSession}}
-      <button id="{{by_id.call.elementId}}">
-        {{i18n.call}}
+      {{#data.redial}}
+      <button id="{{by_id.redial.elementId}}">
+        {{i18n.redial}} ({{data.redial}})
       </button>
+      {{/data.redial}}
       {{/data.call.hasSession}}
 
       {{#data.call.progress}}
@@ -230,17 +214,17 @@ export default class extends lwpRenderer {
       </button>
       {{/data.call.hold}}
 
-      {{^data.call.mute}}
+      {{^data.call.muted}}
       <button id="{{by_id.mute.elementId}}">
         {{i18n.mute}}
       </button>
-      {{/data.call.mute}}
+      {{/data.call.muted}}
 
-      {{#data.call.mute}}
+      {{#data.call.muted}}
       <button id="{{by_id.unmute.elementId}}">
         {{i18n.unmute}}
       </button>
-      {{/data.call.mute}}
+      {{/data.call.muted}}
 
       <button id="{{by_id.transfer.elementId}}">
         {{i18n.transfer}}

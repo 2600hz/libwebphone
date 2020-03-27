@@ -157,19 +157,17 @@ export default class {
         return digits.join("");
       });
       this._session.refer(numbertotransfer);
-      console.log("Call transfer attempt to : " + numbertotransfer);
     }
   }
 
   answer() {
     if (this.hasSession()) {
-      this._libwebphone.getMediaDevices().then(mediaDevices => {
-        const stream = mediaDevices.startStreams();
-        const options = {
-          mediaStream: stream
+      let mediaDevices = this._libwebphone.getMediaDevices();
+      mediaDevices.startStreams().then(streams => {
+        let options = {
+          mediaStream: streams
         };
         this._session.answer(options);
-        console.log("inbound session answered: ", this._session);
       });
     }
   }
@@ -177,19 +175,18 @@ export default class {
   reject() {
     if (this.hasSession()) {
       this._session.terminate();
-      console.log("reject session: ", this._session);
     }
   }
 
   renegotiate() {
     if (this.hasSession()) {
       this._session.renegotiate();
-      console.log("call on renegotiate");
     }
   }
 
   sendDTMF(tone) {
     if (this.hasSession()) {
+      console.log("send dtmf: ", tone);
       this._session.sendDTMF(tone);
     }
   }
@@ -214,11 +211,7 @@ export default class {
     };
   }
 
-  _initEventBindings() {
-    if (!this.hasSession()) {
-      return;
-    }
-
+  _connectMediaDevices() {
     if (this._session.connection) {
       this._session.connection.addEventListener("addstream", event => {
         let element = document.createElement("audio");
@@ -237,8 +230,16 @@ export default class {
         }
       });
     }
+  }
 
+  _initEventBindings() {
+    if (!this.hasSession()) {
+      return;
+    }
+
+    this._connectMediaDevices();
     this._session.on("peerconnection", (...event) => {
+      this._connectMediaDevices();
       this._emit("peerconnection", this, ...event);
     });
     this._session.on("connecting", (...event) => {
@@ -255,7 +256,6 @@ export default class {
     });
     this._session.on("confirmed", (...event) => {
       this._emit("confirmed", this, ...event);
-      console.log(this._session.connection);
       /*
       if (!this.isPrimary()) {
         this.hold();

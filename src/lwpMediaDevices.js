@@ -25,6 +25,9 @@ class lwpMediaDevices extends lwpRenderer {
   startAudioContext() {
     if (!this._started) {
       this._started = true;
+      console.log("audio context started!!!");
+      this._outputAudio.context.resume();
+      console.log(this._outputAudio.merger);
       this._previewAudio.oscillatorNode.start();
       this._outputAudio.element.play();
     }
@@ -66,7 +69,7 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   startPreviewOutputLoopback() {
-    this._previewAudio.loopbackDelayGainNode.gain.value = 1;
+    this._previewAudio.loopbackGainNode.gain.value = 1;
 
     this.updateRenders();
 
@@ -74,7 +77,7 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   stopPreviewOutputLoopback() {
-    this._previewAudio.loopbackDelayGainNode.gain.value = 0;
+    this._previewAudio.loopbackGainNode.gain.value = 0;
 
     this.updateRenders();
 
@@ -91,7 +94,7 @@ class lwpMediaDevices extends lwpRenderer {
 
   isPreviewOutputLoopbackActive() {
     // six foot air hug
-    return this._previewAudio.loopbackDelayGainNode.gain.value > 0;
+    return this._previewAudio.loopbackGainNode.gain.value > 0;
   }
 
   stopPreviews() {
@@ -162,7 +165,7 @@ class lwpMediaDevices extends lwpRenderer {
     volume = volume.toFixed(2);
     this._emit("volume.ringer.change", this, volume);
 
-    this._notificationAudio.ringGainNode.gain.value = volume;
+    this._notificationAudio.ringerGainNode.gain.value = volume;
 
     this.updateRenders();
   }
@@ -172,6 +175,15 @@ class lwpMediaDevices extends lwpRenderer {
     this._emit("volume.dtmf.change", this, volume);
 
     this._notificationAudio.dtmfGainNode.gain.value = volume;
+
+    this.updateRenders();
+  }
+
+  changeRemoteVolume(volume) {
+    volume = volume.toFixed(2);
+    this._emit("volume.remote.change", this, volume);
+
+    this._remoteAudio.remoteGainNode.gain.value = volume;
 
     this.updateRenders();
   }
@@ -205,8 +217,8 @@ class lwpMediaDevices extends lwpRenderer {
 
   startPlayTone(...tones) {
     this.startAudioContext();
-    tones = tones[0];
 
+    let duration = 0.15;
     let sampleRate = this._outputAudio.context.sampleRate;
     let buffer = this._outputAudio.context.createBuffer(
       tones.length,
@@ -216,7 +228,7 @@ class lwpMediaDevices extends lwpRenderer {
 
     for (let index = 0; index < tones.length; index++) {
       let channel = buffer.getChannelData(index);
-      for (let i = 0; i < 0.5 * sampleRate; i++) {
+      for (let i = 0; i < duration * sampleRate; i++) {
         channel[i] = Math.sin(2 * Math.PI * tones[index] * (i / sampleRate));
       }
     }
@@ -365,9 +377,11 @@ class lwpMediaDevices extends lwpRenderer {
         render.data.volume.master.value =
           this._outputAudio.volumeGainNode.gain.value * 1000;
         render.data.volume.ringer.value =
-          this._notificationAudio.ringGainNode.gain.value * 1000;
+          this._notificationAudio.ringerGainNode.gain.value * 1000;
         render.data.volume.dtmf.value =
           this._notificationAudio.dtmfGainNode.gain.value * 1000;
+        render.data.volume.remote.value =
+          this._remoteAudio.remoteGainNode.gain.value * 1000;
         render.data.volume.max = 1000;
         render.data.volume.min = 0;
         render.data.audiooutput.preview.loopback.active = this.isPreviewOutputLoopbackActive();
@@ -437,7 +451,8 @@ class lwpMediaDevices extends lwpRenderer {
         stoploopback: "Stop Loopback",
         mastervolume: "Master Volume",
         ringervolume: "Ringer Volume",
-        dtmfvolume: "DTMF Volume"
+        dtmfvolume: "DTMF Volume",
+        remotevolume: "Call Volume"
       }
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
@@ -456,6 +471,10 @@ class lwpMediaDevices extends lwpRenderer {
           default: 1
         },
         dtmf: {
+          enabled: true,
+          default: 1
+        },
+        remote: {
           enabled: true,
           default: 1
         }
@@ -488,7 +507,7 @@ class lwpMediaDevices extends lwpRenderer {
         livePreview: true
       },
       videoinput: {
-        enabled: false,
+        enabled: true,
         startMuted: true,
         constraints: {},
         preferedDeviceIds: [],
@@ -541,15 +560,15 @@ class lwpMediaDevices extends lwpRenderer {
     let audioContext = new AudioContext();
     this._previewAudio = {
       loopbackDelayNode: audioContext.createDelay(5.0),
-      loopbackDelayGainNode: audioContext.createGain(),
+      loopbackGainNode: audioContext.createGain(),
       oscillatorNode: audioContext.createOscillator(),
       oscillatorGainNode: audioContext.createGain()
     };
     this._previewAudio.loopbackDelayNode.delayTime.value = this._config.audiooutput.preview.loopback.delay;
     this._previewAudio.loopbackDelayNode.connect(
-      this._previewAudio.loopbackDelayGainNode
+      this._previewAudio.loopbackGainNode
     );
-    this._previewAudio.loopbackDelayGainNode.gain.value = 0;
+    this._previewAudio.loopbackGainNode.gain.value = 0;
     this._previewAudio.oscillatorNode.frequency.value = this._config.audiooutput.preview.tone.frequency;
     this._previewAudio.oscillatorNode.type = this._config.audiooutput.preview.tone.type;
     this._previewAudio.oscillatorNode.connect(
@@ -560,13 +579,13 @@ class lwpMediaDevices extends lwpRenderer {
     this._remoteAudio = {
       remoteGainNode: audioContext.createGain()
     };
-    this._remoteAudio.remoteGainNode.gain.value = 0;
+    this._remoteAudio.remoteGainNode.gain.value = this._config.volume.remote.default;
 
     this._notificationAudio = {
-      ringGainNode: audioContext.createGain(),
+      ringerGainNode: audioContext.createGain(),
       dtmfGainNode: audioContext.createGain()
     };
-    this._notificationAudio.ringGainNode.gain.value = this._config.volume.ringer.default;
+    this._notificationAudio.ringerGainNode.gain.value = this._config.volume.ringer.default;
     this._notificationAudio.dtmfGainNode.gain.value = this._config.volume.dtmf.default;
 
     this._outputAudio = {
@@ -583,16 +602,8 @@ class lwpMediaDevices extends lwpRenderer {
     );
     this._outputAudio.element.srcObject = this._outputAudio.destinationStream.stream;
 
-    this._previewAudio.loopbackDelayGainNode.connect(
-      this._outputAudio.merger,
-      0,
-      0
-    );
-    this._previewAudio.loopbackDelayGainNode.connect(
-      this._outputAudio.merger,
-      0,
-      1
-    );
+    this._previewAudio.loopbackGainNode.connect(this._outputAudio.merger, 0, 0);
+    this._previewAudio.loopbackGainNode.connect(this._outputAudio.merger, 0, 1);
 
     this._previewAudio.oscillatorGainNode.connect(
       this._outputAudio.merger,
@@ -608,12 +619,12 @@ class lwpMediaDevices extends lwpRenderer {
     this._remoteAudio.remoteGainNode.connect(this._outputAudio.merger, 0, 0);
     this._remoteAudio.remoteGainNode.connect(this._outputAudio.merger, 0, 1);
 
-    this._notificationAudio.ringGainNode.connect(
+    this._notificationAudio.ringerGainNode.connect(
       this._outputAudio.merger,
       0,
       0
     );
-    this._notificationAudio.ringGainNode.connect(
+    this._notificationAudio.ringerGainNode.connect(
       this._outputAudio.merger,
       0,
       1
@@ -715,7 +726,8 @@ class lwpMediaDevices extends lwpRenderer {
         stoploopback: "libwebphone:mediaDevices.stoploopback",
         mastervolume: "libwebphone:mediaDevices.mastervolume",
         ringervolume: "libwebphone:mediaDevices.ringervolume",
-        dtmfvolume: "libwebphone:mediaDevices.dtmfvolume"
+        dtmfvolume: "libwebphone:mediaDevices.dtmfvolume",
+        remotevolume: "libwebphone:mediaDevices.remotevolume"
       },
       by_id: {
         audiooutput: {
@@ -812,6 +824,14 @@ class lwpMediaDevices extends lwpRenderer {
               this.changeDTMFVolume(element.value / 1000);
             }
           }
+        },
+        remotevolume: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              this.changeRemoteVolume(element.value / 1000);
+            }
+          }
         }
       },
       data: {
@@ -832,51 +852,50 @@ class lwpMediaDevices extends lwpRenderer {
 
             {{#data.loaded}}
             {{#data.audiooutput.enabled}}
-                <div>
-                    <label for="{{by_id.audiooutput.elementId}}">
-                        {{i18n.audiooutput}}
-                    </label>
-                    <select id="{{by_id.audiooutput.elementId}}">
-                        {{#data.audiooutput.devices}}
-                            {{#connected}}
-                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                            {{/connected}}
-                        {{/data.audiooutput.devices}}
-                    </select>
+              <div>
+                <label for="{{by_id.audiooutput.elementId}}">
+                  {{i18n.audiooutput}}
+                </label>
+                <select id="{{by_id.audiooutput.elementId}}">
+                  {{#data.audiooutput.devices}}
+                    {{#connected}}
+                      <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                    {{/connected}}
+                  {{/data.audiooutput.devices}}
+                </select>
 
-                    {{#data.preview}}
-                    {{#data.audiooutput.livePreview}}
-                      <div>
-                      {{#data.audiooutput.preview.tone.enabled}}
-                        {{^data.audiooutput.preview.tone.active}}
+                {{#data.preview}}
+                {{#data.audiooutput.livePreview}}
+                  <div>
+                    {{#data.audiooutput.preview.tone.enabled}}
+                      {{^data.audiooutput.preview.tone.active}}
                         <a id="{{by_id.startpreviewtone.elementId}}" href="#">{{i18n.starttone}}</a>
-                        {{/data.audiooutput.preview.tone.active}}
+                      {{/data.audiooutput.preview.tone.active}}
 
-                        {{#data.audiooutput.preview.tone.active}}
+                      {{#data.audiooutput.preview.tone.active}}
                         <a id="{{by_id.stoppreviewtone.elementId}}" href="#">{{i18n.stoptone}}</a>
-                        {{/data.audiooutput.preview.tone.active}}
+                      {{/data.audiooutput.preview.tone.active}}
+                    {{/data.audiooutput.preview.tone.enabled}}
+                    
+
+                    {{#data.audiooutput.preview.loopback.enabled}}
+                      {{#data.audiooutput.preview.tone.enabled}}
+                      |
                       {{/data.audiooutput.preview.tone.enabled}}
-                      
 
-                      {{#data.audiooutput.preview.loopback.enabled}}
-                        {{#data.audiooutput.preview.tone.enabled}}
-                        |
-                        {{/data.audiooutput.preview.tone.enabled}}
-
-
-                        {{^data.audiooutput.preview.loopback.active}}
+                      {{^data.audiooutput.preview.loopback.active}}
                         <a id="{{by_id.startpreviewloopback.elementId}}" href="#">{{i18n.startloopback}}</a>
-                        {{/data.audiooutput.preview.loopback.active}}
+                      {{/data.audiooutput.preview.loopback.active}}
 
-                        {{#data.audiooutput.preview.loopback.active}}
+                      {{#data.audiooutput.preview.loopback.active}}
                         <a id="{{by_id.stoppreviewloopback.elementId}}" href="#">{{i18n.stoploopback}}</a>
-                        {{/data.audiooutput.preview.loopback.active}}
-                      {{/data.audiooutput.preview.loopback.enabled}}
+                      {{/data.audiooutput.preview.loopback.active}}
+                    {{/data.audiooutput.preview.loopback.enabled}}
 
-                      </div>
-                    {{/data.audiooutput.livePreview}}
-                    {{/data.preview}}
-                </div>
+                  </div>
+                {{/data.audiooutput.livePreview}}
+                {{/data.preview}}
+              </div>
             {{/data.audiooutput.enabled}}
 
             {{#data.volume.master.enabled}}    
@@ -906,60 +925,71 @@ class lwpMediaDevices extends lwpRenderer {
             </div>
             {{/data.volume.dtmf.enabled}}
 
+            {{#data.volume.remote.enabled}}
+            <div>
+              <label for="{{by_id.remotevolume.elementId}}">
+                {{i18n.remotevolume}}
+              </label>
+              <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.remote.value}}" id="{{by_id.remotevolume.elementId}}">
+            </div>
+            {{/data.volume.remote.enabled}}
+
             {{#data.audioinput.enabled}}
-                <div>
-                    <label for="{{by_id.audioinput.elementId}}">
-                        {{i18n.audioinput}}
-                    </label>
-                    <select id="{{by_id.audioinput.elementId}}">
-                        {{#data.audioinput.devices}}
-                            {{#connected}}
-                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                            {{/connected}}    
-                        {{/data.audioinput.devices}}
-                    </select>
-                    {{#data.preview}}
-                    {{#data.audioinput.livePreview}}
-                        <div id="{{by_id.audioinputpreview.elementId}}" style="width:300px;height:10px;background-color: lightgray;margin: 10px 0px;">
-                            <div style="height:10px; background-color: #00aeef;"></div>
-                        </div>
-                    {{/data.audioinput.livePreview}}   
-                    {{/data.preview}}                 
-                </div>
+              <div>
+                <label for="{{by_id.audioinput.elementId}}">
+                  {{i18n.audioinput}}
+                </label>
+                <select id="{{by_id.audioinput.elementId}}">
+                  {{#data.audioinput.devices}}
+                    {{#connected}}
+                      <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                    {{/connected}}    
+                  {{/data.audioinput.devices}}
+                </select>
+
+                {{#data.preview}}
+                {{#data.audioinput.livePreview}}
+                  <div id="{{by_id.audioinputpreview.elementId}}" style="width:300px;height:10px;background-color: lightgray;margin: 10px 0px;">
+                    <div style="height:10px; background-color: #00aeef;"></div>
+                  </div>
+                {{/data.audioinput.livePreview}}   
+                {{/data.preview}}                 
+              </div>
             {{/data.audioinput.enabled}}
 
             {{#data.videoinput.enabled}}          
-                <div>
-                    <label for="{{by_id.videoinput.elementId}}">
-                        {{i18n.videoinput}}
-                    </label>                
-                    <select id="{{by_id.videoinput.elementId}}">
-                        {{#data.videoinput.devices}}
-                            {{#connected}}
-                                <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                            {{/connected}}
-                        {{/data.videoinput.devices}}
-                    </select>
-                    {{#data.preview}}
-                    {{#data.videoinput.livePreview}}
-                        <div>
-                            <video id="{{videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
-                        </div>
-                    {{/data.videoinput.livePreview}}
-                    {{/data.preview}} 
-                </div>
+              <div>
+                  <label for="{{by_id.videoinput.elementId}}">
+                    {{i18n.videoinput}}
+                  </label>                
+                  <select id="{{by_id.videoinput.elementId}}">
+                    {{#data.videoinput.devices}}
+                        {{#connected}}
+                          <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                        {{/connected}}
+                    {{/data.videoinput.devices}}
+                  </select>
+
+                  {{#data.preview}}
+                  {{#data.videoinput.livePreview}}
+                    <div>
+                      <video id="{{videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
+                    </div>
+                  {{/data.videoinput.livePreview}}
+                  {{/data.preview}} 
+              </div>
             {{/data.videoinput.enabled}}
             {{/data.loaded}}
 
             {{^data.loaded}}
-            <div style="margin: 50px 5px;">
-              <div class="spinner">
-                <div class="bounce1"></div>
-                <div class="bounce2"></div>
-                <div class="bounce3"></div>
+              <div style="margin: 50px 5px;">
+                <div class="spinner">
+                  <div class="bounce1"></div>
+                  <div class="bounce2"></div>
+                  <div class="bounce3"></div>
+                </div>
+                <div style="text-align: center;">{{i18n.loading}}</div>
               </div>
-              <div style="text-align: center;">{{i18n.loading}}</div>
-            </div>
             {{/data.loaded}}
         </div>
         `;
@@ -1308,21 +1338,23 @@ class lwpMediaDevices extends lwpRenderer {
         if (!this._availableDevices[device.kind]) {
           this._availableDevices[device.kind] = [];
         }
+
         enumeratedDevice.displayOrder = this._availableDevices[
           device.kind
         ].length;
-        (enumeratedDevice.preference =
+
+        enumeratedDevice.preference =
           (this._config[device.kind].preferedDeviceIds || []).indexOf(
             enumeratedDevice.id
-          ) + 1),
-          this._availableDevices[device.kind].push(enumeratedDevice);
+          ) + 1;
+
+        this._availableDevices[device.kind].push(enumeratedDevice);
       }
     });
   }
 
   _deviceParameters(device) {
-    var deviceId = device.deviceId;
-    var deviceKind = device.kind;
+    let deviceId = device.deviceId;
     return {
       id: deviceId,
       label: device.label,
@@ -1334,9 +1366,8 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   _getDeviceName(device) {
-    var i18n = this._translator;
-    var deviceKind = device.kind;
-    var i18nKey = "libwebphone:mediaDevices." + deviceKind;
+    let deviceKind = device.kind;
+    let i18nKey = "libwebphone:mediaDevices." + deviceKind;
     return (
       device.label ||
       i18nKey + " " + (this._availableDevices[deviceKind].length + 1)
@@ -1352,10 +1383,6 @@ class lwpMediaDevices extends lwpRenderer {
       case "videoinput":
         return "video";
     }
-  }
-
-  _deviceKindMaxPreference(deviceKind) {
-    return;
   }
 
   /** Shims */
