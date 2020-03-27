@@ -6,20 +6,20 @@ import { merge, randomElementId } from "./lwpUtils";
 export default class {
   constructor(libwebphone) {
     this._renders = [];
-    this._loaded = false;
+    this._windowLoaded = false;
     this._i18nReady = false;
-    this._ready = false;
+    this._renderReady = false;
     libwebphone.on("language.changed", () => {
       this._i18nReady = true;
-      if (this._loaded && this._i18nReady) {
-        this._ready = true;
+      if (this._windowLoaded && this._i18nReady) {
+        this._renderReady = true;
         this.render();
       }
     });
     window.addEventListener("load", () => {
-      this._loaded = true;
-      if (this._loaded && this._i18nReady) {
-        this._ready = true;
+      this._windowLoaded = true;
+      if (this._windowLoaded && this._i18nReady) {
+        this._renderReady = true;
         this.render();
       }
     });
@@ -61,7 +61,7 @@ export default class {
 
     this._emit("render.new", this, render);
 
-    if (this._ready) {
+    if (this._renderReady) {
       this._render(render);
     }
 
@@ -76,7 +76,7 @@ export default class {
 
   _render(render) {
     return new Promise(resolve => {
-      if (!this._ready) {
+      if (!this._renderReady) {
         resolve(render);
         return;
       }

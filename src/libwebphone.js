@@ -74,51 +74,56 @@ export default class extends EventEmitter {
   }
 
   _callListEvent(type, callList, ...data) {
-    this._libwebphone._emit("calllist." + type, this._libwebphone, callList);
-    this._libwebphone._emit("calllist.updated", this._libwebphone, callList);
+    data.unshift(callList);
+    data.unshift(this._libwebphone);
+    data.unshift("callList." + type);
+    this._libwebphone._emit.apply(this._libwebphone, data);
   }
 
   _callControlEvent(type, callControl, ...data) {
-    this._libwebphone._emit(
-      "callcontrol." + type,
-      this._libwebphone,
-      callControl
-    );
-    this._libwebphone._emit(
-      "callcontrol.updated",
-      this._libwebphone,
-      callControl
-    );
+    data.unshift(callControl);
+    data.unshift(this._libwebphone);
+    data.unshift("callControl." + type);
+    this._libwebphone._emit.apply(this._libwebphone, data);
   }
   _dialpadEvent(type, dialpad, ...data) {
-    this._libwebphone._emit("dialpad." + type, this._libwebphone, dialpad);
-    this._libwebphone._emit("dialpad.updated", this._libwebphone, dialpad);
+    data.unshift(dialpad);
+    data.unshift(this._libwebphone);
+    data.unshift("dialpad." + type);
+    this._libwebphone._emit.apply(this._libwebphone, data);
   }
 
   _userAgentEvent(type, userAgent, ...data) {
-    this._libwebphone._emit("userAgent." + type, this._libwebphone, userAgent);
-    this._libwebphone._emit("userAgent.updated", this._libwebphone, userAgent);
+    data.unshift(userAgent);
+    data.unshift(this._libwebphone);
+    data.unshift("userAgent." + type);
+    this._libwebphone._emit.apply(this._libwebphone, data);
   }
 
   _mediaDevicesEvent(type, mediaDevices, ...data) {
-    this._libwebphone._emit(
-      "mediaDevices." + type,
-      this._libwebphone,
-      mediaDevices
-    );
-    this._libwebphone._emit(
-      "mediaDevices.updated",
-      this._libwebphone,
-      mediaDevices
-    );
+    data.unshift(mediaDevices);
+    data.unshift(this._libwebphone);
+    data.unshift("mediaDevices." + type);
+    this._libwebphone._emit.apply(this._libwebphone, data);
   }
 
   _callEvent(type, call, ...data) {
-    this._libwebphone._emit("call." + type, this._libwebphone, call);
-    this._libwebphone._emit("call.updated", this._libwebphone, call);
+    data.unshift(call);
+    data.unshift(this._libwebphone);
+    data.unshift("call." + type);
+
+    this._libwebphone._emit.apply(this._libwebphone, data);
+
+    if (call.isPrimary()) {
+      data.shift();
+      data.unshift("call.primary." + type);
+      this._libwebphone._emit.apply(this._libwebphone, data);
+    }
   }
 
   _emit(...args) {
     this.emit(...args);
+    name = args.shift();
+    console.log(name, args);
   }
 } //End of default class

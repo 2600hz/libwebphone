@@ -26,7 +26,7 @@ export default class extends lwpRenderer {
       if (callId) {
         return call.getId() == callId;
       } else {
-        return call.isPrimary();
+        return call.isPrimary() && call.hasSession();
       }
     });
   }
@@ -44,24 +44,31 @@ export default class extends lwpRenderer {
      * if the removed call was a primary
      */
     this._calls.push(newCall);
+    this._emit("calls.added", this, newCall);
   }
 
   switchCall(callid) {
+    let previousCall = null;
+    let primaryCall = this.getCall(callid);
+
     this._calls.map(call => {
       if (call.isPrimary) {
+        previousCall = call;
         call.clearPrimary();
       }
     });
-    let primaryCall = this.getCall(callid);
+
     if (primaryCall) {
       primaryCall.setPrimary();
     }
+
     /** TODO: save a timestamp to the primary call,
      * during remoteCall attempt to switch to the call
      * wiht a session that has the largest timestamp
      * if the removed call was a primary
      */
-    this.updateRenders();
+
+    this._emit("calls.switched", primaryCall, previousCall);
   }
 
   removeCall(terminatedCall) {
@@ -71,19 +78,24 @@ export default class extends lwpRenderer {
       return call.getId() != terminatedId;
     });
 
-    if (terminatedCall.isPrimary) {
+    if (terminatedCall.isPrimary()) {
       let withSession = this._calls.find(call => {
-        call.hasSession();
+        return call.hasSession();
       });
+
       if (withSession) {
-        withSession.setPrimary();
+        withSession.setPrimary(false);
       } else {
         this._libwebphone.getMediaDevices().stopStreams();
         if (this._calls.length > 0) {
           this._calls[0].setPrimary();
         }
       }
+
+      terminatedCall.clearPrimary();
     }
+
+    this._emit("calls.removed", this, terminatedCall);
   }
 
   updateRenders() {
@@ -122,6 +134,31 @@ export default class extends lwpRenderer {
       this.addCall(call);
       this.updateRenders();
     });
+
+    this._libwebphone.on("call.promoted", () => {
+      this.updateRenders();
+    });
+
+    this._libwebphone.on("call.progress", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.established", () => {
+      this.updateRenders();
+    });
+
+    this._libwebphone.on("call.hold", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.unhold", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.muted", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.unmuted", () => {
+      this.updateRenders();
+    });
+
     this._libwebphone.on("call.failed", (lwp, call) => {
       this.removeCall(call);
       this.updateRenders();
@@ -130,7 +167,6 @@ export default class extends lwpRenderer {
       this.removeCall(call);
       this.updateRenders();
     });
-    this._libwebphone.on("call.updated", () => this.updateRenders());
   }
 
   _initRenderTargets() {

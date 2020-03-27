@@ -28,31 +28,32 @@ export default class extends lwpRenderer {
   dial(digit, tones) {
     let call = this._libwebphone.getCallList().getCall();
 
-    if (call.hasSession()) {
+    if (tones) {
+      this._libwebphone.getMediaDevices().startPlayTone(...tones);
+    }
+
+    if (call && !call.isInTransfer()) {
       call.sendDTMF(digit);
     } else {
       this._digits.push(digit);
     }
 
-    if (tones) {
-      this._libwebphone.getMediaDevices().startPlayTone(...tones);
-    }
-
     this.updateRenders();
-
-    this._emit("digits.updated", this, this._digits);
+    this._emit("digits.updated", this, this._digits, digit);
   }
 
   backspace() {
     this._digits.pop();
+
     this.updateRenders();
     this._emit("digits.backspace", this, this._digits);
   }
 
   clear() {
     this._digits = [];
+
     this.updateRenders();
-    this._emit("digits.clear", this);
+    this._emit("digits.clear", this, this._digits);
   }
 
   digits() {
@@ -114,7 +115,17 @@ export default class extends lwpRenderer {
     this._digits = [];
   }
 
-  _initEventBindings() {}
+  _initEventBindings() {
+    this._libwebphone.on("dialpad.digits.updated", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.digits.backspace", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.digits.clear", () => {
+      this.updateRenders();
+    });
+  }
 
   _initRenderTargets() {
     this._config.renderTargets.map(renderTarget => {
@@ -379,16 +390,14 @@ export default class extends lwpRenderer {
     let tones = this._charToTone(event.data);
     let call = this._libwebphone.getCallList().getCall();
 
-    if (call.hasSession()) {
-      if (event.data) {
-        call.sendDTMF(event.data);
-      }
-    } else {
-      this._digits = element.value.split("");
-    }
-
     if (tones) {
       this._libwebphone.getMediaDevices().startPlayTone(...tones);
+    }
+
+    if (call && !call.isInTransfer()) {
+      call.sendDTMF(event.data);
+    } else {
+      this._digits = element.value.split("");
     }
 
     this.updateRenders(render => {
@@ -399,6 +408,7 @@ export default class extends lwpRenderer {
       }
     });
 
-    this._emit("digits.updated", this, event.data);
+    this.updateRenders();
+    this._emit("digits.updated", this, this._digits, event.data);
   }
 }

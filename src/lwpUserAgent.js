@@ -28,7 +28,9 @@ export default class {
   }
 
   redial() {
-    return this.call(this._redialNumber);
+    let redialNumber = this.getRedial();
+    this._emit("redial.started", this, redialNumber);
+    return this.call(redialNumber);
   }
 
   getRedial() {
@@ -52,8 +54,8 @@ export default class {
       let options = {
         mediaStream: streams
       };
-
       this._userAgent.call(numbertocall, options);
+      this._emit("call.started", this, numbertocall);
     });
   }
 
@@ -95,9 +97,8 @@ export default class {
 
     this._sockets = [];
     this._userAgent = null;
-    this.setRedial(this._config.user_agent.redial);
 
-    this._emit("lastcall.update", this, this._redialNumber);
+    this.setRedial(this._config.user_agent.redial);
   }
 
   _initSockets() {
@@ -132,6 +133,7 @@ export default class {
     };
 
     //JsSIP.debug.enable("JsSIP:*");
+    JsSIP.debug.enable("");
 
     this._userAgent = new JsSIP.UA(config);
     this._userAgent.start();
@@ -156,4 +158,6 @@ export default class {
   }
 
   _initEventBindings() {}
+
+  /** Helper functions */
 }

@@ -52,7 +52,7 @@ export default class extends lwpRenderer {
     this._currentCall().answer();
   }
 
-  updateControls() {
+  updateRenders() {
     this.render(render => {
       render.data.call = this._callRenderConfig();
       render.data.redial = this._libwebphone.getUserAgent().getRedial();
@@ -88,9 +88,29 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
-    this._libwebphone.on("call.added", () => this.updateControls());
-    this._libwebphone.on("call.updated", () => this.updateControls());
-    this._libwebphone.on("call.removed", () => this.updateControls());
+    this._libwebphone.on("call.primary.promoted", () => {
+      this.updateRenders();
+    });
+
+    this._libwebphone.on("call.primary.progress", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.established", () => {
+      this.updateRenders();
+    });
+
+    this._libwebphone.on("call.primary.hold", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.unhold", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.muted", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.unmuted", () => {
+      this.updateRenders();
+    });
   }
 
   _initRenderTargets() {

@@ -7,11 +7,8 @@ export default class {
     this._libwebphone = libwebphone;
     this._emit = this._libwebphone._callEvent;
     this._session = session;
-    this._primary = false;
-    this._id = uuid();
+    this._initProperties();
     this._initEventBindings();
-    this._remoteStream = null;
-    this._remoteAudio = null;
     this._emit("created", this);
   }
 
@@ -31,34 +28,62 @@ export default class {
     return this._primary;
   }
 
-  setPrimary() {
-    this._primary = true;
-    if (this.isEstablished() && this.isOnHold()) {
-      this.unhold();
-    }
-    if (this._remoteAudio) {
-      this._libwebphone.getMediaDevices().setRemoteAudio(this._remoteAudio);
-    }
-    this._emit("setPrimary", this);
+  getRemoteAudio() {
+    return this._remoteAudio;
   }
 
-  clearPrimary() {
-    this._primary = false;
-    if (this.isEstablished()) {
+  setRemoteAudio(remoteAudio) {
+    this._remoteAudio = remoteAudio;
+
+    this._emit("remote.audio.added", this, remoteAudio);
+  }
+
+  getRemoteStream() {
+    return this._remoteStream;
+  }
+
+  setRemoteStream(remoteStream) {
+    let element = document.createElement("audio");
+    element.srcObject = remoteStream;
+    element.muted = true;
+    element.play();
+
+    this._remoteStream = remoteStream;
+
+    this._emit("remote.stream.added", this, remoteStream);
+  }
+
+  setPrimary(unhold = true) {
+    if (this.isPrimary()) {
+      return;
+    }
+
+    if (unhold && this.isEstablished() && this.isOnHold()) {
+      this.unhold();
+    }
+
+    this._primary = true;
+    this._emit("promoted", this);
+  }
+
+  clearPrimary(hold = true) {
+    if (!this.isPrimary()) {
+      return;
+    }
+
+    if (hold && this.isEstablished()) {
       this.hold();
     }
-    /*
-    if (this._remoteStream.srcObject) {
-      this._remoteStream.pause();
-    }
-    */
-    this._emit("clearPrimary", this);
+
+    this._primary = false;
+    this._emit("demoted", this);
   }
 
   isInProgress() {
     if (this.hasSession()) {
       return this._session.isInProgress();
     }
+
     return false;
   }
 
@@ -66,6 +91,7 @@ export default class {
     if (this.hasSession()) {
       return this._session.isEstablished();
     }
+
     return false;
   }
 
@@ -73,6 +99,7 @@ export default class {
     if (this.hasSession()) {
       return this._session.isEnded();
     }
+
     return false;
   }
 
@@ -80,6 +107,7 @@ export default class {
     if (this.hasSession()) {
       return this._session.isOnHold();
     }
+
     return { local: false, remote: false };
   }
 
@@ -87,7 +115,12 @@ export default class {
     if (this.hasSession()) {
       return this._session.isMuted();
     }
+
     return { audio: false, video: false };
+  }
+
+  isInTransfer() {
+    return this._inTransfer;
   }
 
   getDirection() {
@@ -98,6 +131,7 @@ export default class {
         return "originating";
       }
     }
+
     return "originating";
   }
 
@@ -149,14 +183,28 @@ export default class {
     }
   }
 
-  transfer() {
+  transfer(numbertotransfer = null) {
     if (this.hasSession()) {
-      let numbertotransfer = libwebphone._dialpadPromise.then(dialpad => {
-        let digits = dialpad.digits();
+      let dialpad = this._libwebphone.getDialpad();
+      if (this._inTransfer || numbertotransfer) {
+        this._inTransfer = false;
+
+        if (!numbertotransfer) {
+          numbertotransfer = dialpad.digits().join("");
+          dialpad.clear();
+        }
+
+        if (numbertotransfer) {
+          this._session.refer(numbertotransfer);
+          this._emit("transfer.started", this, numbertotransfer);
+        } else {
+          this._emit("transfer.failed", this, numbertotransfer);
+        }
+      } else {
+        this._inTransfer = true;
         dialpad.clear();
-        return digits.join("");
-      });
-      this._session.refer(numbertotransfer);
+        this._emit("transfer.collecting", this, numbertotransfer);
+      }
     }
   }
 
@@ -167,7 +215,9 @@ export default class {
         let options = {
           mediaStream: streams
         };
+
         this._session.answer(options);
+        this._emit("answered", this);
       });
     }
   }
@@ -175,18 +225,21 @@ export default class {
   reject() {
     if (this.hasSession()) {
       this._session.terminate();
+      this._emit("rejected", this);
     }
   }
 
   renegotiate() {
     if (this.hasSession()) {
       this._session.renegotiate();
+      this._emit("renegotiated", this);
     }
   }
 
-  sendDTMF(tone) {
+  sendDTMF(signal) {
     if (this.hasSession()) {
-      this._session.sendDTMF(tone);
+      this._session.sendDTMF(signal);
+      this._emit("send.dtmf", this, signal);
     }
   }
 
@@ -210,25 +263,14 @@ export default class {
     };
   }
 
-  _connectMediaDevices() {
-    if (this._session.connection) {
-      this._session.connection.addEventListener("addstream", event => {
-        let element = document.createElement("audio");
-        element.srcObject = event.stream;
-        element.muted = true;
-        element.play();
+  /** Init functions */
 
-        this._remoteStream = event.stream;
-
-        this._remoteAudio = this._libwebphone
-          .getMediaDevices()
-          .createRemoteAudio(this._remoteStream);
-
-        if (this.isPrimary()) {
-          this._libwebphone.getMediaDevices().setRemoteAudio(this._remoteAudio);
-        }
-      });
-    }
+  _initProperties() {
+    this._id = uuid();
+    this._primary = false;
+    this._remoteStream = null;
+    this._remoteAudio = null;
+    this._inTransfer = false;
   }
 
   _initEventBindings() {
@@ -236,25 +278,42 @@ export default class {
       return;
     }
 
-    this._connectMediaDevices();
+    this._listenForNewStreams();
     this._session.on("peerconnection", (...event) => {
-      this._connectMediaDevices();
-      this._emit("peerconnection", this, ...event);
+      this._listenForNewStreams();
     });
+
+    this._libwebphone.on("dialpad.digits.updated", (lwp, dialpad, digits) => {
+      if (this.hasSession() && this.isPrimary() && !this.isInTransfer()) {
+        dialpad.clear();
+        console.log("send digits: ", digits);
+        digits.forEach(digit => {
+          this.sendDTMF(digit);
+        });
+      }
+    });
+
+    /*
     this._session.on("connecting", (...event) => {
       this._emit("connecting", this, ...event);
     });
     this._session.on("sending", (...event) => {
       this._emit("sending", this, ...event);
     });
+    */
+
     this._session.on("progress", (...event) => {
       this._emit("progress", this, ...event);
     });
+
+    /*
     this._session.on("accepted", (...event) => {
       this._emit("accepted", this, ...event);
     });
+    */
+
     this._session.on("confirmed", (...event) => {
-      this._emit("confirmed", this, ...event);
+      this._emit("established", this, ...event);
       /*
       if (!this.isPrimary()) {
         this.hold();
@@ -262,10 +321,10 @@ export default class {
       */
     });
     this._session.on("newDTMF", (...event) => {
-      this._emit("dtmf", this, ...event);
+      this._emit("receive.dtmf", this, ...event);
     });
     this._session.on("newInfo", (...event) => {
-      this._emit("info", this, ...event);
+      this._emit("receive.info", this, ...event);
     });
     this._session.on("hold", (...event) => {
       this._emit("hold", this, ...event);
@@ -279,14 +338,26 @@ export default class {
     this._session.on("unmuted", (...event) => {
       this._emit("unmuted", this, ...event);
     });
+    /*
     this._session.on("reinvite", (...event) => {
       this._emit("reinvite", this, ...event);
     });
+    */
     this._session.on("ended", (...event) => {
       this._emit("ended", this, ...event);
     });
     this._session.on("failed", (...event) => {
       this._emit("failed", this, ...event);
     });
+  }
+
+  /** Helper functions */
+
+  _listenForNewStreams() {
+    if (this._session.connection) {
+      this._session.connection.addEventListener("addstream", event => {
+        this.setRemoteStream(event.stream);
+      });
+    }
   }
 }

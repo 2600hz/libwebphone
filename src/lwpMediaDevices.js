@@ -36,31 +36,24 @@ class lwpMediaDevices extends lwpRenderer {
 
   startPreviews() {
     this.startAudioContext();
-    this._previewActive = true;
 
     if (this._config.audiooutput.preview.loopback.startOnPreview) {
       this.startPreviewOutputLoopback();
     }
 
     this._startInputStreams().then(() => {
-      this.updateRenders();
+      this._previewActive = true;
       this._emit("preview.start", this);
     });
   }
 
   startPreviewOutputTone() {
     this._previewAudio.oscillatorGainNode.gain.value = 1;
-
-    this.updateRenders();
-
     this._emit("preview.tone.start", this);
   }
 
   stopPreviewOutputTone() {
     this._previewAudio.oscillatorGainNode.gain.value = 0;
-
-    this.updateRenders();
-
     this._emit("preview.tone.stop", this);
   }
 
@@ -70,17 +63,11 @@ class lwpMediaDevices extends lwpRenderer {
 
   startPreviewOutputLoopback() {
     this._previewAudio.loopbackGainNode.gain.value = 1;
-
-    this.updateRenders();
-
     this._emit("preview.loopback.start", this);
   }
 
   stopPreviewOutputLoopback() {
     this._previewAudio.loopbackGainNode.gain.value = 0;
-
-    this.updateRenders();
-
     this._emit("preview.loopback.stop", this);
   }
 
@@ -98,8 +85,6 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   stopPreviews() {
-    this._previewActive = false;
-
     this.stopPreviewOutputLoopback();
     this.stopPreviewOutputTone();
 
@@ -107,15 +92,12 @@ class lwpMediaDevices extends lwpRenderer {
       this._stopAllInputs();
     }
 
-    this.updateRenders();
-
+    this._previewActive = false;
     this._emit("preview.stop", this);
   }
 
   startStreams() {
     this.startAudioContext();
-
-    this._inputActive = true;
 
     let startMuted = [];
     Object.keys(this._config).forEach(category => {
@@ -124,67 +106,44 @@ class lwpMediaDevices extends lwpRenderer {
       }
     });
 
-    return this._startInputStreams(null, startMuted).then(() => {
-      this.updateRenders();
+    return this._startInputStreams(null, startMuted).then(mediaStream => {
+      this._inputActive = true;
       this._emit("streams.start", this);
+      return mediaStream;
     });
   }
 
-  createRemoteAudio(mediaStream) {
-    return this._outputAudio.context.createMediaStreamSource(mediaStream);
-  }
-
-  setRemoteAudio(mediaStreamSource) {
-    this._remoteAudio.sourceStream = mediaStreamSource;
-    this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
-  }
-
   stopStreams() {
-    this._inputActive = false;
-
     if (!this._previewActive) {
       this._stopAllInputs();
     }
 
-    this.updateRenders();
-
+    this._inputActive = false;
     this._emit("streams.stop", this);
   }
 
   changeMasterVolume(volume) {
     volume = volume.toFixed(2);
-    this._emit("volume.master.change", this, volume);
-
     this._outputAudio.volumeGainNode.gain.value = volume;
-
-    this.updateRenders();
+    this._emit("volume.master.change", this, volume);
   }
 
   changeRingerVolume(volume) {
     volume = volume.toFixed(2);
-    this._emit("volume.ringer.change", this, volume);
-
     this._notificationAudio.ringerGainNode.gain.value = volume;
-
-    this.updateRenders();
+    this._emit("volume.ringer.change", this, volume);
   }
 
   changeDTMFVolume(volume) {
     volume = volume.toFixed(2);
-    this._emit("volume.dtmf.change", this, volume);
-
     this._notificationAudio.dtmfGainNode.gain.value = volume;
-
-    this.updateRenders();
+    this._emit("volume.dtmf.change", this, volume);
   }
 
   changeRemoteVolume(volume) {
     volume = volume.toFixed(2);
-    this._emit("volume.remote.change", this, volume);
-
     this._remoteAudio.remoteGainNode.gain.value = volume;
-
-    this.updateRenders();
+    this._emit("volume.remote.change", this, volume);
   }
 
   mute(deviceKind = null) {
@@ -264,12 +223,10 @@ class lwpMediaDevices extends lwpRenderer {
     switch (deviceKind) {
       case "audiooutput":
         this._changeOutputDevice(preferedDevice).then(() => {
-          this.updateRenders();
           release();
         });
       default:
         return this._changeInputDevice(preferedDevice).then(() => {
-          this.updateRenders();
           release();
         });
     }
@@ -325,7 +282,7 @@ class lwpMediaDevices extends lwpRenderer {
           let alteredConstraints = {};
 
           mediaStream.getTracks().forEach(track => {
-            let trackParameters = this._trackParameters(track);
+            let trackParameters = this._trackParameters(mediaStream, track);
             let deviceKind = this._trackKindtoDeviceKind(track.kind);
             let activeDevice = this._availableDevices[deviceKind].find(
               availableDevice => {
@@ -526,7 +483,6 @@ class lwpMediaDevices extends lwpRenderer {
 
     this._inputActive = false;
     this._previewActive = false;
-    this.__previewAudioActive = false;
 
     this._availableDevices = {
       audiooutput: [],
@@ -655,20 +611,8 @@ class lwpMediaDevices extends lwpRenderer {
         this._importInputDevices(devices);
         this._sortAvailableDevices();
         mediaStream.getTracks().forEach(track => {
-          let trackParameters = this._trackParameters(track);
-          let deviceKind = trackParameters.deviceKind;
-          let deviceId = trackParameters.settings.deviceId;
-          let availableDevice = this._findAvailableDevice(deviceKind, deviceId);
-
-          if (availableDevice) {
-            Object.assign(availableDevice, trackParameters, { active: true });
-          }
-
-          if (!this._config.startPreview && !this._config.startStreams) {
-            track.enabled = false;
-            track.stop();
-            mediaStream.removeTrack(track);
-          }
+          this._addTrack(mediaStream, track);
+          this._removeTrack(mediaStream, track, false);
         });
 
         Object.keys(this._availableDevices).forEach(deviceKind => {
@@ -698,6 +642,106 @@ class lwpMediaDevices extends lwpRenderer {
         this.refreshAvailableDevices();
       };
     }
+
+    this._libwebphone.on("mediaDevices.preview.start", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.preview.tone.start", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.preview.tone.stop", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.preview.loopback.start", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.preview.loopback.stop", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.preview.stop", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.streams.start", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.streams.stop", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.volume.master.change", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.volume.ringer.change", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.volume.dtmf.change", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.volume.remote.change", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.audio.output.changed", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.audio.input.changed", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("mediaDevices.video.input.changed", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on(
+      "call.remote.stream.added",
+      (lwp, call, remoteStream) => {
+        let audioStream = this._outputAudio.context.createMediaStreamSource(
+          remoteStream
+        );
+        call.setRemoteAudio(audioStream);
+        this._emit("remote.audio.created", this, audioStream);
+      }
+    );
+    this._libwebphone.on(
+      "call.primary.remote.stream.added",
+      (lwp, call, remoteStream) => {
+        let audioStream = this._outputAudio.context.createMediaStreamSource(
+          remoteStream
+        );
+        call.setRemoteAudio(audioStream);
+        this._emit("remote.audio.created", this, audioStream);
+      }
+    );
+    this._libwebphone.on(
+      "call.primary.remote.audio.added",
+      (lwp, call, audioStream) => {
+        let sourceStream = this._remoteAudio.sourceStream;
+
+        if (sourceStream) {
+          sourceStream.disconnect();
+          this._remoteAudio.sourceStream = null;
+        }
+
+        this._remoteAudio.sourceStream = audioStream;
+        this._remoteAudio.sourceStream.connect(
+          this._remoteAudio.remoteGainNode
+        );
+        this._emit("remote.audio.change", this, audioStream);
+      }
+    );
+    this._libwebphone.on("call.primary.promoted", (lwp, call) => {
+      let audioStream = call.getRemoteAudio();
+      let sourceStream = this._remoteAudio.sourceStream;
+
+      if (sourceStream) {
+        sourceStream.disconnect();
+        this._remoteAudio.sourceStream = null;
+      }
+
+      if (audioStream) {
+        this._remoteAudio.sourceStream = audioStream;
+        this._remoteAudio.sourceStream.connect(
+          this._remoteAudio.remoteGainNode
+        );
+        this._emit("remote.audio.change", this, audioStream);
+      }
+    });
   }
 
   _initRenderTargets() {
@@ -1016,8 +1060,11 @@ class lwpMediaDevices extends lwpRenderer {
 
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
+          let trackParameters = this._trackParameters(mediaStream, track);
+
           track.enabled = false;
-          this._emit(track.kind + ".input.muted", this, track);
+
+          this._emit(track.kind + ".input.muted", this, trackParameters);
         }
       });
 
@@ -1031,8 +1078,11 @@ class lwpMediaDevices extends lwpRenderer {
 
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
+          let trackParameters = this._trackParameters(mediaStream, track);
+
           track.enabled = true;
-          this._emit(track.kind + ".input.unmuted", this, track);
+
+          this._emit(track.kind + ".input.unmuted", this, trackParameters);
         }
       });
 
@@ -1046,12 +1096,14 @@ class lwpMediaDevices extends lwpRenderer {
 
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
+          let trackParameters = this._trackParameters(mediaStream, track);
+
           track.enabled = !track.enabled;
 
           if (track.enabled) {
-            this._emit(track.kind + ".input.unmuted", this, track);
+            this._emit(track.kind + ".input.unmuted", this, trackParameters);
           } else {
-            this._emit(track.kind + ".input.muted", this, track);
+            this._emit(track.kind + ".input.muted", this, trackParameters);
           }
         }
       });
@@ -1066,9 +1118,7 @@ class lwpMediaDevices extends lwpRenderer {
 
       mediaStream.getTracks().forEach(track => {
         if (!trackKind || track.kind == trackKind) {
-          track.enabled = false;
-          track.stop();
-          mediaStream.removeTrack(track);
+          this._removeTrack(mediaStream, track, false);
         }
       });
 
@@ -1081,10 +1131,12 @@ class lwpMediaDevices extends lwpRenderer {
       let trackKind = preferedDevice.trackKind;
       let trackConstraints = this._createConstraints(preferedDevice)[trackKind];
       let previousTrack = mediaStream.getTracks().find(track => {
-        return (
-          track.kind == preferedDevice.trackKind && track.readyState == "live"
-        );
+        return track.kind == preferedDevice.trackKind;
       });
+      let previousTrackParameters = this._trackParameters(
+        mediaStream,
+        previousTrack
+      );
       let mutedInputs = [];
 
       if (previousTrack) {
@@ -1099,10 +1151,35 @@ class lwpMediaDevices extends lwpRenderer {
           if (!this._inputActive && !this._previewActive) {
             this._stopAllInputs();
           }
-        });
-      }
 
-      this._emit(trackKind + ".input.changed", this, preferedDevice);
+          let newTrack = mediaStream.getTracks().find(track => {
+            return track.kind == trackKind && track.readyState == "live";
+          });
+
+          this._emit(
+            trackKind + ".input.changed",
+            this,
+            this._trackParameters(mediaStream, newTrack),
+            previousTrackParameters
+          );
+        });
+      } else {
+        this._availableDevices[preferedDevice.deviceKind].forEach(
+          availableDevice => {
+            if (availableDevice.id == "none") {
+              availableDevice.active = true;
+            } else {
+              availableDevice.active = false;
+            }
+          }
+        );
+        this._emit(
+          trackKind + ".input.changed",
+          this,
+          null,
+          previousTrackParameters
+        );
+      }
     });
   }
 
@@ -1115,6 +1192,8 @@ class lwpMediaDevices extends lwpRenderer {
       mediaStream.getTracks().forEach(track => {
         if (track.readyState == "live") {
           delete constraints[track.kind];
+        } else {
+          this._removeTrack(mediaStream, track);
         }
       });
 
@@ -1126,9 +1205,6 @@ class lwpMediaDevices extends lwpRenderer {
         .then(otherMediaStream => {
           otherMediaStream.getTracks().forEach(track => {
             let startMuted = mutedInputs.indexOf(track.kind) >= 0;
-            if (!this._inputActive && !this._previewActive) {
-              startMuted = true;
-            }
             track.enabled = !startMuted;
             this._addTrack(mediaStream, track);
           });
@@ -1136,12 +1212,17 @@ class lwpMediaDevices extends lwpRenderer {
           return mediaStream;
         })
         .then(mediaStream => {
-          this._previewAudio.sourceStream = this._outputAudio.context.createMediaStreamSource(
-            mediaStream
-          );
-          this._previewAudio.sourceStream.connect(
-            this._previewAudio.loopbackDelayNode
-          );
+          let audioTrack = mediaStream.getTracks().find(track => {
+            return track.kind == "audio" && track.readyState == "live";
+          });
+          if (audioTrack) {
+            this._previewAudio.sourceStream = this._outputAudio.context.createMediaStreamSource(
+              mediaStream
+            );
+            this._previewAudio.sourceStream.connect(
+              this._previewAudio.loopbackDelayNode
+            );
+          }
 
           return mediaStream;
         });
@@ -1231,7 +1312,7 @@ class lwpMediaDevices extends lwpRenderer {
   /** MediaStream Helpers */
 
   _addTrack(mediaStream, track) {
-    var trackParameters = this._trackParameters(track);
+    var trackParameters = this._trackParameters(mediaStream, track);
 
     mediaStream.addTrack(track);
 
@@ -1245,49 +1326,58 @@ class lwpMediaDevices extends lwpRenderer {
       }
     );
 
-    this._emit(track.kind + ".input.added", this, this._trackParameters(track));
+    this._emit(track.kind + ".input.started", this, trackParameters);
 
     if (track.enabled) {
-      this._emit(track.kind + ".input.unmuted", this, track);
+      this._emit(track.kind + ".input.unmuted", this, trackParameters);
     } else {
-      this._emit(track.kind + ".input.muted", this, track);
+      this._emit(track.kind + ".input.muted", this, trackParameters);
     }
   }
 
-  _removeTrack(mediaStream, track) {
-    var trackParameters = this._trackParameters(track);
+  _removeTrack(mediaStream, track, updateActive = true) {
+    var trackParameters = this._trackParameters(mediaStream, track);
 
     track.enabled = false;
     track.stop();
 
     mediaStream.removeTrack(track);
 
-    this._availableDevices[trackParameters.deviceKind].forEach(
-      availableDevice => {
-        if (availableDevice.id == trackParameters.settings.deviceId) {
-          Object.assign(availableDevice, trackParameters, { active: false });
-        } else if (availableDevice.id == "none") {
-          availableDevice.active = true;
-        } else {
-          availableDevice.active = false;
+    if (updateActive) {
+      this._availableDevices[trackParameters.deviceKind].forEach(
+        availableDevice => {
+          if (availableDevice.id == trackParameters.settings.deviceId) {
+            Object.assign(availableDevice, trackParameters, { active: false });
+          } else if (availableDevice.id == "none") {
+            availableDevice.active = true;
+          } else {
+            availableDevice.active = false;
+          }
         }
-      }
-    );
+      );
+    }
 
-    this._emit(track.kind + ".input.removed", this, track);
+    this._emit(track.kind + ".input.stopped", this, trackParameters);
   }
 
-  _trackParameters(track) {
+  _trackParameters(mediaStream, track) {
+    if (!mediaStream || !track) {
+      return;
+    }
+
     if (typeof track.getCapabilities != "function") {
       track.getCapabilities = () => {};
     }
+
     return {
       trackKind: track.kind,
       active: track.readyState == "live",
       deviceKind: this._trackKindtoDeviceKind(track.kind),
       settings: track.getSettings(),
       constraints: track.getConstraints(),
-      capabilities: track.getCapabilities()
+      capabilities: track.getCapabilities(),
+      track: track,
+      mediaStream: mediaStream
     };
   }
 
