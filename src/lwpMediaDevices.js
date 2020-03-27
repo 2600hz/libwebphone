@@ -27,9 +27,10 @@ class lwpMediaDevices extends lwpRenderer {
       this._started = true;
       console.log("audio context started!!!");
       this._outputAudio.context.resume();
-      console.log(this._outputAudio.merger);
       this._previewAudio.oscillatorNode.start();
       this._outputAudio.element.play();
+      console.log("outputAudio: ", this._outputAudio);
+      console.log("previewAudio: ", this._previewAudio);
     }
   }
 
@@ -41,11 +42,10 @@ class lwpMediaDevices extends lwpRenderer {
       this.startPreviewOutputLoopback();
     }
 
-    this._startInputStreams();
-
-    this.updateRenders();
-
-    this._emit("preview.start", this);
+    this._startInputStreams().then(() => {
+      this.updateRenders();
+      this._emit("preview.start", this);
+    });
   }
 
   startPreviewOutputTone() {
@@ -117,8 +117,6 @@ class lwpMediaDevices extends lwpRenderer {
 
     this._inputActive = true;
 
-    this._remoteAudio.remoteGainNode.gain.value = 1;
-
     let startMuted = [];
     Object.keys(this._config).forEach(category => {
       if (this._config[category].startMuted) {
@@ -126,9 +124,10 @@ class lwpMediaDevices extends lwpRenderer {
       }
     });
 
-    this._emit("streams.start", this);
-
-    return this._startInputStreams(null, startMuted);
+    return this._startInputStreams(null, startMuted).then(() => {
+      this.updateRenders();
+      this._emit("streams.start", this);
+    });
   }
 
   createRemoteAudio(mediaStream) {
@@ -143,11 +142,11 @@ class lwpMediaDevices extends lwpRenderer {
   stopStreams() {
     this._inputActive = false;
 
-    this._remoteAudio.remoteGainNode.gain.value = 0;
-
     if (!this._previewActive) {
       this._stopAllInputs();
     }
+
+    this.updateRenders();
 
     this._emit("streams.stop", this);
   }
@@ -398,38 +397,37 @@ class lwpMediaDevices extends lwpRenderer {
         return render;
       },
       render => {
-        this._mediaStreamPromise.then(mediaStream => {
-          let audioTrack = mediaStream.getTracks().find(track => {
-            return track.kind == "audio" && track.readyState == "live";
-          });
+        if (this._previewAudio.sourceStream) {
+          let previewMediaStream = this._previewAudio.sourceStream;
+          let audioTrack = previewMediaStream.mediaStream
+            .getTracks()
+            .find(track => {
+              return track.kind == "audio" && track.readyState == "live";
+            });
 
-          if (render.previewAudioMeter) {
-            render.previewAudioMeter.close();
+          if (!audioTrack) {
+            return;
           }
 
-          if (audioTrack) {
-            let previewAudioContext = new AudioContext();
-            let previewMediaStream = previewAudioContext.createMediaStreamSource(
-              mediaStream
-            );
+          if (!render.previewAudioMeter) {
             render.previewAudioMeter = AudioStreamMeter.audioStreamProcessor(
-              previewAudioContext,
-              () => {
-                if (
-                  render.by_id.audioinputpreview &&
-                  render.by_id.audioinputpreview.element
-                ) {
-                  let element =
-                    render.by_id.audioinputpreview.element.children[0];
-
-                  element.style.width =
-                    render.previewAudioMeter.volume * 100 + "%";
-                }
-              }
+              this._outputAudio.context,
+              this._audioProcessCallback(render)
             );
+          } else {
+            render.previewAudioMeter.audioProcessCallback = this._audioProcessCallback(
+              render
+            );
+          }
+
+          if (
+            !render.previewAudioMeter.trackId ||
+            render.previewAudioMeter.trackId != audioTrack.id
+          ) {
+            render.previewAudioMeter.trackId = audioTrack.id;
             previewMediaStream.connect(render.previewAudioMeter);
           }
-        });
+        }
       }
     );
   }
@@ -1300,6 +1298,20 @@ class lwpMediaDevices extends lwpRenderer {
       case "video":
         return "videoinput";
     }
+  }
+
+  _audioProcessCallback(render) {
+    return () => {
+      Object.keys(render.by_id).forEach(key => {
+        if (render.by_id[key].preview == "audioinput") {
+          let element = render.by_id[key].element;
+          if (element) {
+            element.children[0].style.width =
+              render.previewAudioMeter.volume * 100 + "%";
+          }
+        }
+      });
+    };
   }
 
   /** Device Helpers */

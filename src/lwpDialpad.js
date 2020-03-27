@@ -255,7 +255,8 @@ export default class extends lwpRenderer {
           events: {
             onclick: event => {
               let element = event.srcElement;
-              this.dial(element.dataset.value);
+              let value = element.dataset.value;
+              this.dial(this._valueToChar(value), this._valueToTone(value));
             }
           }
         },

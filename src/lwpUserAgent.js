@@ -130,7 +130,8 @@ export default class {
       user_agent: this._config.user_agent.user_agent,
       session_timers: false
     };
-    JsSIP.debug.enable("JsSIP:*");
+
+    //JsSIP.debug.enable("JsSIP:*");
 
     this._userAgent = new JsSIP.UA(config);
     this._userAgent.start();

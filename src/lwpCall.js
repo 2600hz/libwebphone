@@ -186,7 +186,6 @@ export default class {
 
   sendDTMF(tone) {
     if (this.hasSession()) {
-      console.log("send dtmf: ", tone);
       this._session.sendDTMF(tone);
     }
   }
