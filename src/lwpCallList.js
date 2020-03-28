@@ -236,6 +236,7 @@ export default class extends lwpRenderer {
             <li>established: {{established}}</li>
             <li>hold: {{hold}}</li>
             <li>muted: {{muted}}</li>
+            <li>inTransfer: {{inTransfer}}</li>
             <li>ended: {{ended}}</li>
             <li>direction: {{direction}}</li>
           </ul>

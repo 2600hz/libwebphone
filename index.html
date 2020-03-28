@@ -110,14 +110,16 @@
               root: {
                 elementId: "media_device_selector"
               },
-              audiooutput: {
-                livePreview: false
-              },
-              audioinput: {
-                livePreview: true
-              },
-              videoinput: {
-                livePreview: false
+              data: {
+                audiooutput: {
+                  livePreview: false
+                },
+                audioinput: {
+                  livePreview: false
+                },
+                videoinput: {
+                  livePreview: false
+                }
               }
             }
           ]
@@ -343,7 +345,6 @@
           <div id="dialpad"></div>
         </div>
         <div class="col" style="border-right: dashed;">
-          <div id="dialed_custom"></div>
           <div id="dialpad_custom"></div>
           <script type="text/javascript">
             var template = `
@@ -378,9 +379,40 @@
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
           <div id="user_agent"></div>
-          </div>
         </div>
-        <div class="col" style="border-right: dashed;"></div>
+        <div class="col" style="border-right: dashed;">
+          <div id="user_agent_custom"></div>
+          <script type="text/javascript">
+            var template = `
+              <div>
+                {{#data.connected}}
+                {{#data.registered}}
+                &#128512
+                {{/data.registered}}
+                {{/data.connected}}
+
+                {{#data.connected}}
+                {{^data.registered}}
+                &#128542 
+                {{/data.registered}}
+                {{/data.connected}}
+
+                {{^data.connected}}
+                {{^data.registered}}
+                &#128561
+                {{/data.registered}}
+                {{/data.connected}}
+              </div>`;
+            var customTemplateConfig = {
+              template: template,
+              root: {
+                elementId: "user_agent_custom"
+              }
+            };
+
+            webphone.getUserAgent().renderAddTarget(customTemplateConfig);
+          </script>
+        </div>
         <div class="col"></div>
       </div>
 

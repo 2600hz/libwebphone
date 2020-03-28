@@ -250,30 +250,27 @@ export default class extends lwpRenderer {
   _renderDefaultTemplate() {
     return `
     <div>
-      <div>
-        {{^data.connected}}
-        disconnected
-        {{/data.connected}}
-
-        {{#data.connected}}
-        connected
-        {{/data.connected}}
-      </div>
+      {{^data.connected}}
+      disconnected
+      {{/data.connected}}
 
       {{#data.connected}}
-        <div>
-          {{^data.registered}}
-          <button id="{{by_id.register.elementId}}">
-            {{i18n.register}}
-          </button>
-          {{/data.registered}}
+      connected
+      {{/data.connected}}
 
-          {{#data.registered}}
-          <button id="{{by_id.unregister.elementId}}">
-            {{i18n.unregister}}
-          </button>
-          {{/data.registered}}
-        </div>
+      {{#data.connected}}
+        {{^data.registered}}
+        <button id="{{by_id.register.elementId}}">
+          {{i18n.register}}
+        </button>
+        {{/data.registered}}
+
+        {{#data.registered}}
+        <button id="{{by_id.unregister.elementId}}">
+          {{i18n.unregister}}
+        </button>
+        {{/data.registered}}
+      
       {{/data.connected}}
     </div>
       `;

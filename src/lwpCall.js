@@ -217,6 +217,7 @@ export default class {
       muted: muted.audio || muted.video,
       primary: this.isPrimary(),
       inTransfer: this.isInTransfer(),
+      direction: direction,
       terminating: direction == "terminating",
       originating: direction == "originating",
       local_identity: this.localIdentity(),
@@ -328,7 +329,7 @@ export default class {
     if (remoteAudio) {
       this._libwebphone
         .getMediaDevices()
-        .setRemoteAudioSourceStream(remoteAudio);
+        ._setRemoteAudioSourceStream(remoteAudio);
     }
 
     this._primary = true;

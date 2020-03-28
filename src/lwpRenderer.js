@@ -1,7 +1,7 @@
 "use strict";
 
 import Mustache from "mustache";
-import { merge, randomElementId } from "./lwpUtils";
+import { merge, randomElementId, cloneDeep } from "./lwpUtils";
 
 export default class {
   constructor(libwebphone) {
@@ -32,7 +32,7 @@ export default class {
       };
     }
 
-    let render = merge(this._renderDefaultConfig(), {
+    let render = merge(cloneDeep(this._renderDefaultConfig()), {
       data: config.data || {},
       i18n: config.i18n || {},
       template: config.template,

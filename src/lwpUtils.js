@@ -1,6 +1,6 @@
 "use strict";
 
-import _ from "lodash";
+import { merge as _merge, cloneDeep as _cloneDeep } from "lodash";
 
 export function uuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
@@ -11,7 +11,11 @@ export function uuid() {
 }
 
 export function merge(...args) {
-  return _.merge(...args);
+  return _merge(...args);
+}
+
+export function cloneDeep(...args) {
+  return _cloneDeep(...args);
 }
 
 export function randomElementId() {

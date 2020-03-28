@@ -16,15 +16,6 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  call() {
-    let numbertocall = this._digits.join("");
-    this.clear();
-
-    this._libwebphone.getUserAgent().call(numbertocall);
-
-    this._emit("call", this, numbertocall);
-  }
-
   dial(digit, tones) {
     let call = this._libwebphone.getCallList().getCall();
 
@@ -60,11 +51,20 @@ export default class extends lwpRenderer {
     return this._digits;
   }
 
+  call() {
+    let numbertocall = this._digits.join("");
+    this.clear();
+
+    this._libwebphone.getUserAgent().call(numbertocall);
+
+    this._emit("call", this, numbertocall);
+  }
+
   transfer() {
     let call = this._libwebphone.getCallList().getCall();
 
     if (call) {
-      call.transfer(digits().join(""));
+      call.transfer(this.digits().join(""));
       this.clear();
     }
   }
@@ -172,7 +172,7 @@ export default class extends lwpRenderer {
               // On enter...
               if (event.keyCode == 13) {
                 if (this._digits.length > 0) {
-                  this.call();
+                  this._callOrTransfer();
                 }
               }
             }
@@ -447,5 +447,14 @@ export default class extends lwpRenderer {
 
     this.updateRenders();
     this._emit("digits.updated", this, this._digits, event.data);
+  }
+
+  _callOrTransfer() {
+    let call = this._libwebphone.getCallList().getCall();
+    if (!call) {
+      this.call();
+    } else if (call.isInTransfer()) {
+      this.transfer();
+    }
   }
 }
