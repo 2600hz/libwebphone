@@ -32,34 +32,39 @@ export default class extends lwpRenderer {
   }
 
   addCall(newCall) {
+    let previousCall = this.getCall();
+
     this._calls.map(call => {
       if (call.isPrimary) {
-        call.clearPrimary();
+        call._clearPrimary();
       }
     });
-    newCall.setPrimary();
+
     /** TODO: save a timestamp to the primary call,
      * during remoteCall attempt to switch to the call
      * wiht a session that has the largest timestamp
      * if the removed call was a primary
      */
+
     this._calls.push(newCall);
     this._emit("calls.added", this, newCall);
+
+    newCall._setPrimary();
+    this._emit("calls.switched", newCall, previousCall);
   }
 
   switchCall(callid) {
-    let previousCall = null;
+    let previousCall = this.getCall();
     let primaryCall = this.getCall(callid);
 
     this._calls.map(call => {
       if (call.isPrimary) {
-        previousCall = call;
-        call.clearPrimary();
+        call._clearPrimary();
       }
     });
 
     if (primaryCall) {
-      primaryCall.setPrimary();
+      primaryCall._setPrimary();
     }
 
     /** TODO: save a timestamp to the primary call,
@@ -77,6 +82,7 @@ export default class extends lwpRenderer {
     this._calls = this._calls.filter(call => {
       return call.getId() != terminatedId;
     });
+    this._emit("calls.removed", this, terminatedCall);
 
     if (terminatedCall.isPrimary()) {
       let withSession = this._calls.find(call => {
@@ -84,24 +90,24 @@ export default class extends lwpRenderer {
       });
 
       if (withSession) {
-        withSession.setPrimary(false);
+        withSession._setPrimary(false);
+        this._emit("calls.switched", withSession, terminatedCall);
       } else {
         this._libwebphone.getMediaDevices().stopStreams();
         if (this._calls.length > 0) {
-          this._calls[0].setPrimary();
+          this._calls[0]._setPrimary();
+          this._emit("calls.switched", null, terminatedCall);
         }
       }
 
-      terminatedCall.clearPrimary();
+      terminatedCall._clearPrimary();
     }
-
-    this._emit("calls.removed", this, terminatedCall);
   }
 
   updateRenders() {
-    let calls = this._getCallSummaries();
+    let data = this._renderData();
     this.render(render => {
-      render.data.calls = calls;
+      render.data = data;
       return render;
     });
   }
@@ -125,13 +131,12 @@ export default class extends lwpRenderer {
     this._config = merge(defaults, config);
 
     let newCall = new lwpCall(this._libwebphone);
-    newCall.setPrimary();
+    newCall._setPrimary();
     this._calls = [newCall];
   }
 
   _initEventBindings() {
     this._libwebphone.on("call.created", (lwp, call) => {
-      this.addCall(call);
       this.updateRenders();
     });
 
@@ -159,12 +164,10 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
-    this._libwebphone.on("call.failed", (lwp, call) => {
-      this.removeCall(call);
+    this._libwebphone.on("call.ended", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("call.ended", (lwp, call) => {
-      this.removeCall(call);
+    this._libwebphone.on("call.failed", () => {
       this.updateRenders();
     });
   }
@@ -184,10 +187,7 @@ export default class extends lwpRenderer {
       i18n: {
         new: "libwebphone:callList.new"
       },
-      data: {
-        calls: this._getCallSummaries(),
-        primary: this.getCall()
-      },
+      data: this._renderData(),
       by_name: {
         calls: {
           events: {
@@ -247,11 +247,14 @@ export default class extends lwpRenderer {
     `;
   }
 
-  /** Helper functions */
-
-  _getCallSummaries() {
-    return this.getCalls().map(call => {
-      return call.summary();
-    });
+  _renderData() {
+    return {
+      calls: this.getCalls().map(call => {
+        return call.summary();
+      }),
+      primary: this.getCall()
+    };
   }
+
+  /** Helper functions */
 }

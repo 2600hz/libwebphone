@@ -1,18 +1,22 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
 import * as JsSIP from "jssip";
+import { merge } from "./lwpUtils";
+import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
 
-export default class {
-  constructor(libwebphone, config = {}, i18n = null) {
+export default class extends lwpRenderer {
+  constructor(libwebphone, config = {}) {
+    super(libwebphone);
     this._libwebphone = libwebphone;
     this._emit = this._libwebphone._userAgentEvent;
     this._initProperties(config);
     this._initInternationalization(config.i18n || {});
     this._initSockets();
-    this._initUserAgent();
+    this._initUserAgentConfiguration();
     this._initEventBindings();
+    this._initUserAgentStart();
+    this._initRenderTargets();
     this._emit("started", this);
     return this;
   }
@@ -59,11 +63,22 @@ export default class {
     });
   }
 
+  updateRenders() {
+    let data = this._renderData();
+    this.render(render => {
+      render.data = data;
+      return render;
+    });
+  }
+
   /** Init functions */
 
   _initInternationalization(config) {
     let defaults = {
-      en: {}
+      en: {
+        register: "Register",
+        unregister: "Unregister"
+      }
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
     this._libwebphone.i18nAddResourceBundles("userAgent", resourceBundles);
@@ -108,7 +123,7 @@ export default class {
     });
   }
 
-  _initUserAgent() {
+  _initUserAgentConfiguration() {
     let config = {
       sockets: this._sockets,
       uri:
@@ -136,11 +151,51 @@ export default class {
     JsSIP.debug.enable("");
 
     this._userAgent = new JsSIP.UA(config);
-    this._userAgent.start();
-    this._userAgent.on("newRTCSession", event => {
-      new lwpCall(this._libwebphone, event.session);
-    });
+    return this._userAgent;
+  }
 
+  _initEventBindings() {
+    /*
+    this._userAgent.on("connecting", (...event) => {
+      this._emit("connecting", this, ...event);
+    });
+    */
+    this._userAgent.on("connected", (...event) => {
+      this.updateRenders();
+      this._emit("connected", this, ...event);
+    });
+    this._userAgent.on("disconnected", (...event) => {
+      this.updateRenders();
+      this._emit("disconnected", this, ...event);
+    });
+    this._userAgent.on("registered", (...event) => {
+      this.updateRenders();
+      this._emit("registration.registered", this, ...event);
+    });
+    this._userAgent.on("unregistered", (...event) => {
+      this.updateRenders();
+      this._emit("registration.unregistered", this, ...event);
+    });
+    this._userAgent.on("registrationFailed", (...event) => {
+      this.updateRenders();
+      this._emit("registration.dailed", this, ...event);
+    });
+    this._userAgent.on("registrationExpiring", (...event) => {
+      this._emit("registration.expiring", this, ...event);
+    });
+    this._userAgent.on("newRTCSession", (...event) => {
+      let call = new lwpCall(this._libwebphone, event[0].session);
+      this._libwebphone.getCallList().addCall(call);
+    });
+    this._userAgent.on("newMessage", (...event) => {
+      this._emit("recieved.message", this, ...event);
+    });
+    this._userAgent.on("sipEvent", (...event) => {
+      this._emit("recieved.notify", this, ...event);
+    });
+  }
+
+  _initUserAgentStart() {
     this._userAgent.receiveRequest = request => {
       /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
       let config_user = this._userAgent._configuration.uri.user;
@@ -154,10 +209,89 @@ export default class {
       );
     };
 
-    return this._userAgent;
+    this._userAgent.start();
   }
 
-  _initEventBindings() {}
+  _initRenderTargets() {
+    this._config.renderTargets.map(renderTarget => {
+      return this.renderAddTarget(renderTarget);
+    });
+  }
+
+  /** Render Helpers */
+
+  _renderDefaultConfig() {
+    return {
+      template: this._renderDefaultTemplate(),
+      i18n: {
+        register: "libwebphone:userAgent.register",
+        unregister: "libwebphone:userAgent.unregister"
+      },
+      data: this._renderData(),
+      by_id: {
+        register: {
+          events: {
+            onclick: event => {
+              this.register();
+            }
+          }
+        },
+        unregister: {
+          events: {
+            onclick: event => {
+              this.unregister();
+            }
+          }
+        }
+      }
+    };
+  }
+
+  _renderDefaultTemplate() {
+    return `
+    <div>
+      <div>
+        {{^data.connected}}
+        disconnected
+        {{/data.connected}}
+
+        {{#data.connected}}
+        connected
+        {{/data.connected}}
+      </div>
+
+      {{#data.connected}}
+        <div>
+          {{^data.registered}}
+          <button id="{{by_id.register.elementId}}">
+            {{i18n.register}}
+          </button>
+          {{/data.registered}}
+
+          {{#data.registered}}
+          <button id="{{by_id.unregister.elementId}}">
+            {{i18n.unregister}}
+          </button>
+          {{/data.registered}}
+        </div>
+      {{/data.connected}}
+    </div>
+      `;
+  }
+
+  _renderData() {
+    let userAgent = this._userAgent;
+    if (!userAgent) {
+      return {
+        connected: false,
+        registered: false
+      };
+    }
+    return {
+      connected: userAgent.isConnected(),
+      registered: userAgent.isRegistered()
+    };
+  }
 
   /** Helper functions */
 }

@@ -25,12 +25,10 @@ class lwpMediaDevices extends lwpRenderer {
   startAudioContext() {
     if (!this._started) {
       this._started = true;
-      console.log("audio context started!!!");
       this._outputAudio.context.resume();
       this._previewAudio.oscillatorNode.start();
       this._outputAudio.element.play();
-      console.log("outputAudio: ", this._outputAudio);
-      console.log("previewAudio: ", this._previewAudio);
+      this._emit("audio.context.started", this);
     }
   }
 
@@ -354,6 +352,23 @@ class lwpMediaDevices extends lwpRenderer {
         return render;
       },
       render => {
+        this._mediaStreamPromise.then(mediaStream => {
+          let videoTrack = mediaStream.getTracks().find(track => {
+            return track.kind == "video" && track.readyState == "live";
+          });
+
+          if (videoTrack) {
+            Object.keys(render.by_id).forEach(key => {
+              if (render.by_id[key].preview == "videoinput") {
+                let element = render.by_id[key].element;
+                if (element) {
+                  element.srcObject = mediaStream;
+                }
+              }
+            });
+          }
+        });
+
         if (this._previewAudio.sourceStream) {
           let previewMediaStream = this._previewAudio.sourceStream;
           let audioTrack = previewMediaStream.mediaStream
@@ -688,60 +703,6 @@ class lwpMediaDevices extends lwpRenderer {
     this._libwebphone.on("mediaDevices.video.input.changed", () => {
       this.updateRenders();
     });
-    this._libwebphone.on(
-      "call.remote.stream.added",
-      (lwp, call, remoteStream) => {
-        let audioStream = this._outputAudio.context.createMediaStreamSource(
-          remoteStream
-        );
-        call.setRemoteAudio(audioStream);
-        this._emit("remote.audio.created", this, audioStream);
-      }
-    );
-    this._libwebphone.on(
-      "call.primary.remote.stream.added",
-      (lwp, call, remoteStream) => {
-        let audioStream = this._outputAudio.context.createMediaStreamSource(
-          remoteStream
-        );
-        call.setRemoteAudio(audioStream);
-        this._emit("remote.audio.created", this, audioStream);
-      }
-    );
-    this._libwebphone.on(
-      "call.primary.remote.audio.added",
-      (lwp, call, audioStream) => {
-        let sourceStream = this._remoteAudio.sourceStream;
-
-        if (sourceStream) {
-          sourceStream.disconnect();
-          this._remoteAudio.sourceStream = null;
-        }
-
-        this._remoteAudio.sourceStream = audioStream;
-        this._remoteAudio.sourceStream.connect(
-          this._remoteAudio.remoteGainNode
-        );
-        this._emit("remote.audio.change", this, audioStream);
-      }
-    );
-    this._libwebphone.on("call.primary.promoted", (lwp, call) => {
-      let audioStream = call.getRemoteAudio();
-      let sourceStream = this._remoteAudio.sourceStream;
-
-      if (sourceStream) {
-        sourceStream.disconnect();
-        this._remoteAudio.sourceStream = null;
-      }
-
-      if (audioStream) {
-        this._remoteAudio.sourceStream = audioStream;
-        this._remoteAudio.sourceStream.connect(
-          this._remoteAudio.remoteGainNode
-        );
-        this._emit("remote.audio.change", this, audioStream);
-      }
-    });
   }
 
   _initRenderTargets() {
@@ -1015,7 +976,7 @@ class lwpMediaDevices extends lwpRenderer {
                   {{#data.preview}}
                   {{#data.videoinput.livePreview}}
                     <div>
-                      <video id="{{videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
+                      <video id="{{by_id.videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
                     </div>
                   {{/data.videoinput.livePreview}}
                   {{/data.preview}} 
@@ -1402,6 +1363,35 @@ class lwpMediaDevices extends lwpRenderer {
         }
       });
     };
+  }
+
+  _createMediaStreamSource(mediaStream) {
+    let sourceStream = this._outputAudio.context.createMediaStreamSource(
+      mediaStream
+    );
+
+    this._emit("remote.audio.created", this, sourceStream);
+    return sourceStream;
+  }
+
+  _setRemoteAudioSourceStream(sourceStream) {
+    let previousSourceStream = this._remoteAudio.sourceStream;
+
+    if (previousSourceStream) {
+      previousSourceStream.disconnect();
+      this._remoteAudio.currentSourceStream = null;
+    }
+
+    if (sourceStream) {
+      this._remoteAudio.sourceStream = sourceStream;
+      this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
+      this._emit(
+        "remote.audio.change",
+        this,
+        sourceStream,
+        previousSourceStream
+      );
+    }
   }
 
   /** Device Helpers */

@@ -21,6 +21,7 @@
     "async-mutex": "^0.1.4",
     "audio-stream-meter": "^1.0.5",
     "detectrtc": "^1.3.9",
+    "eventemitter2": "^6.2.1",
     "i18next": "^19.0.1",
     "jssip": "^3.3.11",
     "lodash": "^4.17.15",

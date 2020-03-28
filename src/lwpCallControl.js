@@ -21,41 +21,65 @@ export default class extends lwpRenderer {
   }
 
   cancel() {
-    this._currentCall().cancel();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.cancel();
+    }
   }
 
   hangup() {
-    this._currentCall().hangup();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.hangup();
+    }
   }
 
   hold() {
-    this._currentCall().hold();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.hold();
+    }
   }
 
   unhold() {
-    this._currentCall().unhold();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.unhold();
+    }
   }
 
   mute() {
-    this._currentCall().mute();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.mute();
+    }
   }
 
   unmute() {
-    this._currentCall().unmute();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.unmute();
+    }
   }
 
   transfer() {
-    this._currentCall().transfer();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.transfer();
+    }
   }
 
   answer() {
-    this._currentCall().answer();
+    let currentCall = this._currentCall();
+    if (currentCall) {
+      currentCall.answer();
+    }
   }
 
   updateRenders() {
+    let data = this._renderData();
     this.render(render => {
-      render.data.call = this._callRenderConfig();
-      render.data.redial = this._libwebphone.getUserAgent().getRedial();
+      render.data = data;
       return render;
     });
   }
@@ -135,10 +159,7 @@ export default class extends lwpRenderer {
         transfer: "libwebphone:callControl.transfer",
         answer: "libwebphone:callControl.answer"
       },
-      data: {
-        call: this._callRenderConfig(),
-        redial: this._libwebphone.getUserAgent().getRedial()
-      },
+      data: this._renderData(),
       by_id: {
         redial: {
           events: {
@@ -189,6 +210,13 @@ export default class extends lwpRenderer {
             }
           }
         },
+        transfer: {
+          events: {
+            onclick: event => {
+              this.transfer();
+            }
+          }
+        },
         answer: {
           events: {
             onclick: event => {
@@ -203,14 +231,15 @@ export default class extends lwpRenderer {
   _renderDefaultTemplate() {
     return `
     <div>
-      {{^data.call.hasSession}}
+      {{^data.call}}
       {{#data.redial}}
       <button id="{{by_id.redial.elementId}}">
         {{i18n.redial}} ({{data.redial}})
       </button>
       {{/data.redial}}
-      {{/data.call.hasSession}}
+      {{/data.call}}
 
+      {{#data.call}}
       {{#data.call.progress}}
       <button id="{{by_id.cancel.elementId}}">
         {{i18n.cancel}}
@@ -258,21 +287,30 @@ export default class extends lwpRenderer {
       </button>
       {{/data.call.progress}}
       {{/data.call.terminating}}
+      {{/data.call}}
     </div>
     `;
+  }
+
+  _renderData() {
+    let data = {};
+    let currentCall = this._currentCall();
+    let userAgent = this._libwebphone.getUserAgent();
+
+    if (currentCall) {
+      data.call = currentCall.summary();
+    }
+
+    if (userAgent) {
+      data.redial = userAgent.getRedial();
+    }
+
+    return data;
   }
 
   /** Helper functions */
 
   _currentCall() {
-    let call = this._libwebphone.getCallList().getCall();
-    return call;
-  }
-
-  _callRenderConfig() {
-    let currentCall = this._currentCall();
-    if (currentCall) {
-      return currentCall.summary();
-    }
+    return this._libwebphone.getCallList().getCall();
   }
 }

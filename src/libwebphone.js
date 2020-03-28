@@ -1,7 +1,7 @@
 "use strict";
 
 import i18next from "i18next";
-import EventEmitter from "events";
+import EventEmitter from "eventemitter2";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpUserAgent from "./lwpUserAgent";
 import lwpDialpad from "./lwpDialpad";
@@ -123,7 +123,5 @@ export default class extends EventEmitter {
 
   _emit(...args) {
     this.emit(...args);
-    name = args.shift();
-    console.log(name, args);
   }
 } //End of default class

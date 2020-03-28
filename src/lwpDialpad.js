@@ -60,9 +60,19 @@ export default class extends lwpRenderer {
     return this._digits;
   }
 
+  transfer() {
+    let call = this._libwebphone.getCallList().getCall();
+
+    if (call) {
+      call.transfer(digits().join(""));
+      this.clear();
+    }
+  }
+
   updateRenders(postrender = render => render) {
+    let data = this._renderData();
     this.render(render => {
-      render.data.digits = this._digits.join("");
+      render.data = data;
       return render;
     }, postrender);
   }
@@ -86,7 +96,8 @@ export default class extends lwpRenderer {
         astrisk: "*",
         clear: "clear",
         backspace: "<-",
-        call: "Call"
+        call: "Call",
+        transfer: "Transfer"
       }
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
@@ -116,13 +127,7 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
-    this._libwebphone.on("dialpad.digits.updated", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("dialpad.digits.backspace", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("dialpad.digits.clear", () => {
+    this._libwebphone.on("callList.calls.switched", () => {
       this.updateRenders();
     });
   }
@@ -153,9 +158,10 @@ export default class extends lwpRenderer {
         pound: "libwebphone:dialpad.pound",
         clear: "libwebphone:dialpad.clear",
         backspace: "libwebphone:dialpad.backspace",
-        call: "libwebphone:dialpad.call"
+        call: "libwebphone:dialpad.call",
+        transfer: "libwebphone:dialpad.transfer"
       },
-      data: {},
+      data: this._renderData(),
       by_id: {
         dialed: {
           events: {
@@ -300,6 +306,13 @@ export default class extends lwpRenderer {
               this.call();
             }
           }
+        },
+        transfer: {
+          events: {
+            onclick: event => {
+              this.transfer();
+            }
+          }
         }
       }
     };
@@ -309,7 +322,7 @@ export default class extends lwpRenderer {
     return `
     <div>
       <div>
-      <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />        
+        <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />        
         <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
         <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
       </div>
@@ -338,11 +351,35 @@ export default class extends lwpRenderer {
       <button id="{{by_id.pound.elementId}}" data-value="pound">{{i18n.pound}}</button>
       </div>
 
+      {{^data.call}}
       <div>
       <button id="{{by_id.call.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.call}}</button>
       </div>
+      {{/data.call}}
+
+      {{#data.call.inTransfer}}
+      <div>
+      <button id="{{by_id.transfer.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.transfer}}</button>
+      </div>
+      {{/data.call.inTransfer}}
 	  </div>
     `;
+  }
+
+  _renderData() {
+    let data = {};
+    let callList = this._libwebphone.getCallList();
+
+    if (callList) {
+      let call = callList.getCall();
+      if (call) {
+        data.call = call.summary();
+      }
+    }
+
+    data.digits = this.digits().join("");
+
+    return data;
   }
 
   /** Helper functions */

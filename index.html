@@ -122,16 +122,8 @@
             }
           ]
         },
-        kazoo: {
-          sockets: ["wss://sandbox.2600hz.com:5443"],
-          api: "https://sandbox.2600hz.com:8443/v2",
-          authentication: {
-            username: "",
-            password: "",
-            account_name: ""
-          }
-        },
         userAgent: {
+          renderTargets: ["user_agent"],
           transport: {
             sockets: ["wss://sandbox.2600hz.com:5065"],
             recovery_max_interval: 30,
@@ -155,6 +147,7 @@
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
+      webphone.onAny((event, ...data) => console.log(event, data));
     </script>
   </head>
   <body>
@@ -384,19 +377,7 @@
       <!-- User Agent-->
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
-          <div>
-            <button onclick="webphone.getUserAgent().register();">
-              Register
-            </button>
-            <button onclick="webphone.getUserAgent().unregister();">
-              Unregister
-            </button>
-
-            <button onclick="webphone.getUserAgent().call('6683');">
-              Move
-            </button>
-
-            <audio id="audioremote" autoplay loop></audio>
+          <div id="user_agent"></div>
           </div>
         </div>
         <div class="col" style="border-right: dashed;"></div>
