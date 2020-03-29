@@ -63,17 +63,16 @@ export default class extends lwpRenderer {
       }
     });
 
-    if (primaryCall) {
-      primaryCall._setPrimary();
-    }
-
     /** TODO: save a timestamp to the primary call,
      * during remoteCall attempt to switch to the call
      * wiht a session that has the largest timestamp
      * if the removed call was a primary
      */
 
-    this._emit("calls.switched", primaryCall, previousCall);
+    if (primaryCall) {
+      primaryCall._setPrimary();
+      this._emit("calls.switched", primaryCall, previousCall);
+    }
   }
 
   removeCall(terminatedCall) {
@@ -181,7 +180,6 @@ export default class extends lwpRenderer {
   /** Render Helpers */
 
   _renderDefaultConfig() {
-    let i18n = this._libwebphone.i18nTranslator();
     return {
       template: this._renderDefaultTemplate(),
       i18n: {

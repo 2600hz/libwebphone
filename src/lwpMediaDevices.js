@@ -6,7 +6,7 @@ import AudioStreamMeter from "audio-stream-meter";
 import { Mutex } from "async-mutex";
 import adapter from "webrtc-adapter";
 
-class lwpMediaDevices extends lwpRenderer {
+export default class extends lwpRenderer {
   constructor(libwebphone, config = {}) {
     super(libwebphone);
     this._libwebphone = libwebphone;
@@ -25,7 +25,7 @@ class lwpMediaDevices extends lwpRenderer {
   startAudioContext() {
     if (!this._started) {
       this._started = true;
-      this._outputAudio.context.resume();
+      this._audioContext.resume();
       this._previewAudio.oscillatorNode.start();
       this._outputAudio.element.play();
       this._emit("audio.context.started", this);
@@ -107,7 +107,14 @@ class lwpMediaDevices extends lwpRenderer {
     return this._startInputStreams(null, startMuted).then(mediaStream => {
       this._inputActive = true;
       this._emit("streams.start", this);
-      return mediaStream;
+
+      let stream = this._audioContext.createMediaStreamDestination();
+      this._inputAudio.volumeGainNode.connect(stream);
+
+      console.log("new stream: ", stream);
+      console.log("mediaStream: ", mediaStream);
+
+      return stream.stream;
     });
   }
 
@@ -175,8 +182,8 @@ class lwpMediaDevices extends lwpRenderer {
     this.startAudioContext();
 
     let duration = 0.15;
-    let sampleRate = this._outputAudio.context.sampleRate;
-    let buffer = this._outputAudio.context.createBuffer(
+    let sampleRate = this._audioContext.sampleRate;
+    let buffer = this._audioContext.createBuffer(
       tones.length,
       sampleRate,
       sampleRate
@@ -189,7 +196,9 @@ class lwpMediaDevices extends lwpRenderer {
       }
     }
 
-    let src = this._outputAudio.context.createBufferSource();
+    console.log(this._notificationAudio.dtmfGainNode);
+
+    let src = this._audioContext.createBufferSource();
     src.buffer = buffer;
     src.connect(this._notificationAudio.dtmfGainNode);
     src.start();
@@ -383,7 +392,7 @@ class lwpMediaDevices extends lwpRenderer {
 
           if (!render.previewAudioMeter) {
             render.previewAudioMeter = AudioStreamMeter.audioStreamProcessor(
-              this._outputAudio.context,
+              this._audioContext,
               this._audioProcessCallback(render)
             );
           } else {
@@ -433,18 +442,32 @@ class lwpMediaDevices extends lwpRenderer {
     var defaults = {
       volume: {
         master: {
+          type: "output",
           enabled: true,
           default: 1
         },
         ringer: {
+          type: "output",
           enabled: true,
           default: 1
         },
         dtmf: {
+          type: "output",
           enabled: true,
           default: 1
         },
         remote: {
+          type: "output",
+          enabled: true,
+          default: 1
+        },
+        talkback: {
+          type: "output",
+          enabled: true,
+          default: 1
+        },
+        microphone: {
+          type: "input",
           enabled: true,
           default: 1
         }
@@ -513,6 +536,8 @@ class lwpMediaDevices extends lwpRenderer {
 
     this._loaded = false;
     this._changeStreamMutex = new Mutex();
+    this._audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
   }
 
   _initInputStreams() {
@@ -521,17 +546,21 @@ class lwpMediaDevices extends lwpRenderer {
       video: this._config["videoinput"].enabled
     };
 
-    this._mediaStreamPromise = this._shimGetUserMedia(constraints);
+    this._mediaStreamPromise = this._shimGetUserMedia(constraints).then(
+      mediaStream => {
+        this._updateInputChain(mediaStream);
+        return mediaStream;
+      }
+    );
     return this._mediaStreamPromise;
   }
 
   _initOutputStreams() {
-    let audioContext = new AudioContext();
     this._previewAudio = {
-      loopbackDelayNode: audioContext.createDelay(5.0),
-      loopbackGainNode: audioContext.createGain(),
-      oscillatorNode: audioContext.createOscillator(),
-      oscillatorGainNode: audioContext.createGain()
+      loopbackDelayNode: this._audioContext.createDelay(5.0),
+      loopbackGainNode: this._audioContext.createGain(),
+      oscillatorNode: this._audioContext.createOscillator(),
+      oscillatorGainNode: this._audioContext.createGain()
     };
     this._previewAudio.loopbackDelayNode.delayTime.value = this._config.audiooutput.preview.loopback.delay;
     this._previewAudio.loopbackDelayNode.connect(
@@ -546,22 +575,21 @@ class lwpMediaDevices extends lwpRenderer {
     this._previewAudio.oscillatorGainNode.gain.value = 0;
 
     this._remoteAudio = {
-      remoteGainNode: audioContext.createGain()
+      remoteGainNode: this._audioContext.createGain()
     };
     this._remoteAudio.remoteGainNode.gain.value = this._config.volume.remote.default;
 
     this._notificationAudio = {
-      ringerGainNode: audioContext.createGain(),
-      dtmfGainNode: audioContext.createGain()
+      ringerGainNode: this._audioContext.createGain(),
+      dtmfGainNode: this._audioContext.createGain()
     };
     this._notificationAudio.ringerGainNode.gain.value = this._config.volume.ringer.default;
     this._notificationAudio.dtmfGainNode.gain.value = this._config.volume.dtmf.default;
 
     this._outputAudio = {
-      context: audioContext,
-      merger: audioContext.createChannelMerger(5),
-      volumeGainNode: audioContext.createGain(),
-      destinationStream: audioContext.createMediaStreamDestination(),
+      merger: this._audioContext.createChannelMerger(5),
+      volumeGainNode: this._audioContext.createGain(),
+      destinationStream: this._audioContext.createMediaStreamDestination(),
       element: document.createElement("audio")
     };
     this._outputAudio.merger.connect(this._outputAudio.volumeGainNode);
@@ -609,18 +637,15 @@ class lwpMediaDevices extends lwpRenderer {
       0,
       1
     );
-
-    this._mediaStreamPromise.then(mediaStream => {
-      this._previewAudio.sourceStream = this._outputAudio.context.createMediaStreamSource(
-        mediaStream
-      );
-      this._previewAudio.sourceStream.connect(
-        this._previewAudio.loopbackDelayNode
-      );
-    });
   }
 
   _initAvailableDevices() {
+    this._inputAudio = {
+      volumeGainNode: this._audioContext.createGain(),
+      destinationStream: this._audioContext.createMediaStreamDestination()
+    };
+    this._inputAudio.volumeGainNode.connect(this._inputAudio.destinationStream);
+
     this._mediaStreamPromise.then(mediaStream => {
       this._shimEnumerateDevices().then(devices => {
         this._importInputDevices(devices);
@@ -1173,21 +1198,36 @@ class lwpMediaDevices extends lwpRenderer {
           return mediaStream;
         })
         .then(mediaStream => {
-          let audioTrack = mediaStream.getTracks().find(track => {
-            return track.kind == "audio" && track.readyState == "live";
-          });
-          if (audioTrack) {
-            this._previewAudio.sourceStream = this._outputAudio.context.createMediaStreamSource(
-              mediaStream
-            );
-            this._previewAudio.sourceStream.connect(
-              this._previewAudio.loopbackDelayNode
-            );
-          }
-
+          this._updateInputChain(mediaStream);
           return mediaStream;
         });
     });
+  }
+
+  _updateInputChain(mediaStream) {
+    console.log("updateInputChain: ", mediaStream);
+    let audioTrack = mediaStream.getTracks().find(track => {
+      return track.kind == "audio" && track.readyState == "live";
+    });
+    if (audioTrack) {
+      if (this._previewAudio.sourceStream) {
+        this._previewAudio.sourceStream.disconnect();
+      }
+      this._previewAudio.sourceStream = this._audioContext.createMediaStreamSource(
+        mediaStream
+      );
+      this._previewAudio.sourceStream.connect(
+        this._previewAudio.loopbackDelayNode
+      );
+
+      if (this._inputAudio.sourceStream) {
+        this._inputAudio.sourceStream.disconnect();
+      }
+      this._inputAudio.sourceStream = this._audioContext.createMediaStreamSource(
+        mediaStream
+      );
+      this._inputAudio.sourceStream.connect(this._inputAudio.volumeGainNode);
+    }
   }
 
   _createConstraints(...preferedDevices) {
@@ -1353,6 +1393,7 @@ class lwpMediaDevices extends lwpRenderer {
 
   _audioProcessCallback(render) {
     return () => {
+      /** TODO: optimize */
       Object.keys(render.by_id).forEach(key => {
         if (render.by_id[key].preview == "audioinput") {
           let element = render.by_id[key].element;
@@ -1366,9 +1407,7 @@ class lwpMediaDevices extends lwpRenderer {
   }
 
   _createMediaStreamSource(mediaStream) {
-    let sourceStream = this._outputAudio.context.createMediaStreamSource(
-      mediaStream
-    );
+    let sourceStream = this._audioContext.createMediaStreamSource(mediaStream);
 
     this._emit("remote.audio.created", this, sourceStream);
     return sourceStream;
@@ -1379,19 +1418,12 @@ class lwpMediaDevices extends lwpRenderer {
 
     if (previousSourceStream) {
       previousSourceStream.disconnect();
-      this._remoteAudio.currentSourceStream = null;
+      this._remoteAudio.sourceStream = null;
     }
 
-    if (sourceStream) {
-      this._remoteAudio.sourceStream = sourceStream;
-      this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
-      this._emit(
-        "remote.audio.change",
-        this,
-        sourceStream,
-        previousSourceStream
-      );
-    }
+    this._remoteAudio.sourceStream = sourceStream;
+    this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
+    this._emit("remote.audio.change", this, sourceStream, previousSourceStream);
   }
 
   /** Device Helpers */
@@ -1495,5 +1527,3 @@ class lwpMediaDevices extends lwpRenderer {
     });
   }
 }
-
-export default lwpMediaDevices;

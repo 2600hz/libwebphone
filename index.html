@@ -11,6 +11,7 @@
         grid-gap: 5px;
         grid-auto-rows: minmax(100px, auto);
       }
+
       .wrapper button {
         width: 75%;
         height: 75%;
@@ -18,6 +19,7 @@
         font-size: 14px;
         border-radius: 50%;
       }
+
       .spinner {
         margin: 100px auto 0;
         width: 70px;
@@ -70,9 +72,7 @@
       }
     </style>
     <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <title>2600Hz Webphone Library</title>
-    <meta name="description" content="" />
     <meta name="viewport" content="width=device-width initial-scale=1.0" />
 
     <link
@@ -218,7 +218,7 @@
           </div>
         </div>
         <div class="col" style="border-right: dashed;">
-          <span id="video_mute_status">State Control</span>
+          <span>State Control</span>
           <div>
             <button onclick="webphone.getMediaDevices().startPreviews();">
               Start Preview
@@ -344,7 +344,8 @@
         <div class="col" style="border-right: dashed;">
           <div id="dialpad"></div>
         </div>
-        <div class="col" style="border-right: dashed;">
+        <div class="col" style="border-right: dashed;"></div>
+        <div class="col">
           <div id="dialpad_custom"></div>
           <script type="text/javascript">
             var template = `
@@ -372,7 +373,6 @@
             webphone.getDialpad().renderAddTarget(customTemplateConfig);
           </script>
         </div>
-        <div class="col"></div>
       </div>
 
       <!-- User Agent-->
@@ -380,7 +380,8 @@
         <div class="col" style="border-right: dashed;">
           <div id="user_agent"></div>
         </div>
-        <div class="col" style="border-right: dashed;">
+        <div class="col" style="border-right: dashed;"></div>
+        <div class="col">
           <div id="user_agent_custom"></div>
           <script type="text/javascript">
             var template = `
@@ -413,7 +414,6 @@
             webphone.getUserAgent().renderAddTarget(customTemplateConfig);
           </script>
         </div>
-        <div class="col"></div>
       </div>
 
       <!-- Call Control -->

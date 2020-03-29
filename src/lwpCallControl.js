@@ -116,25 +116,27 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
-    this._libwebphone.on("call.primary.progress", () => {
+    this._libwebphone.on("call.progress", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("call.primary.established", () => {
+    this._libwebphone.on("call.established", () => {
       this.updateRenders();
     });
 
-    this._libwebphone.on("call.primary.hold", () => {
+    this._libwebphone.on("call.hold", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("call.primary.unhold", () => {
+    this._libwebphone.on("call.unhold", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("call.primary.muted", () => {
+    this._libwebphone.on("call.muted", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("call.primary.unmuted", () => {
+    this._libwebphone.on("call.unmuted", () => {
       this.updateRenders();
     });
+
+    /* TODO: needs missing events, inTransfer */
   }
 
   _initRenderTargets() {

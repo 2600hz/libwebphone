@@ -130,6 +130,7 @@ export default class extends lwpRenderer {
     this._libwebphone.on("callList.calls.switched", () => {
       this.updateRenders();
     });
+    /** TODO: render via bindings */
   }
 
   _initRenderTargets() {
@@ -445,7 +446,6 @@ export default class extends lwpRenderer {
       }
     });
 
-    this.updateRenders();
     this._emit("digits.updated", this, this._digits, event.data);
   }
 
