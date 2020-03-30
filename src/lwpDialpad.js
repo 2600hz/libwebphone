@@ -442,18 +442,17 @@ export default class extends lwpRenderer {
     return `
     <div>
       {{#data.dialed.show}}
-      <div>
-      
-        <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />
+        <div>
+          <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />
 
-        {{#data.dialed.delete.show}}
-          <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
-        {{/data.dialed.delete.show}}
+          {{#data.dialed.delete.show}}
+            <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
+          {{/data.dialed.delete.show}}
 
-        {{#data.dialed.clear.show}}
-          <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
-        {{/data.dialed.clear.show}}
-      </div>
+          {{#data.dialed.clear.show}}
+            <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
+          {{/data.dialed.clear.show}}
+        </div>
       {{/data.dialed.show}}
 
       {{#data.dialpad.show}}

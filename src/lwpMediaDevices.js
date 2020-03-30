@@ -105,16 +105,22 @@ export default class extends lwpRenderer {
 
     return this._startInputStreams(null, startMuted).then(mediaStream => {
       this._inputActive = true;
-      this._emit("streams.start", this);
 
       let stream = this._audioContext.createMediaStreamDestination();
       this._inputAudio.volumeGainNode.connect(stream);
+
+      mediaStream.getTracks().forEach(track => {
+        if (track.readyState == "live" && track.kind != "audio") {
+          stream.stream.addTrack(track);
+        }
+      });
 
       console.log("mediaStream: ", mediaStream);
 
       console.log("new localMediaStream: ", stream.stream);
       console.log("new localMediaStream.tracks: ", stream.stream.getTracks());
 
+      this._emit("streams.start", this, mediaStream, stream);
       return stream.stream;
     });
   }
@@ -209,6 +215,7 @@ export default class extends lwpRenderer {
       }
     }
 
+    /** TODO: cleanup and reuse what is possible */
     let src = this._audioContext.createBufferSource();
     src.buffer = buffer;
     src.connect(this._notificationAudio.dtmfGainNode);
@@ -226,21 +233,16 @@ export default class extends lwpRenderer {
   async changeDevice(deviceKind, deviceId) {
     let preferedDevice = this._findAvailableDevice(deviceKind, deviceId);
 
-    if (!preferedDevice) {
+    if (!preferedDevice || !preferedDevice.connected) {
       // TODO: create a meaningful return/error
-      return;
-    }
-
-    if (!preferedDevice.connected) {
-      // TODO: create a meaningful return/error
-      return;
+      return Promise.reject();
     }
 
     let release = await this._changeStreamMutex.acquire();
     this._preferDevice(preferedDevice);
     switch (deviceKind) {
       case "audiooutput":
-        this._changeOutputDevice(preferedDevice).then(() => {
+        return this._changeOutputDevice(preferedDevice).then(() => {
           release();
         });
       default:
@@ -358,6 +360,15 @@ export default class extends lwpRenderer {
             Object.keys(render.by_id).forEach(key => {
               if (render.by_id[key].preview == "videoinput") {
                 let element = render.by_id[key].element;
+                if (element) {
+                  element.srcObject = mediaStream;
+                }
+              }
+            });
+
+            Object.keys(render.by_name).forEach(key => {
+              if (render.by_name[key].preview == "videoinput") {
+                let element = render.by_name[key].element;
                 if (element) {
                   element.srcObject = mediaStream;
                 }
@@ -540,7 +551,9 @@ export default class extends lwpRenderer {
 
   _initOutputStreams() {
     this._previewAudio = {
-      loopbackDelayNode: this._audioContext.createDelay(5.0),
+      loopbackDelayNode: this._audioContext.createDelay(
+        this._config.audiooutput.preview.loopback.delay + 1.5
+      ),
       loopbackGainNode: this._audioContext.createGain(),
       oscillatorNode: this._audioContext.createOscillator(),
       oscillatorGainNode: this._audioContext.createGain()
@@ -561,6 +574,7 @@ export default class extends lwpRenderer {
     this._previewAudio.oscillatorGainNode.gain.value = 0;
 
     this._remoteAudio = {
+      sourcStream: null,
       remoteGainNode: this._audioContext.createGain()
     };
     this._remoteAudio.remoteGainNode.gain.value = this._config.volume.remote.default;

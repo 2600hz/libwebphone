@@ -167,13 +167,19 @@ export default class {
           this._session.refer(numbertotransfer);
           this._emit("transfer.started", this, numbertotransfer);
         } else {
-          this.unhold();
+          if (autoHold) {
+            this.unhold();
+          }
+
           this._emit("transfer.failed", this, numbertotransfer);
         }
         this._emit("transfer.complete", this, numbertotransfer);
       } else {
         this._inTransfer = true;
-        this.hold();
+
+        if (autoHold) {
+          this.hold();
+        }
 
         dialpad.clear();
 
@@ -366,7 +372,7 @@ export default class {
 
     this.mute();
 
-    if (pause && this.isEstablished()) {
+    if (pause && this.isEstablished() && !this.isOnHold()) {
       this.hold();
     }
 

@@ -336,7 +336,7 @@
         },
         mediaDevices: {
           videoinput: {
-            startMuted: true
+            startMuted: false
           },
           audioinput: {
             preferedDeviceIds: [
@@ -373,8 +373,6 @@
             recovery_min_interval: 2
           },
           authentication: {
-            username: "user_q5eNt95vwv",
-            password: "cxNMVV2BD47J",
             realm: "vbbZ65Q.sb.2600hz.com"
           },
           user_agent: {
@@ -396,7 +394,7 @@
   <body>
     <div class="container-fluid">
       <!-- Developer Controls-->
-      <!--
+
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
           Audio Input:
@@ -478,7 +476,6 @@
           </div>
         </div>
       </div>
-      -->
 
       <!-- User Agent-->
       <div class="row" style="border: solid;">
@@ -486,11 +483,20 @@
           <div id="user_agent"></div>
         </div>
         <div class="col" style="border-right: dashed;">
-          <button
-            onclick="webphone.getUserAgent().start('user_q5eNt95vwv', 'cxNMVV2BD47J', 'vbbZ65Q.sb.2600hz.com');"
-          >
-            Start!
-          </button>
+          <div>
+            <button
+              onclick="webphone.getUserAgent().start('user_q5eNt95vwv', 'cxNMVV2BD47J');"
+            >
+              Start Mahfuzel New Softphone (1009)
+            </button>
+          </div>
+          <div>
+            <button
+              onclick="webphone.getUserAgent().start('user_743dJ3fuNj', '72aBcdBvQnz3');"
+            >
+              Start Multiple WebRTC (1008)
+            </button>
+          </div>
         </div>
         <div class="col">
           <div id="user_agent_custom"></div>

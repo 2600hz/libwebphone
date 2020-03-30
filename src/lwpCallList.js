@@ -1,6 +1,6 @@
 "use strict";
 
-import { assign, merge } from "./lwpUtils";
+import { merge } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
 
