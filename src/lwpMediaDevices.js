@@ -345,7 +345,7 @@ export default class extends lwpRenderer {
   updateRenders() {
     this.render(
       render => {
-        render.data = merge(render.data, this._renderData());
+        render.data = this._renderData(render.data);
         return render;
       },
       render => {
@@ -1047,8 +1047,8 @@ export default class extends lwpRenderer {
         `;
   }
 
-  _renderData() {
-    let data = {
+  _renderData(
+    data = {
       volume: {
         master: {},
         ringer: {},
@@ -1063,8 +1063,8 @@ export default class extends lwpRenderer {
           tone: {}
         }
       }
-    };
-
+    }
+  ) {
     data.loaded = this._loaded;
     data.active = this._inputActive;
     data.preview = this._previewActive;
@@ -1097,6 +1097,7 @@ export default class extends lwpRenderer {
       }
       data[deviceKind].devices = devices;
     });
+
     return data;
   }
 

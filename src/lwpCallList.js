@@ -138,6 +138,7 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
+    /** TODO: make all these call.pimary.* when we don't need the debugging info */
     this._libwebphone.on("call.created", (lwp, call) => {
       this.updateRenders();
     });
@@ -163,6 +164,12 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
     this._libwebphone.on("call.unmuted", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.transfer.collecting", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.transfer.completed", () => {
       this.updateRenders();
     });
 

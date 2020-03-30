@@ -88,6 +88,7 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
+        answer: "Anwser",
         redial: "Redial",
         cancel: "Cancel",
         hangup: "Hang Up",
@@ -95,8 +96,9 @@ export default class extends lwpRenderer {
         unhold: "Resume",
         mute: "Mute",
         unmute: "Unmute",
-        transfer: "Transfer",
-        answer: "Anwser"
+        transferblind: "Blind Transfer",
+        transferattended: "Attended Transfer",
+        transfercomplete: "Transfer (complete)"
       }
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
@@ -115,27 +117,32 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
-    this._libwebphone.on("call.progress", () => {
+    this._libwebphone.on("call.primary.progress", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("call.established", () => {
-      this.updateRenders();
-    });
-
-    this._libwebphone.on("call.hold", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("call.unhold", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("call.muted", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("call.unmuted", () => {
+    this._libwebphone.on("call.primary.established", () => {
       this.updateRenders();
     });
 
-    /* TODO: needs missing events, inTransfer */
+    this._libwebphone.on("call.primary.hold", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.unhold", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.muted", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.unmuted", () => {
+      this.updateRenders();
+    });
+
+    this._libwebphone.on("call.primary.transfer.collecting", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("call.primary.transfer.completed", () => {
+      this.updateRenders();
+    });
   }
 
   _initRenderTargets() {
@@ -150,6 +157,7 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
+        answer: "libwebphone:callControl.answer",
         redial: "libwebphone:callControl.redial",
         cancel: "libwebphone:callControl.cancel",
         hangup: "libwebphone:callControl.hangup",
@@ -157,8 +165,9 @@ export default class extends lwpRenderer {
         unhold: "libwebphone:callControl.unhold",
         mute: "libwebphone:callControl.mute",
         unmute: "libwebphone:callControl.unmute",
-        transfer: "libwebphone:callControl.transfer",
-        answer: "libwebphone:callControl.answer"
+        transfercomplete: "libwebphone:callControl.transfercomplete",
+        transferblind: "libwebphone:callControl.transferblind",
+        transferattended: "libwebphone:callControl.transferattended"
       },
       data: merge(this._config, this._renderData()),
       by_id: {
@@ -293,7 +302,13 @@ export default class extends lwpRenderer {
       {{/data.call.muted}}
 
       <button id="{{by_id.transfer.elementId}}">
-        {{i18n.transfer}}
+        {{^data.call.inTransfer}}
+        {{i18n.transferblind}}
+        {{/data.call.inTransfer}}
+
+        {{#data.call.inTransfer}}
+        {{i18n.transfercomplete}}
+        {{/data.call.inTransfer}}
       </button>
       {{/data.call.established}}
 

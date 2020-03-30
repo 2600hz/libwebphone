@@ -443,6 +443,7 @@ export default class extends lwpRenderer {
     <div>
       {{#data.dialed.show}}
       <div>
+      
         <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />
 
         {{#data.dialed.delete.show}}

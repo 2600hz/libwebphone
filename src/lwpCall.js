@@ -152,7 +152,7 @@ export default class {
     }
   }
 
-  transfer(numbertotransfer = null) {
+  transfer(numbertotransfer = null, autoHold = true) {
     if (this.hasSession()) {
       let dialpad = this._libwebphone.getDialpad();
       if (this.isInTransfer() || numbertotransfer) {
@@ -167,12 +167,16 @@ export default class {
           this._session.refer(numbertotransfer);
           this._emit("transfer.started", this, numbertotransfer);
         } else {
+          this.unhold();
           this._emit("transfer.failed", this, numbertotransfer);
         }
         this._emit("transfer.complete", this, numbertotransfer);
       } else {
         this._inTransfer = true;
+        this.hold();
+
         dialpad.clear();
+
         this._emit("transfer.collecting", this, numbertotransfer);
       }
     }
