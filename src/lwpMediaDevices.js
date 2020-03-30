@@ -1499,7 +1499,7 @@ export default class extends lwpRenderer {
     return sourceStream;
   }
 
-  _setRemoteAudioSourceStream(sourceStream) {
+  _setRemoteAudioSourceStream(sourceStream = null) {
     let previousSourceStream = this._remoteAudio.sourceStream;
 
     if (previousSourceStream) {
@@ -1507,8 +1507,11 @@ export default class extends lwpRenderer {
       this._remoteAudio.sourceStream = null;
     }
 
-    this._remoteAudio.sourceStream = sourceStream;
-    this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
+    if (sourceStream) {
+      this._remoteAudio.sourceStream = sourceStream;
+      this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
+    }
+
     this._emit("remote.audio.change", this, sourceStream, previousSourceStream);
   }
 

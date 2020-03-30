@@ -318,10 +318,22 @@ export default class {
     */
     this._session.on("ended", (...event) => {
       this._libwebphone.getCallList().removeCall(this);
+      if (this.isPrimary()) {
+        this._libwebphone.getMediaDevices._setRemoteAudioSourceStream();
+      }
       this._emit("ended", this, ...event);
     });
     this._session.on("failed", (...event) => {
+      let remoteAudio = this.getRemoteAudio();
       this._libwebphone.getCallList().removeCall(this);
+      if (this.isPrimary()) {
+        this._libwebphone.getMediaDevices._setRemoteAudioSourceStream();
+      }
+      if (remoteAudio) {
+        remoteAudio.getTracks().forEach(track => {
+          track.stop();
+        });
+      }
       this._emit("failed", this, ...event);
     });
   }
