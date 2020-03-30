@@ -77,9 +77,8 @@ export default class extends lwpRenderer {
   }
 
   updateRenders() {
-    let data = this._renderData();
     this.render(render => {
-      render.data = data;
+      render.data = this._renderData(render.data);
       return render;
     });
   }
@@ -161,11 +160,13 @@ export default class extends lwpRenderer {
         transfer: "libwebphone:callControl.transfer",
         answer: "libwebphone:callControl.answer"
       },
-      data: this._renderData(),
+      data: merge(this._config, this._renderData()),
       by_id: {
         redial: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.redial();
             }
           }
@@ -173,6 +174,8 @@ export default class extends lwpRenderer {
         cancel: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.cancel();
             }
           }
@@ -180,6 +183,8 @@ export default class extends lwpRenderer {
         hangup: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.hangup();
             }
           }
@@ -187,6 +192,8 @@ export default class extends lwpRenderer {
         hold: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.hold();
             }
           }
@@ -194,6 +201,8 @@ export default class extends lwpRenderer {
         unhold: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.unhold();
             }
           }
@@ -201,6 +210,8 @@ export default class extends lwpRenderer {
         mute: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.mute();
             }
           }
@@ -208,6 +219,8 @@ export default class extends lwpRenderer {
         unmute: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.unmute();
             }
           }
@@ -222,6 +235,8 @@ export default class extends lwpRenderer {
         answer: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.answer();
             }
           }
@@ -294,13 +309,14 @@ export default class extends lwpRenderer {
     `;
   }
 
-  _renderData() {
-    let data = {};
+  _renderData(data = {}) {
     let currentCall = this._currentCall();
     let userAgent = this._libwebphone.getUserAgent();
 
     if (currentCall) {
       data.call = currentCall.summary();
+    } else {
+      data.call = null;
     }
 
     if (userAgent) {

@@ -21,6 +21,29 @@ export default class extends lwpRenderer {
     return this;
   }
 
+  start(username = null, password = null, realm = null) {
+    //JsSIP.debug.enable("JsSIP:*");
+    //JsSIP.debug.enable("");
+
+    if (username) {
+      this._userAgent.set("authorization_user", username);
+    }
+
+    if (password) {
+      this._userAgent.set("password", password);
+    }
+
+    if (realm) {
+      this._userAgent.set("authorization_user", realm);
+    }
+
+    this._userAgent.start();
+  }
+
+  stop() {
+    this._userAgent.stop();
+  }
+
   register() {
     this._userAgent.register();
   }
@@ -64,9 +87,8 @@ export default class extends lwpRenderer {
   }
 
   updateRenders() {
-    let data = this._renderData();
     this.render(render => {
-      render.data = data;
+      render.data = this._renderData(render.data);
       return render;
     });
   }
@@ -76,6 +98,11 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
+        start: "Start",
+        stop: "Stop",
+        username: "Username",
+        password: "Password",
+        realm: "Realm",
         register: "Register",
         unregister: "Unregister"
       }
@@ -151,6 +178,19 @@ export default class extends lwpRenderer {
     JsSIP.debug.enable("");
 
     this._userAgent = new JsSIP.UA(config);
+    this._userAgent.receiveRequest = request => {
+      /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
+      let config_user = this._userAgent._configuration.uri.user;
+      let ruri_user = request.ruri.user;
+      if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
+        request.ruri.user = config_user;
+      }
+      return this._userAgent.__proto__.receiveRequest.call(
+        this._userAgent,
+        request
+      );
+    };
+
     return this._userAgent;
   }
 
@@ -196,20 +236,7 @@ export default class extends lwpRenderer {
   }
 
   _initUserAgentStart() {
-    this._userAgent.receiveRequest = request => {
-      /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
-      let config_user = this._userAgent._configuration.uri.user;
-      let ruri_user = request.ruri.user;
-      if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
-        request.ruri.user = config_user;
-      }
-      return this._userAgent.__proto__.receiveRequest.call(
-        this._userAgent,
-        request
-      );
-    };
-
-    this._userAgent.start();
+    //this._userAgent.start();
   }
 
   _initRenderTargets() {
@@ -224,14 +251,21 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
+        start: "libwebphone:userAgent.start",
+        stop: "libwebphone:userAgent.stop",
         register: "libwebphone:userAgent.register",
-        unregister: "libwebphone:userAgent.unregister"
+        unregister: "libwebphone:userAgent.unregister",
+        username: "libwebphone:userAgent.username",
+        password: "libwebphone:userAgent.password",
+        realm: "libwebphone:userAgent.realm"
       },
-      data: this._renderData(),
+      data: merge(this._config, this._renderData()),
       by_id: {
         register: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.register();
             }
           }
@@ -239,7 +273,57 @@ export default class extends lwpRenderer {
         unregister: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.unregister();
+            }
+          }
+        },
+        username: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              if (this._userAgent) {
+                this._userAgent.set("authorization_user", element.value);
+              }
+            }
+          }
+        },
+        password: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              if (this._userAgent) {
+                this._userAgent.set("password", element.value);
+              }
+            }
+          }
+        },
+        realm: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              if (this._userAgent) {
+                this._userAgent.set("realm", element.value);
+              }
+            }
+          }
+        },
+        start: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
+              this.start();
+            }
+          }
+        },
+        stop: {
+          events: {
+            onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
+              this.stop();
             }
           }
         }
@@ -251,43 +335,58 @@ export default class extends lwpRenderer {
     return `
     <div>
       {{^data.connected}}
-      disconnected
-      {{/data.connected}}
+        <div>
+          <label for="{{by_id.username.elementId}}">
+            {{i18n.username}}
+          </label>
+          <input type="text" id="{{by_id.username.elementId}}" value="{{data.authentication.username}}" />
+        </div>
 
-      {{#data.connected}}
-      connected
+        <div>
+          <label for="{{by_id.password.elementId}}">
+            {{i18n.password}}
+          </label>
+          <input type="text" id="{{by_id.password.elementId}}" value="{{data.authentication.password}}" />
+        </div>
+        
+        <div>
+          <label for="{{by_id.realm.elementId}}">
+            {{i18n.realm}}
+          </label>
+          <input type="text" id="{{by_id.realm.elementId}}" value="{{data.authentication.realm}}" />
+        </div>
+
+        <button id="{{by_id.start.elementId}}">{{i18n.start}}</button>
       {{/data.connected}}
 
       {{#data.connected}}
         {{^data.registered}}
-        <button id="{{by_id.register.elementId}}">
-          {{i18n.register}}
-        </button>
+          <button id="{{by_id.register.elementId}}">
+            {{i18n.register}}
+          </button>
         {{/data.registered}}
 
         {{#data.registered}}
-        <button id="{{by_id.unregister.elementId}}">
-          {{i18n.unregister}}
-        </button>
+          <button id="{{by_id.unregister.elementId}}">
+            {{i18n.unregister}}
+          </button>
         {{/data.registered}}
       
+        <button id="{{by_id.stop.elementId}}">{{i18n.stop}}</button>
       {{/data.connected}}
     </div>
       `;
   }
 
-  _renderData() {
+  _renderData(data = {}) {
     let userAgent = this._userAgent;
-    if (!userAgent) {
-      return {
-        connected: false,
-        registered: false
-      };
+
+    if (userAgent) {
+      data.connected = userAgent.isConnected();
+      data.registered = userAgent.isRegistered();
     }
-    return {
-      connected: userAgent.isConnected(),
-      registered: userAgent.isRegistered()
-    };
+
+    return data;
   }
 
   /** Helper functions */

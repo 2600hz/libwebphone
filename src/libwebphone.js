@@ -118,6 +118,11 @@ export default class extends EventEmitter {
       data.shift();
       data.unshift("call.primary." + type);
       this._libwebphone._emit.apply(this._libwebphone, data);
+
+      data.shift();
+      data.unshift("call.primary.update");
+      data.push(type);
+      this._libwebphone._emit.apply(this._libwebphone, data);
     }
   }
 

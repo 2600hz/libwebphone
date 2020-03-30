@@ -104,6 +104,16 @@ export default class {
     }
   }
 
+  terminate() {
+    if (this.hasSession()) {
+      if (this.isEstablished()) {
+        this.hangup();
+      } else {
+        this.cancel();
+      }
+    }
+  }
+
   cancel() {
     if (this.hasSession()) {
       this._session.terminate();
@@ -149,7 +159,7 @@ export default class {
         this._inTransfer = false;
 
         if (!numbertotransfer) {
-          numbertotransfer = dialpad.digits().join("");
+          numbertotransfer = dialpad.getDigits().join("");
           dialpad.clear();
         }
 
@@ -159,6 +169,7 @@ export default class {
         } else {
           this._emit("transfer.failed", this, numbertotransfer);
         }
+        this._emit("transfer.complete", this, numbertotransfer);
       } else {
         this._inTransfer = true;
         dialpad.clear();
@@ -315,14 +326,16 @@ export default class {
     }
   }
 
-  _setPrimary(unhold = true) {
+  _setPrimary(resume = true) {
     let remoteAudio = this.getRemoteAudio();
 
     if (this.isPrimary()) {
       return;
     }
 
-    if (unhold && this.isEstablished() && this.isOnHold()) {
+    this.unmute();
+
+    if (resume && this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
 
@@ -336,7 +349,7 @@ export default class {
     this._emit("promoted", this);
   }
 
-  _clearPrimary(hold = true) {
+  _clearPrimary(pause = true) {
     if (!this.isPrimary()) {
       return;
     }
@@ -344,9 +357,12 @@ export default class {
     if (this._inTransfer) {
       this._libwebphone.getDialpad().clear();
       this._inTransfer = false;
+      this._emit("transfer.failed", this, numbertotransfer);
     }
 
-    if (hold && this.isEstablished()) {
+    this.mute();
+
+    if (pause && this.isEstablished()) {
       this.hold();
     }
 
@@ -371,6 +387,13 @@ export default class {
     element.srcObject = remoteStream;
     element.muted = true;
     element.play();
+
+    let video = document.getElementById("remote_video");
+    if (video) {
+      console.log("video: ", video, remoteStream);
+      console.log("video: ", remoteStream.getTracks());
+      video.srcObject = remoteStream;
+    }
 
     this._remoteStream = remoteStream;
     this._setRemoteAudio(

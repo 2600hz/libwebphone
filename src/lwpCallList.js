@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
+import { assign, merge } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
 
@@ -104,9 +104,8 @@ export default class extends lwpRenderer {
   }
 
   updateRenders() {
-    let data = this._renderData();
     this.render(render => {
-      render.data = data;
+      render.data = this._renderData(render.data);
       return render;
     });
   }
@@ -135,6 +134,10 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
+    this._libwebphone.on("callList.calls.switched", () => {
+      this.updateRenders();
+    });
+
     this._libwebphone.on("call.created", (lwp, call) => {
       this.updateRenders();
     });
@@ -185,7 +188,7 @@ export default class extends lwpRenderer {
       i18n: {
         new: "libwebphone:callList.new"
       },
-      data: this._renderData(),
+      data: merge(this._config, this._renderData()),
       by_name: {
         calls: {
           events: {
@@ -246,13 +249,14 @@ export default class extends lwpRenderer {
     `;
   }
 
-  _renderData() {
-    return {
-      calls: this.getCalls().map(call => {
-        return call.summary();
-      }),
-      primary: this.getCall()
-    };
+  _renderData(data = {}) {
+    data.calls = this.getCalls().map(call => {
+      return call.summary();
+    });
+
+    data.primary = this.getCall();
+
+    return data;
   }
 
   /** Helper functions */

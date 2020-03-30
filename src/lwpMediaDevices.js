@@ -78,7 +78,6 @@ export default class extends lwpRenderer {
   }
 
   isPreviewOutputLoopbackActive() {
-    // six foot air hug
     return this._previewAudio.loopbackGainNode.gain.value > 0;
   }
 
@@ -111,8 +110,10 @@ export default class extends lwpRenderer {
       let stream = this._audioContext.createMediaStreamDestination();
       this._inputAudio.volumeGainNode.connect(stream);
 
-      console.log("new stream: ", stream);
       console.log("mediaStream: ", mediaStream);
+
+      console.log("new localMediaStream: ", stream.stream);
+      console.log("new localMediaStream.tracks: ", stream.stream.getTracks());
 
       return stream.stream;
     });
@@ -149,6 +150,18 @@ export default class extends lwpRenderer {
     volume = volume.toFixed(2);
     this._remoteAudio.remoteGainNode.gain.value = volume;
     this._emit("volume.remote.change", this, volume);
+  }
+
+  changeTalkbackVolume(volume) {
+    volume = volume.toFixed(2);
+    this._outputAudio.talkbackGainNode.gain.value = volume;
+    this._emit("volume.talkback.change", this, volume);
+  }
+
+  changeMicrophoneVolume(volume) {
+    volume = volume.toFixed(2);
+    this._inputAudio.volumeGainNode.gain.value = volume;
+    this._emit("volume.microphone.change", this, volume);
   }
 
   mute(deviceKind = null) {
@@ -195,8 +208,6 @@ export default class extends lwpRenderer {
         channel[i] = Math.sin(2 * Math.PI * tones[index] * (i / sampleRate));
       }
     }
-
-    console.log(this._notificationAudio.dtmfGainNode);
 
     let src = this._audioContext.createBufferSource();
     src.buffer = buffer;
@@ -334,30 +345,7 @@ export default class extends lwpRenderer {
   updateRenders() {
     this.render(
       render => {
-        render.data.loaded = this._loaded;
-        render.data.active = this._inputActive;
-        render.data.preview = this._previewActive;
-        render.data.volume.master.value =
-          this._outputAudio.volumeGainNode.gain.value * 1000;
-        render.data.volume.ringer.value =
-          this._notificationAudio.ringerGainNode.gain.value * 1000;
-        render.data.volume.dtmf.value =
-          this._notificationAudio.dtmfGainNode.gain.value * 1000;
-        render.data.volume.remote.value =
-          this._remoteAudio.remoteGainNode.gain.value * 1000;
-        render.data.volume.max = 1000;
-        render.data.volume.min = 0;
-        render.data.audiooutput.preview.loopback.active = this.isPreviewOutputLoopbackActive();
-        render.data.audiooutput.preview.tone.active = this.isPreviewOutputToneActive();
-
-        Object.keys(this._availableDevices).forEach(deviceKind => {
-          let devices = this._availableDevices[deviceKind].slice(0);
-          devices.sort((a, b) => {
-            return a.displayOrder - b.displayOrder;
-          });
-          render.data[deviceKind].devices = devices;
-        });
-
+        render.data = merge(render.data, this._renderData());
         return render;
       },
       render => {
@@ -378,35 +366,17 @@ export default class extends lwpRenderer {
           }
         });
 
-        if (this._previewAudio.sourceStream) {
-          let previewMediaStream = this._previewAudio.sourceStream;
-          let audioTrack = previewMediaStream.mediaStream
-            .getTracks()
-            .find(track => {
-              return track.kind == "audio" && track.readyState == "live";
-            });
-
-          if (!audioTrack) {
-            return;
-          }
-
+        if (this._inputAudio.destinationStream) {
           if (!render.previewAudioMeter) {
             render.previewAudioMeter = AudioStreamMeter.audioStreamProcessor(
               this._audioContext,
               this._audioProcessCallback(render)
             );
+            this._inputAudio.volumeGainNode.connect(render.previewAudioMeter);
           } else {
             render.previewAudioMeter.audioProcessCallback = this._audioProcessCallback(
               render
             );
-          }
-
-          if (
-            !render.previewAudioMeter.trackId ||
-            render.previewAudioMeter.trackId != audioTrack.id
-          ) {
-            render.previewAudioMeter.trackId = audioTrack.id;
-            previewMediaStream.connect(render.previewAudioMeter);
           }
         }
       }
@@ -418,11 +388,13 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
-        legend: "Select your devices",
         none: "None",
         audiooutput: "Speaker",
+        audiooutputpreview: "Preview Options",
         audioinput: "Microphone",
+        audioinputpreview: "Preview",
         videoinput: "Camera",
+        videoinputpreview: "Preview",
         loading: "Finding media devices...",
         starttone: "Play Tone",
         stoptone: "Stop Tone",
@@ -431,7 +403,9 @@ export default class extends lwpRenderer {
         mastervolume: "Master Volume",
         ringervolume: "Ringer Volume",
         dtmfvolume: "DTMF Volume",
-        remotevolume: "Call Volume"
+        remotevolume: "Call Volume",
+        talkbackvolume: "Talkback Volume",
+        microphonevolume: "Microphone Volume"
       }
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
@@ -443,48 +417,48 @@ export default class extends lwpRenderer {
       volume: {
         master: {
           type: "output",
-          enabled: true,
+          show: true,
           default: 1
         },
         ringer: {
           type: "output",
-          enabled: true,
+          show: true,
           default: 1
         },
         dtmf: {
           type: "output",
-          enabled: true,
+          show: true,
           default: 1
         },
         remote: {
           type: "output",
-          enabled: true,
+          show: true,
           default: 1
         },
         talkback: {
           type: "output",
-          enabled: true,
-          default: 1
+          show: true,
+          default: 0.1
         },
         microphone: {
           type: "input",
-          enabled: true,
+          show: true,
           default: 1
         }
       },
       audiooutput: {
-        enabled: "sinkId" in HTMLMediaElement.prototype,
+        show: "sinkId" in HTMLMediaElement.prototype,
         startMuted: false,
         preferedDeviceIds: [],
         livePreview: true,
         preview: {
           loopback: {
-            enabled: true,
+            show: true,
             delay: 0.5,
             startOnPreview: false
           },
           tone: {
-            enabled: true,
+            show: true,
             frequency: 440,
             duration: 1.5,
             type: "sine",
@@ -494,6 +468,7 @@ export default class extends lwpRenderer {
       },
       audioinput: {
         enabled: true,
+        show: true,
         startMuted: false,
         constraints: {},
         preferedDeviceIds: [],
@@ -501,6 +476,7 @@ export default class extends lwpRenderer {
       },
       videoinput: {
         enabled: true,
+        show: true,
         startMuted: true,
         constraints: {},
         preferedDeviceIds: [],
@@ -541,6 +517,13 @@ export default class extends lwpRenderer {
   }
 
   _initInputStreams() {
+    this._inputAudio = {
+      sourcStream: null,
+      volumeGainNode: this._audioContext.createGain(),
+      destinationStream: this._audioContext.createMediaStreamDestination()
+    };
+    this._inputAudio.volumeGainNode.connect(this._inputAudio.destinationStream);
+
     let constraints = {
       audio: this._config["audioinput"].enabled,
       video: this._config["videoinput"].enabled
@@ -563,6 +546,9 @@ export default class extends lwpRenderer {
       oscillatorGainNode: this._audioContext.createGain()
     };
     this._previewAudio.loopbackDelayNode.delayTime.value = this._config.audiooutput.preview.loopback.delay;
+    this._inputAudio.volumeGainNode.connect(
+      this._previewAudio.loopbackDelayNode
+    );
     this._previewAudio.loopbackDelayNode.connect(
       this._previewAudio.loopbackGainNode
     );
@@ -587,11 +573,14 @@ export default class extends lwpRenderer {
     this._notificationAudio.dtmfGainNode.gain.value = this._config.volume.dtmf.default;
 
     this._outputAudio = {
-      merger: this._audioContext.createChannelMerger(5),
+      talkbackGainNode: this._audioContext.createGain(),
+      merger: this._audioContext.createChannelMerger(6),
       volumeGainNode: this._audioContext.createGain(),
       destinationStream: this._audioContext.createMediaStreamDestination(),
       element: document.createElement("audio")
     };
+    this._outputAudio.talkbackGainNode.gain.value = this._config.volume.talkback.default;
+    this._inputAudio.volumeGainNode.connect(this._outputAudio.talkbackGainNode);
     this._outputAudio.merger.connect(this._outputAudio.volumeGainNode);
     this._outputAudio.volumeGainNode.gain.value = this._config.volume.master.default;
     this._outputAudio.volumeGainNode.connect(
@@ -637,15 +626,12 @@ export default class extends lwpRenderer {
       0,
       1
     );
+
+    this._outputAudio.talkbackGainNode.connect(this._outputAudio.merger, 0, 0);
+    this._outputAudio.talkbackGainNode.connect(this._outputAudio.merger, 0, 1);
   }
 
   _initAvailableDevices() {
-    this._inputAudio = {
-      volumeGainNode: this._audioContext.createGain(),
-      destinationStream: this._audioContext.createMediaStreamDestination()
-    };
-    this._inputAudio.volumeGainNode.connect(this._inputAudio.destinationStream);
-
     this._mediaStreamPromise.then(mediaStream => {
       this._shimEnumerateDevices().then(devices => {
         this._importInputDevices(devices);
@@ -742,11 +728,13 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        legend: "libwebphone:mediaDevices.legend",
         none: "libwebphone:mediaDevices.none",
         audiooutput: "libwebphone:mediaDevices.audiooutput",
+        audiooutputpreview: "libwebphone:mediaDevices.audiooutputpreview",
         audioinput: "libwebphone:mediaDevices.audioinput",
+        audioinputpreview: "libwebphone:mediaDevices.audioinputpreview",
         videoinput: "libwebphone:mediaDevices.videoinput",
+        videoinputpreview: "libwebphone:mediaDevices.videoinputpreview",
         loading: "libwebphone:mediaDevices.loading",
         starttone: "libwebphone:mediaDevices.starttone",
         stoptone: "libwebphone:mediaDevices.stoptone",
@@ -755,7 +743,9 @@ export default class extends lwpRenderer {
         mastervolume: "libwebphone:mediaDevices.mastervolume",
         ringervolume: "libwebphone:mediaDevices.ringervolume",
         dtmfvolume: "libwebphone:mediaDevices.dtmfvolume",
-        remotevolume: "libwebphone:mediaDevices.remotevolume"
+        remotevolume: "libwebphone:mediaDevices.remotevolume",
+        talkbackvolume: "libwebphone:mediaDevices.talkbackvolume",
+        microphonevolume: "libwebphone:mediaDevices.microphonevolume"
       },
       by_id: {
         audiooutput: {
@@ -860,15 +850,25 @@ export default class extends lwpRenderer {
               this.changeRemoteVolume(element.value / 1000);
             }
           }
+        },
+        talkbackvolume: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              this.changeTalkbackVolume(element.value / 1000);
+            }
+          }
+        },
+        microphonevolume: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              this.changeMicrophoneVolume(element.value / 1000);
+            }
+          }
         }
       },
-      data: {
-        loaded: this._loaded,
-        audiooutput: this._config.audiooutput,
-        audioinput: this._config.audioinput,
-        videoinput: this._config.videoinput,
-        volume: this._config.volume
-      }
+      data: merge(this._config, this._renderData())
     };
   }
 
@@ -876,151 +876,228 @@ export default class extends lwpRenderer {
     // TODO: render advanced settings from capabilities
     return `
         <div>
-            <legend>{{i18n.legend}}</legend>
+          {{#data.loaded}}
+          {{#data.audiooutput.show}}
+            <div>
+              <label for="{{by_id.audiooutput.elementId}}">
+                {{i18n.audiooutput}}
+              </label>
+              <select id="{{by_id.audiooutput.elementId}}">
+                {{#data.audiooutput.devices}}
+                  {{#connected}}
+                    <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                  {{/connected}}
+                {{/data.audiooutput.devices}}
+              </select>
+            </div>
 
-            {{#data.loaded}}
-            {{#data.audiooutput.enabled}}
-              <div>
+            <div>
+              {{#data.preview}}
+              {{#data.audiooutput.livePreview}}
                 <label for="{{by_id.audiooutput.elementId}}">
-                  {{i18n.audiooutput}}
+                  {{i18n.audiooutputpreview}}
                 </label>
-                <select id="{{by_id.audiooutput.elementId}}">
-                  {{#data.audiooutput.devices}}
-                    {{#connected}}
-                      <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                    {{/connected}}
-                  {{/data.audiooutput.devices}}
-                </select>
+                {{#data.audiooutput.preview.tone.show}}
+                  {{^data.audiooutput.preview.tone.active}}
+                    <a id="{{by_id.startpreviewtone.elementId}}" href="#">{{i18n.starttone}}</a>
+                  {{/data.audiooutput.preview.tone.active}}
 
-                {{#data.preview}}
-                {{#data.audiooutput.livePreview}}
-                  <div>
-                    {{#data.audiooutput.preview.tone.enabled}}
-                      {{^data.audiooutput.preview.tone.active}}
-                        <a id="{{by_id.startpreviewtone.elementId}}" href="#">{{i18n.starttone}}</a>
-                      {{/data.audiooutput.preview.tone.active}}
+                  {{#data.audiooutput.preview.tone.active}}
+                    <a id="{{by_id.stoppreviewtone.elementId}}" href="#">{{i18n.stoptone}}</a>
+                  {{/data.audiooutput.preview.tone.active}}
+                {{/data.audiooutput.preview.tone.show}}
+                
 
-                      {{#data.audiooutput.preview.tone.active}}
-                        <a id="{{by_id.stoppreviewtone.elementId}}" href="#">{{i18n.stoptone}}</a>
-                      {{/data.audiooutput.preview.tone.active}}
-                    {{/data.audiooutput.preview.tone.enabled}}
-                    
+                {{#data.audiooutput.preview.loopback.show}}
+                  {{#data.audiooutput.preview.tone.show}}
+                  |
+                  {{/data.audiooutput.preview.tone.show}}
 
-                    {{#data.audiooutput.preview.loopback.enabled}}
-                      {{#data.audiooutput.preview.tone.enabled}}
-                      |
-                      {{/data.audiooutput.preview.tone.enabled}}
+                  {{^data.audiooutput.preview.loopback.active}}
+                    <a id="{{by_id.startpreviewloopback.elementId}}" href="#">{{i18n.startloopback}}</a>
+                  {{/data.audiooutput.preview.loopback.active}}
 
-                      {{^data.audiooutput.preview.loopback.active}}
-                        <a id="{{by_id.startpreviewloopback.elementId}}" href="#">{{i18n.startloopback}}</a>
-                      {{/data.audiooutput.preview.loopback.active}}
+                  {{#data.audiooutput.preview.loopback.active}}
+                    <a id="{{by_id.stoppreviewloopback.elementId}}" href="#">{{i18n.stoploopback}}</a>
+                  {{/data.audiooutput.preview.loopback.active}}
+                {{/data.audiooutput.preview.loopback.show}}
+              {{/data.audiooutput.livePreview}}
+              {{/data.preview}}
+            </div>
+          {{/data.audiooutput.show}}
 
-                      {{#data.audiooutput.preview.loopback.active}}
-                        <a id="{{by_id.stoppreviewloopback.elementId}}" href="#">{{i18n.stoploopback}}</a>
-                      {{/data.audiooutput.preview.loopback.active}}
-                    {{/data.audiooutput.preview.loopback.enabled}}
-
-                  </div>
-                {{/data.audiooutput.livePreview}}
-                {{/data.preview}}
-              </div>
-            {{/data.audiooutput.enabled}}
-
-            {{#data.volume.master.enabled}}    
+          {{#data.volume.master.show}}    
             <div>
               <label for="{{by_id.mastervolume.elementId}}">
                 {{i18n.mastervolume}}
               </label>
               <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.master.value}}" id="{{by_id.mastervolume.elementId}}">
             </div>
-            {{/data.volume.master.enabled}}
+          {{/data.volume.master.show}}
 
-            {{#data.volume.ringer.enabled}}
+          {{#data.volume.ringer.show}}
             <div>
               <label for="{{by_id.ringervolume.elementId}}">
                 {{i18n.ringervolume}}
               </label>
               <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.ringer.value}}" id="{{by_id.ringervolume.elementId}}">
             </div>
-            {{/data.volume.ringer.enabled}}
+          {{/data.volume.ringer.show}}
 
-            {{#data.volume.dtmf.enabled}}
+          {{#data.volume.dtmf.show}}
             <div>
               <label for="{{by_id.dtmfvolume.elementId}}">
                 {{i18n.dtmfvolume}}
               </label>
               <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.dtmf.value}}" id="{{by_id.dtmfvolume.elementId}}">
             </div>
-            {{/data.volume.dtmf.enabled}}
+          {{/data.volume.dtmf.show}}
 
-            {{#data.volume.remote.enabled}}
+          {{#data.volume.remote.show}}
             <div>
               <label for="{{by_id.remotevolume.elementId}}">
                 {{i18n.remotevolume}}
               </label>
               <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.remote.value}}" id="{{by_id.remotevolume.elementId}}">
             </div>
-            {{/data.volume.remote.enabled}}
+          {{/data.volume.remote.show}}
 
-            {{#data.audioinput.enabled}}
-              <div>
-                <label for="{{by_id.audioinput.elementId}}">
-                  {{i18n.audioinput}}
-                </label>
-                <select id="{{by_id.audioinput.elementId}}">
-                  {{#data.audioinput.devices}}
+          {{#data.volume.talkback.show}}
+            <div>
+              <label for="{{by_id.talkbackvolume.elementId}}">
+                {{i18n.talkbackvolume}}
+              </label>
+              <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.talkback.value}}" id="{{by_id.talkbackvolume.elementId}}">
+            </div>
+          {{/data.volume.talkback.show}}
+
+          {{#data.audioinput.show}}
+            <div>
+              <label for="{{by_id.audioinput.elementId}}">
+                {{i18n.audioinput}}
+              </label>
+              <select id="{{by_id.audioinput.elementId}}">
+                {{#data.audioinput.devices}}
+                  {{#connected}}
+                    <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                  {{/connected}}    
+                {{/data.audioinput.devices}}
+              </select>
+
+              {{#data.preview}}
+              {{#data.audioinput.livePreview}}
+                <label for="{{by_id.audioinputpreview.elementId}}">
+                  {{i18n.audioinputpreview}}
+                </label> 
+                <span id="{{by_id.audioinputpreview.elementId}}" style="width:300px;height:10px;background-color:lightgray;display:inline-block;">
+                  <div style="height:10px; background-color: #00aeef;"></div>
+                </span>
+              {{/data.audioinput.livePreview}}   
+              {{/data.preview}}                 
+            </div>
+          {{/data.audioinput.show}}
+
+          {{#data.volume.microphone.show}}
+            <div>
+              <label for="{{by_id.microphonevolume.elementId}}">
+                {{i18n.microphonevolume}}
+              </label>
+              <input type="range" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volume.microphone.value}}" id="{{by_id.microphonevolume.elementId}}">
+            </div>
+          {{/data.volume.microphone.show}}
+
+          {{#data.videoinput.show}}          
+            <div>
+              <label for="{{by_id.videoinput.elementId}}">
+                {{i18n.videoinput}}
+              </label>                
+              <select id="{{by_id.videoinput.elementId}}">
+                {{#data.videoinput.devices}}
                     {{#connected}}
                       <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                    {{/connected}}    
-                  {{/data.audioinput.devices}}
-                </select>
+                    {{/connected}}
+                {{/data.videoinput.devices}}
+              </select>
+            </div>
 
-                {{#data.preview}}
-                {{#data.audioinput.livePreview}}
-                  <div id="{{by_id.audioinputpreview.elementId}}" style="width:300px;height:10px;background-color: lightgray;margin: 10px 0px;">
-                    <div style="height:10px; background-color: #00aeef;"></div>
-                  </div>
-                {{/data.audioinput.livePreview}}   
-                {{/data.preview}}                 
+            <div>
+              {{#data.preview}}
+              {{#data.videoinput.livePreview}}
+                <label for="{{by_id.videoinputpreview.elementId}}">
+                  {{i18n.videoinputpreview}}
+                </label> 
+                <video id="{{by_id.videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted style="width: 500px;"></video>
+              {{/data.videoinput.livePreview}}
+              {{/data.preview}} 
+            </div>
+          {{/data.videoinput.show}}
+          {{/data.loaded}}
+
+          {{^data.loaded}}
+            <div style="margin: 50px 5px;">
+              <div class="spinner">
+                <div class="bounce1"></div>
+                <div class="bounce2"></div>
+                <div class="bounce3"></div>
               </div>
-            {{/data.audioinput.enabled}}
-
-            {{#data.videoinput.enabled}}          
-              <div>
-                  <label for="{{by_id.videoinput.elementId}}">
-                    {{i18n.videoinput}}
-                  </label>                
-                  <select id="{{by_id.videoinput.elementId}}">
-                    {{#data.videoinput.devices}}
-                        {{#connected}}
-                          <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
-                        {{/connected}}
-                    {{/data.videoinput.devices}}
-                  </select>
-
-                  {{#data.preview}}
-                  {{#data.videoinput.livePreview}}
-                    <div>
-                      <video id="{{by_id.videoinputpreview.elementId}}" width="{{videoinput.preference.settings.width}}" height="{{videoinput.preference.settings.height}}" autoplay muted></video>
-                    </div>
-                  {{/data.videoinput.livePreview}}
-                  {{/data.preview}} 
-              </div>
-            {{/data.videoinput.enabled}}
-            {{/data.loaded}}
-
-            {{^data.loaded}}
-              <div style="margin: 50px 5px;">
-                <div class="spinner">
-                  <div class="bounce1"></div>
-                  <div class="bounce2"></div>
-                  <div class="bounce3"></div>
-                </div>
-                <div style="text-align: center;">{{i18n.loading}}</div>
-              </div>
-            {{/data.loaded}}
+              <div style="text-align: center;">{{i18n.loading}}</div>
+            </div>
+          {{/data.loaded}}
         </div>
         `;
+  }
+
+  _renderData() {
+    let data = {
+      volume: {
+        master: {},
+        ringer: {},
+        dtmf: {},
+        remote: {},
+        talkback: {},
+        microphone: {}
+      },
+      audiooutput: {
+        preview: {
+          loopback: {},
+          tone: {}
+        }
+      }
+    };
+
+    data.loaded = this._loaded;
+    data.active = this._inputActive;
+    data.preview = this._previewActive;
+
+    data.volume.master.value =
+      this._outputAudio.volumeGainNode.gain.value * 1000;
+    data.volume.ringer.value =
+      this._notificationAudio.ringerGainNode.gain.value * 1000;
+    data.volume.dtmf.value =
+      this._notificationAudio.dtmfGainNode.gain.value * 1000;
+    data.volume.remote.value =
+      this._remoteAudio.remoteGainNode.gain.value * 1000;
+    data.volume.talkback.value =
+      this._outputAudio.talkbackGainNode.gain.value * 1000;
+    data.volume.microphone.value =
+      this._inputAudio.volumeGainNode.gain.value * 1000;
+    data.volume.max = 1000;
+    data.volume.min = 0;
+
+    data.audiooutput.preview.loopback.active = this.isPreviewOutputLoopbackActive();
+    data.audiooutput.preview.tone.active = this.isPreviewOutputToneActive();
+
+    Object.keys(this._availableDevices).forEach(deviceKind => {
+      let devices = this._availableDevices[deviceKind].slice(0);
+      devices.sort((a, b) => {
+        return a.displayOrder - b.displayOrder;
+      });
+      if (!data[deviceKind]) {
+        data[deviceKind] = {};
+      }
+      data[deviceKind].devices = devices;
+    });
+    return data;
   }
 
   /** Helper functions */
@@ -1150,6 +1227,10 @@ export default class extends lwpRenderer {
           );
         });
       } else {
+        if (trackKind == "audio" && this._inputAudio.sourceStream) {
+          this._inputAudio.sourceStream.disconnect();
+          this._inputAudio.sourceStream = null;
+        }
         this._availableDevices[preferedDevice.deviceKind].forEach(
           availableDevice => {
             if (availableDevice.id == "none") {
@@ -1205,24 +1286,14 @@ export default class extends lwpRenderer {
   }
 
   _updateInputChain(mediaStream) {
-    console.log("updateInputChain: ", mediaStream);
     let audioTrack = mediaStream.getTracks().find(track => {
       return track.kind == "audio" && track.readyState == "live";
     });
+    if (this._inputAudio.sourceStream) {
+      this._inputAudio.sourceStream.disconnect();
+      this._inputAudio.sourceStream = null;
+    }
     if (audioTrack) {
-      if (this._previewAudio.sourceStream) {
-        this._previewAudio.sourceStream.disconnect();
-      }
-      this._previewAudio.sourceStream = this._audioContext.createMediaStreamSource(
-        mediaStream
-      );
-      this._previewAudio.sourceStream.connect(
-        this._previewAudio.loopbackDelayNode
-      );
-
-      if (this._inputAudio.sourceStream) {
-        this._inputAudio.sourceStream.disconnect();
-      }
       this._inputAudio.sourceStream = this._audioContext.createMediaStreamSource(
         mediaStream
       );

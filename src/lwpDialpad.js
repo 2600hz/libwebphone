@@ -16,8 +16,12 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  dial(digit, tones) {
+  dial(digit, tones = true) {
     let call = this._libwebphone.getCallList().getCall();
+
+    if (tones === true) {
+      tones = this._charToTone(digit);
+    }
 
     if (tones) {
       this._libwebphone.getMediaDevices().startPlayTone(...tones);
@@ -30,49 +34,141 @@ export default class extends lwpRenderer {
     }
 
     this.updateRenders();
-    this._emit("digits.updated", this, this._digits, digit);
+    this._emit("digits.updated", this, this.getDigits(), digit);
   }
 
   backspace() {
     this._digits.pop();
 
     this.updateRenders();
-    this._emit("digits.backspace", this, this._digits);
+    this._emit("digits.backspace", this, this.getDigits());
   }
 
   clear() {
     this._digits = [];
 
     this.updateRenders();
-    this._emit("digits.clear", this, this._digits);
+    this._emit("digits.clear", this, this.getDigits());
   }
 
-  digits() {
+  getDigits() {
     return this._digits;
   }
 
-  call() {
-    let numbertocall = this._digits.join("");
+  hasDigits() {
+    let digits = this.getDigits();
+
+    if (digits.length > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  answer() {
+    let call = this._libwebphone.getCallList().getCall();
+
+    if (!call) {
+      return;
+    }
+
+    call.answer();
+  }
+
+  call(redial = true) {
+    let numbertocall = this.getDigits().join("");
     this.clear();
+
+    if (redial && !numbertocall != "") {
+      numbertocall = this._libwebphone.getUserAgent().getRedial();
+    }
 
     this._libwebphone.getUserAgent().call(numbertocall);
 
     this._emit("call", this, numbertocall);
   }
 
+  redial() {
+    let numbertocall = this._libwebphone.getUserAgent().getRedial();
+
+    if (!numbertocall) {
+      return;
+    }
+
+    this._libwebphone.getUserAgent().call(numbertocall);
+
+    this._emit("redial", this, numbertocall);
+  }
+
   transfer() {
     let call = this._libwebphone.getCallList().getCall();
 
     if (call) {
-      call.transfer(this.digits().join(""));
+      call.transfer(this.getDigits().join(""));
       this.clear();
     }
   }
 
+  terminate() {
+    let call = this._libwebphone.getCallList().getCall();
+
+    if (!call) {
+      return;
+    }
+
+    call.terminate();
+  }
+
+  autoAction(options) {
+    let defaultOptions = {
+      answer: true,
+      redial: true,
+      call: true,
+      transfer: true,
+      terminate: true
+    };
+    options = merge(defaultOptions, options);
+    switch (this.getAutoAction()) {
+      case "answer":
+        if (options.answer) this.answer();
+        break;
+      case "redial":
+        if (options.redial) this.redial();
+        break;
+      case "call":
+        if (options.call) this.call();
+        break;
+      case "transfer":
+        if (options.call) this.transfer();
+        break;
+      case "terminate":
+        if (options.call) this.terminate();
+        break;
+    }
+  }
+
+  getAutoAction() {
+    let call = this._libwebphone.getCallList().getCall();
+
+    if (!call) {
+      if (!this.hasDigits()) {
+        return "redial";
+      }
+      return "call";
+    } else if (call.isInTransfer()) {
+      return "transfer";
+    } else {
+      if (call.getDirection() == "terminating" && !call.isEstablished()) {
+        return "answer";
+      } else {
+        return "terminate";
+      }
+    }
+  }
+
   updateRenders(postrender = render => render) {
-    let data = this._renderData();
     this.render(render => {
-      render.data = data;
+      render.data = this._renderData(render.data);
       return render;
     }, postrender);
   }
@@ -82,7 +178,6 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
-        zero: "0",
         one: "1",
         two: "2",
         three: "3",
@@ -92,8 +187,9 @@ export default class extends lwpRenderer {
         seven: "7",
         eight: "8",
         nine: "9",
-        pound: "#",
         astrisk: "*",
+        zero: "0",
+        pound: "#",
         clear: "clear",
         backspace: "<-",
         call: "Call",
@@ -107,8 +203,28 @@ export default class extends lwpRenderer {
   _initProperties(config) {
     let defaults = {
       renderTargets: [],
+      dialed: {
+        show: true,
+        delete: {
+          show: true
+        },
+        clear: {
+          show: true
+        }
+      },
+      controls: {
+        show: true,
+        call: {
+          show: true
+        },
+        transfer: {
+          show: true
+        }
+      },
+      dialpad: {
+        show: true
+      },
       tones: {
-        zero: [1336, 941],
         one: [1209, 697],
         two: [1336, 697],
         three: [1477, 697],
@@ -118,8 +234,9 @@ export default class extends lwpRenderer {
         seven: [1209, 852],
         eight: [1336, 852],
         nine: [1477, 852],
-        pound: [1477, 941],
-        astrisk: [1209, 941]
+        astrisk: [1209, 941],
+        zero: [1336, 941],
+        pound: [1477, 941]
       }
     };
     this._config = merge(defaults, config);
@@ -162,7 +279,7 @@ export default class extends lwpRenderer {
         call: "libwebphone:dialpad.call",
         transfer: "libwebphone:dialpad.transfer"
       },
-      data: this._renderData(),
+      data: merge(this._config, this._renderData()),
       by_id: {
         dialed: {
           events: {
@@ -172,9 +289,7 @@ export default class extends lwpRenderer {
             onkeypress: event => {
               // On enter...
               if (event.keyCode == 13) {
-                if (this._digits.length > 0) {
-                  this._callOrTransfer();
-                }
+                this.autoAction({ terminate: false });
               }
             }
           }
@@ -304,6 +419,8 @@ export default class extends lwpRenderer {
         call: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.call();
             }
           }
@@ -311,6 +428,8 @@ export default class extends lwpRenderer {
         transfer: {
           events: {
             onclick: event => {
+              let element = event.srcElement;
+              element.disabled = true;
               this.transfer();
             }
           }
@@ -322,53 +441,70 @@ export default class extends lwpRenderer {
   _renderDefaultTemplate() {
     return `
     <div>
+      {{#data.dialed.show}}
       <div>
-        <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />        
-        <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
-        <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
-      </div>
+        <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />
 
-      <div>
-      <button id="{{by_id.one.elementId}}" data-value="one">{{i18n.one}}</button>
-      <button id="{{by_id.two.elementId}}" data-value="two">{{i18n.two}}</button>
-      <button id="{{by_id.three.elementId}}" data-value="three">{{i18n.three}}</button>
-      </div>
+        {{#data.dialed.delete.show}}
+          <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
+        {{/data.dialed.delete.show}}
 
-      <div>
-      <button id="{{by_id.four.elementId}}" data-value="four">{{i18n.four}}</button>
-      <button id="{{by_id.five.elementId}}" data-value="five">{{i18n.five}}</button>
-      <button id="{{by_id.six.elementId}}" data-value="six">{{i18n.six}}</button>
+        {{#data.dialed.clear.show}}
+          <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
+        {{/data.dialed.clear.show}}
       </div>
+      {{/data.dialed.show}}
 
-      <div>
-      <button id="{{by_id.seven.elementId}}" data-value="seven">{{i18n.seven}}</button>
-      <button id="{{by_id.eight.elementId}}" data-value="eight">{{i18n.eight}}</button> 
-      <button id="{{by_id.nine.elementId}}" data-value="nine">{{i18n.nine}}</button>
-      </div>
+      {{#data.dialpad.show}}
+        <div>
+          <button id="{{by_id.one.elementId}}" data-value="one">{{i18n.one}}</button>
+          <button id="{{by_id.two.elementId}}" data-value="two">{{i18n.two}}</button>
+          <button id="{{by_id.three.elementId}}" data-value="three">{{i18n.three}}</button>
+        </div>
 
-      <div>
-      <button id="{{by_id.astrisk.elementId}}" data-value="astrisk">{{i18n.astrisk}}</button>
-      <button id="{{by_id.zero.elementId}}" data-value="zero">{{i18n.zero}}</button>
-      <button id="{{by_id.pound.elementId}}" data-value="pound">{{i18n.pound}}</button>
-      </div>
+        <div>
+          <button id="{{by_id.four.elementId}}" data-value="four">{{i18n.four}}</button>
+          <button id="{{by_id.five.elementId}}" data-value="five">{{i18n.five}}</button>
+          <button id="{{by_id.six.elementId}}" data-value="six">{{i18n.six}}</button>
+        </div>
 
-      {{^data.call}}
-      <div>
-      <button id="{{by_id.call.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.call}}</button>
-      </div>
-      {{/data.call}}
+        <div>
+          <button id="{{by_id.seven.elementId}}" data-value="seven">{{i18n.seven}}</button>
+          <button id="{{by_id.eight.elementId}}" data-value="eight">{{i18n.eight}}</button> 
+          <button id="{{by_id.nine.elementId}}" data-value="nine">{{i18n.nine}}</button>
+        </div>
 
-      {{#data.call.inTransfer}}
-      <div>
-      <button id="{{by_id.transfer.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.transfer}}</button>
-      </div>
-      {{/data.call.inTransfer}}
+        <div>
+          <button id="{{by_id.astrisk.elementId}}" data-value="astrisk">{{i18n.astrisk}}</button>
+          <button id="{{by_id.zero.elementId}}" data-value="zero">{{i18n.zero}}</button>
+          <button id="{{by_id.pound.elementId}}" data-value="pound">{{i18n.pound}}</button>
+        </div>
+      {{/data.dialpad.show}}
+
+      {{#data.controls.show}}
+
+        {{#data.controls.call.show}}
+        {{^data.call}}
+          <div>
+            <button id="{{by_id.call.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.call}}</button>
+          </div>
+        {{/data.call}}
+        {{/data.controls.call.show}}
+
+        {{#data.controls.transfer.show}}
+        {{#data.call.inTransfer}}
+          <div>
+            <button id="{{by_id.transfer.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.transfer}}</button>
+          </div>
+        {{/data.call.inTransfer}}
+        {{/data.controls.transfer.show}}
+
+      {{/data.controls.show}}
 	  </div>
     `;
   }
 
-  _renderData() {
-    let data = {};
+  _renderData(data = {}) {
     let callList = this._libwebphone.getCallList();
 
     if (callList) {
@@ -378,7 +514,7 @@ export default class extends lwpRenderer {
       }
     }
 
-    data.digits = this.digits().join("");
+    data.digits = this.getDigits().join("");
 
     return data;
   }
@@ -446,15 +582,6 @@ export default class extends lwpRenderer {
       }
     });
 
-    this._emit("digits.updated", this, this._digits, event.data);
-  }
-
-  _callOrTransfer() {
-    let call = this._libwebphone.getCallList().getCall();
-    if (!call) {
-      this.call();
-    } else if (call.isInTransfer()) {
-      this.transfer();
-    }
+    this._emit("digits.updated", this, this.getDigits(), event.data);
   }
 }

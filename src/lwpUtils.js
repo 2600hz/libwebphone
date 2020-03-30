@@ -1,6 +1,10 @@
 "use strict";
 
-import { merge as _merge, cloneDeep as _cloneDeep } from "lodash";
+import {
+  assign as _assign,
+  merge as _merge,
+  cloneDeep as _cloneDeep
+} from "lodash";
 
 export function uuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
@@ -8,6 +12,10 @@ export function uuid() {
       v = c == "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+export function assign(...args) {
+  return _assign(...args);
 }
 
 export function merge(...args) {
