@@ -410,12 +410,9 @@ export default class {
     element.muted = true;
     element.play();
 
-    let video = document.getElementById("remote_video");
-    if (video) {
-      console.log("video: ", video, remoteStream);
-      console.log("video: ", remoteStream.getTracks());
-      video.srcObject = remoteStream;
-    }
+    this._libwebphone
+      .getVideoCanvas()
+      ._setRemoteVideoSourceStream(remoteStream);
 
     this._remoteStream = remoteStream;
     this._setRemoteAudio(

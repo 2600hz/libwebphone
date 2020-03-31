@@ -197,6 +197,10 @@
         background: #fff;
         color: #000;
       }
+      canvas {
+        border: 10px black solid;
+        cursor: pointer;
+      }
       .col {
         padding: 10px;
       }
@@ -384,6 +388,9 @@
             register_expires: 300,
             user_agent: "libwebphone 2.x - dev"
           }
+        },
+        videoCanvas: {
+          renderTargets: ["video_screen"]
         }
       }; //End ofConfig
 
@@ -503,23 +510,23 @@
           <script type="text/javascript">
             var template = `
                     <div>
-                      {{#data.connected}}
-                      {{#data.registered}}
+                      {{#data.isConnected}}
+                      {{#data.isRegistered}}
                       &#128512
-                      {{/data.registered}}
-                      {{/data.connected}}
+                      {{/data.isRegistered}}
+                      {{/data.isConnected}}
       
-                      {{#data.connected}}
-                      {{^data.registered}}
+                      {{#data.isConnected}}
+                      {{^data.isRegistered}}
                       &#128542 
-                      {{/data.registered}}
-                      {{/data.connected}}
+                      {{/data.isRegistered}}
+                      {{/data.isConnected}}
       
-                      {{^data.connected}}
-                      {{^data.registered}}
+                      {{^data.isConnected}}
+                      {{^data.isRegistered}}
                       &#128561
-                      {{/data.registered}}
-                      {{/data.connected}}
+                      {{/data.isRegistered}}
+                      {{/data.isConnected}}
                     </div>`;
             var customTemplateConfig = {
               template: template,
@@ -777,10 +784,11 @@
         </div>
       </div>
 
-      <!-- Remote Video -->
+      <!-- Video Canvas -->
       <div class="row" style="border: solid;">
         <div class="col">
-          <video id="remote_video" autoplay muted />
+          <div id="video_screen"></div>
+          <div id="debug"></div>
         </div>
       </div>
     </div>

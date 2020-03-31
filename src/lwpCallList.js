@@ -216,27 +216,26 @@ export default class extends lwpRenderer {
 
       {{^hasSession}}
         {{#primary}}
-        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}" checked="checked">
-        <label for="{{callId}}">{{i18n.new}}</label>
+          <input type="radio" id="{{by_name.calls.elementName}}{{callId}}" name="{{by_name.calls.elementName}}" value="{{callId}}" checked="checked">
+          <label for="{{by_name.calls.elementName}}{{callId}}">{{i18n.new}}</label>
         {{/primary}}
 
         {{^primary}}
-        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}">
-        <label for="{{callId}}">{{i18n.new}}</label>
+          <input type="radio" id="{{by_name.calls.elementName}}{{callId}}" name="{{by_name.calls.elementName}}" value="{{callId}}">
+          <label for="{{by_name.calls.elementName}}{{callId}}">{{i18n.new}}</label>
         {{/primary}}
       {{/hasSession}}
 
       {{#hasSession}}
-
         {{#primary}}
-        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}" checked="checked">
+        <input type="radio" id="{{by_name.calls.elementName}}{{callId}}"  name="{{by_name.calls.elementName}}" value="{{callId}}" checked="checked">
         {{/primary}}
 
         {{^primary}}
-        <input type="radio" name="{{by_name.calls.elementName}}" value="{{callId}}">
+        <input type="radio" id="{{by_name.calls.elementName}}{{callId}}"  name="{{by_name.calls.elementName}}" value="{{callId}}">
         {{/primary}}
 
-        <label for="{{callId}}">{{local_identity}} -> {{remote_identity}}
+        <label for="{{by_name.calls.elementName}}{{callId}}">{{remote_identity}}
           <ul>
             <li>call id: {{callId}}</li>
             <li>primary: {{primary}}</li>

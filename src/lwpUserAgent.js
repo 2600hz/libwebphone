@@ -20,6 +20,10 @@ export default class extends lwpRenderer {
   }
 
   start(username = null, password = null, realm = null) {
+    if (this.isStarted()) {
+      return;
+    }
+
     if (username) {
       this._config.authentication.username = username;
     }
@@ -54,9 +58,6 @@ export default class extends lwpRenderer {
       user_agent: this._config.user_agent.user_agent,
       session_timers: false
     };
-
-    JsSIP.debug.enable("JsSIP:*");
-    //JsSIP.debug.enable("");
 
     this._userAgent = new JsSIP.UA(config);
     this._userAgent.receiveRequest = request => {
@@ -112,25 +113,92 @@ export default class extends lwpRenderer {
     this._userAgent.on("sipEvent", (...event) => {
       this._emit("recieved.notify", this, ...event);
     });
+
+    return this._userAgent;
   }
 
   stop() {
-    this._userAgent.stop();
+    if (this.isStarted()) {
+      this._userAgent.stop();
+      this._userAgent = null;
+    }
+  }
+
+  isStarted() {
+    return this._userAgent != null;
+  }
+
+  isConnected() {
+    if (this.isStarted()) {
+      return this._userAgent.isConnected();
+    }
+
+    return false;
+  }
+
+  startDebug() {
+    this._debug = true;
+
+    JsSIP.debug.enable("JsSIP:*");
+
+    this._emit("debug.start", this);
+  }
+
+  stopDebug() {
+    this._debug = false;
+
+    JsSIP.debug.enable("");
+
+    this._emit("debug.stop", this);
+  }
+
+  toggleDebug() {
+    if (this.isDebugging()) {
+      return this.stopDebug();
+    } else {
+      return this.startDebug();
+    }
+  }
+
+  isDebugging() {
+    return this._debug;
   }
 
   register() {
-    this._userAgent.register();
+    if (this.isStarted()) {
+      this._userAgent.register();
+    }
   }
 
   unregister() {
-    this._userAgent.unregister({
-      all: true
-    });
+    if (this.isStarted()) {
+      this._userAgent.unregister({
+        all: true
+      });
+    }
+  }
+
+  toggleRegistration() {
+    if (this.isRegistered()) {
+      this.unregister();
+    } else {
+      this.register();
+    }
+  }
+
+  isRegistered() {
+    if (this.isStarted()) {
+      return this._userAgent.isRegistered();
+    }
+
+    return false;
   }
 
   redial() {
     let redialNumber = this.getRedial();
+
     this._emit("redial.started", this, redialNumber);
+
     return this.call(redialNumber);
   }
 
@@ -140,11 +208,13 @@ export default class extends lwpRenderer {
 
   setRedial(number) {
     this._redialNumber = number;
+
     this._emit("redial.update", this, this._redialNumber);
   }
 
   call(numbertocall = null) {
-    if (!numbertocall) {
+    if (!numbertocall || !this.isReady()) {
+      this.updateRenders();
       return;
     }
 
@@ -155,16 +225,23 @@ export default class extends lwpRenderer {
       let options = {
         mediaStream: streams
       };
-      console.log("mediaStream: ", streams);
-      console.log("mediaStream.tracks: ", streams.getTracks());
+
+      this._libwebphone.getVideoCanvas()._setLocalVideoSourceStream(streams);
+
       this._userAgent.call(numbertocall, options);
+
       this._emit("call.started", this, numbertocall);
     });
+  }
+
+  isReady() {
+    return this.isStarted() && this.isConnected() && this.isRegistered();
   }
 
   updateRenders() {
     this.render(render => {
       render.data = this._renderData(render.data);
+      render.data;
       return render;
     });
   }
@@ -174,11 +251,16 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
-        start: "Start",
-        stop: "Stop",
+        agent: "User Agent",
+        agentstart: "Start",
+        agentstop: "Stop",
+        debug: "Debug",
+        debugstart: "Start",
+        debugstop: "Stop",
         username: "Username",
         password: "Password",
         realm: "Realm",
+        registrar: "Registrar",
         register: "Register",
         unregister: "Unregister"
       }
@@ -208,7 +290,8 @@ export default class extends lwpRenderer {
         register_expires: 300,
         user_agent: "libwebphone 2.x - dev",
         redial: "*97"
-      }
+      },
+      debug: false
     };
 
     this._config = merge(defaults, config);
@@ -217,6 +300,12 @@ export default class extends lwpRenderer {
     this._userAgent = null;
 
     this.setRedial(this._config.user_agent.redial);
+
+    if (this._config.debug) {
+      this.startDebug();
+    } else {
+      this.stopDebug();
+    }
   }
 
   _initSockets() {
@@ -226,7 +315,19 @@ export default class extends lwpRenderer {
     });
   }
 
-  _initEventBindings() {}
+  _initEventBindings() {
+    this._libwebphone.on("userAgent.debug.start", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("userAgent.debug.stop", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.onAny((event, ...data) => {
+      if (this.isDebugging()) {
+        console.log(event, data);
+      }
+    });
+  }
 
   _initRenderTargets() {
     this._config.renderTargets.map(renderTarget => {
@@ -240,8 +341,13 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        start: "libwebphone:userAgent.start",
-        stop: "libwebphone:userAgent.stop",
+        agent: "libwebphone:userAgent.agent",
+        agentstart: "libwebphone:userAgent.agentstart",
+        agentstop: "libwebphone:userAgent.agentstop",
+        debug: "libwebphone:userAgent.debug",
+        debugstart: "libwebphone:userAgent.debugstart",
+        debugstop: "libwebphone:userAgent.debugstop",
+        registrar: "libwebphone:userAgent.registrar",
         register: "libwebphone:userAgent.register",
         unregister: "libwebphone:userAgent.unregister",
         username: "libwebphone:userAgent.username",
@@ -250,21 +356,21 @@ export default class extends lwpRenderer {
       },
       data: merge(this._config, this._renderData()),
       by_id: {
-        register: {
+        debug: {
           events: {
             onclick: event => {
               let element = event.srcElement;
               element.disabled = true;
-              this.register();
+              this.toggleDebug();
             }
           }
         },
-        unregister: {
+        registrar: {
           events: {
             onclick: event => {
               let element = event.srcElement;
               element.disabled = true;
-              this.unregister();
+              this.toggleRegistration();
             }
           }
         },
@@ -298,7 +404,7 @@ export default class extends lwpRenderer {
             }
           }
         },
-        start: {
+        agentstart: {
           events: {
             onclick: event => {
               let element = event.srcElement;
@@ -307,7 +413,7 @@ export default class extends lwpRenderer {
             }
           }
         },
-        stop: {
+        agentstop: {
           events: {
             onclick: event => {
               let element = event.srcElement;
@@ -323,7 +429,22 @@ export default class extends lwpRenderer {
   _renderDefaultTemplate() {
     return `
     <div>
-      {{^data.connected}}
+      <div>
+        <label for="{{by_id.debug.elementId}}">
+          {{i18n.debug}}
+        </label>
+        <button id="{{by_id.debug.elementId}}">
+          {{^data.isDebugging}}
+            {{i18n.debugstart}}
+          {{/data.isDebugging}}
+
+          {{#data.isDebugging}}
+            {{i18n.debugstop}}
+          {{/data.isDebugging}}
+        </button>
+      </div>
+
+      {{^data.isStarted}}
         <div>
           <label for="{{by_id.username.elementId}}">
             {{i18n.username}}
@@ -345,35 +466,45 @@ export default class extends lwpRenderer {
           <input type="text" id="{{by_id.realm.elementId}}" value="{{data.authentication.realm}}" />
         </div>
 
-        <button id="{{by_id.start.elementId}}">{{i18n.start}}</button>
-      {{/data.connected}}
+        <div>
+          <label for="{{by_id.agentstart.elementId}}">
+            {{i18n.agent}}
+          </label>
+          <button id="{{by_id.agentstart.elementId}}">{{i18n.agentstart}}</button>
+        </div>
+      {{/data.isStarted}}
 
-      {{#data.connected}}
-        {{^data.registered}}
-          <button id="{{by_id.register.elementId}}">
-            {{i18n.register}}
-          </button>
-        {{/data.registered}}
+      {{#data.isStarted}}
+        <div>
+          <label for="{{by_id.registrar.elementId}}">
+            {{i18n.registrar}}
+          </label>
+          <button id="{{by_id.registrar.elementId}}">
+            {{^data.isRegistered}}
+              {{i18n.register}}
+            {{/data.isRegistered}}
 
-        {{#data.registered}}
-          <button id="{{by_id.unregister.elementId}}">
-            {{i18n.unregister}}
+            {{#data.isRegistered}}
+              {{i18n.unregister}}
+            {{/data.isRegistered}}
           </button>
-        {{/data.registered}}
-      
-        <button id="{{by_id.stop.elementId}}">{{i18n.stop}}</button>
-      {{/data.connected}}
+        </div>
+
+        <label for="{{by_id.agentstop.elementId}}">
+          {{i18n.agent}}
+        </label>
+        <button id="{{by_id.agentstop.elementId}}">{{i18n.agentstop}}</button>
+      {{/data.isStarted}}
     </div>
       `;
   }
 
   _renderData(data = {}) {
-    let userAgent = this._userAgent;
-
-    if (userAgent) {
-      data.connected = userAgent.isConnected();
-      data.registered = userAgent.isRegistered();
-    }
+    data.isStarted = this.isStarted();
+    data.isConnected = this.isConnected();
+    data.isRegistered = this.isRegistered();
+    data.isReady = this.isReady();
+    data.isDebugging = this.isDebugging();
 
     return data;
   }

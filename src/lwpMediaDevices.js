@@ -449,7 +449,7 @@ export default class extends lwpRenderer {
         talkback: {
           type: "output",
           show: true,
-          default: 0.1
+          default: 0
         },
         microphone: {
           type: "input",

@@ -2,11 +2,13 @@
 
 import i18next from "i18next";
 import EventEmitter from "eventemitter2";
-import lwpMediaDevices from "./lwpMediaDevices";
+
 import lwpUserAgent from "./lwpUserAgent";
-import lwpDialpad from "./lwpDialpad";
-import lwpCallControl from "./lwpCallControl";
 import lwpCallList from "./lwpCallList";
+import lwpCallControl from "./lwpCallControl";
+import lwpDialpad from "./lwpDialpad";
+import lwpMediaDevices from "./lwpMediaDevices";
+import lwpVideoCanvas from "./lwpVideoCanvas";
 
 export default class extends EventEmitter {
   constructor(config = {}) {
@@ -20,6 +22,7 @@ export default class extends EventEmitter {
     this._callControl = new lwpCallControl(this, config.callControl);
     this._dialpad = new lwpDialpad(this, config.dialpad);
     this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
+    this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas);
   } //end of constructor
 
   getCallControl() {
@@ -40,6 +43,10 @@ export default class extends EventEmitter {
 
   getMediaDevices() {
     return this._mediaDevices;
+  }
+
+  getVideoCanvas() {
+    return this._videoCanvas;
   }
 
   geti18n() {
@@ -124,6 +131,13 @@ export default class extends EventEmitter {
       data.push(type);
       this._libwebphone._emit.apply(this._libwebphone, data);
     }
+  }
+
+  _videoCanvasEvent(type, video, ...data) {
+    data.unshift(video);
+    data.unshift(this._libwebphone);
+    data.unshift("videoCanvas." + type);
+    this._libwebphone._emit.apply(this._libwebphone, data);
   }
 
   _emit(...args) {
