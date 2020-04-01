@@ -18,7 +18,7 @@ export default class extends lwpRenderer {
     this._initAvailableDevices();
     this._initEventBindings();
     this._initRenderTargets();
-    this._emit("started", this);
+    this._emit("created", this);
     return this;
   }
 
@@ -33,6 +33,10 @@ export default class extends lwpRenderer {
   }
 
   startPreviews() {
+    if (this._inputActive) {
+      return;
+    }
+
     this.startAudioContext();
 
     if (this._config.audiooutput.preview.loopback.startOnPreview) {
@@ -94,6 +98,11 @@ export default class extends lwpRenderer {
   }
 
   startStreams() {
+    if (this._previewActive) {
+      // NOTE:: technically we only need to do this for firefox...
+      this.stopPreviews();
+    }
+
     this.startAudioContext();
 
     let startMuted = [];
@@ -114,11 +123,6 @@ export default class extends lwpRenderer {
           stream.stream.addTrack(track);
         }
       });
-
-      console.log("mediaStream: ", mediaStream);
-
-      console.log("new localMediaStream: ", stream.stream);
-      console.log("new localMediaStream.tracks: ", stream.stream.getTracks());
 
       this._emit("streams.start", this, mediaStream, stream);
       return stream.stream;
@@ -516,7 +520,8 @@ export default class extends lwpRenderer {
         this._deviceParameters({
           deviceId: "none",
           label: "libwebphone:mediaDevices.none",
-          kind: "videoinput"
+          kind: "videoinput",
+          displayOrder: 0
         })
       ]
     };
@@ -540,12 +545,19 @@ export default class extends lwpRenderer {
       video: this._config["videoinput"].enabled
     };
 
-    this._mediaStreamPromise = this._shimGetUserMedia(constraints).then(
-      mediaStream => {
+    this._mediaStreamPromise = this._shimGetUserMedia(constraints)
+      .then(mediaStream => {
         this._updateInputChain(mediaStream);
         return mediaStream;
-      }
-    );
+      })
+      .catch(error => {
+        this._emit("getUserMedia.error", this, error);
+        if (constraints.video && constraints.audio) {
+          delete constraints.video;
+          return this._shimGetUserMedia(constraints);
+        }
+      });
+
     return this._mediaStreamPromise;
   }
 
@@ -728,6 +740,9 @@ export default class extends lwpRenderer {
     this._libwebphone.on("mediaDevices.video.input.changed", () => {
       this.updateRenders();
     });
+    this._libwebphone.on("mediaDevices.getUserMedia.error", () => {
+      this.updateRenders();
+    });
   }
 
   _initRenderTargets() {
@@ -825,6 +840,7 @@ export default class extends lwpRenderer {
               let element = event.srcElement;
               if (element.options) {
                 let deviceId = element.options[element.selectedIndex].value;
+                console.log('this.changeDevice("videoinput",', deviceId, '");');
                 this.changeDevice("videoinput", deviceId);
               }
             }
@@ -882,7 +898,7 @@ export default class extends lwpRenderer {
           }
         }
       },
-      data: merge(this._config, this._renderData())
+      data: merge(this._renderData(), this._config)
     };
   }
 
@@ -1104,7 +1120,7 @@ export default class extends lwpRenderer {
     Object.keys(this._availableDevices).forEach(deviceKind => {
       let devices = this._availableDevices[deviceKind].slice(0);
       devices.sort((a, b) => {
-        return a.displayOrder - b.displayOrder;
+        return (a.displayOrder || 0) - (b.displayOrder || 0);
       });
       if (!data[deviceKind]) {
         data[deviceKind] = {};
@@ -1234,12 +1250,14 @@ export default class extends lwpRenderer {
             return track.kind == trackKind && track.readyState == "live";
           });
 
-          this._emit(
-            trackKind + ".input.changed",
-            this,
-            this._trackParameters(mediaStream, newTrack),
-            previousTrackParameters
-          );
+          if (newTrack) {
+            this._emit(
+              trackKind + ".input.changed",
+              this,
+              this._trackParameters(mediaStream, newTrack),
+              previousTrackParameters
+            );
+          }
         });
       } else {
         if (trackKind == "audio" && this._inputAudio.sourceStream) {
@@ -1296,6 +1314,9 @@ export default class extends lwpRenderer {
         .then(mediaStream => {
           this._updateInputChain(mediaStream);
           return mediaStream;
+        })
+        .catch(error => {
+          this._emit("getUserMedia.error", this, error);
         });
     });
   }
@@ -1532,7 +1553,7 @@ export default class extends lwpRenderer {
   _sortAvailableDevices() {
     Object.keys(this._availableDevices).forEach(deviceKind => {
       this._availableDevices[deviceKind].sort((a, b) => {
-        return b.preference - a.preference;
+        return (b.preference || 0) - (a.preference || 0);
       });
     });
   }
@@ -1605,14 +1626,6 @@ export default class extends lwpRenderer {
   }
 
   _shimGetUserMedia(constraints) {
-    return navigator.mediaDevices.getUserMedia(constraints).catch(error => {
-      if (this._config.videoinput.enabled) {
-        this._config.videoinput.enabled = false;
-        delete constraints.video;
-        return navigator.mediaDevices.getUserMedia(constraints);
-      } else {
-        throw error;
-      }
-    });
+    return navigator.mediaDevices.getUserMedia(constraints);
   }
 }

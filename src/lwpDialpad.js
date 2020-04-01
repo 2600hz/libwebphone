@@ -12,7 +12,7 @@ export default class extends lwpRenderer {
     this._initInternationalization(config.i18n || {});
     this._initEventBindings();
     this._initRenderTargets();
-    this._emit("started", this);
+    this._emit("created", this);
     return this;
   }
 
@@ -279,7 +279,7 @@ export default class extends lwpRenderer {
         call: "libwebphone:dialpad.call",
         transfer: "libwebphone:dialpad.transfer"
       },
-      data: merge(this._config, this._renderData()),
+      data: merge(this._renderData(), this._config),
       by_id: {
         dialed: {
           events: {

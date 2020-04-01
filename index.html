@@ -198,7 +198,7 @@
         color: #000;
       }
       canvas {
-        border: 10px black solid;
+        border: 5px black solid;
         cursor: pointer;
       }
       .col {
@@ -395,6 +395,15 @@
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
+      webphone.on(
+        "mediaDevices.getUserMedia.error",
+        (lwp, mediaDevices, error) => {
+          window.alert(error.message);
+        }
+      );
+      webphone.on("userAgent.configuration.error", (lwp, userAgent, error) => {
+        window.alert(error.message);
+      });
       //webphone.onAny((event, ...data) => console.log(event, data));
     </script>
   </head>
@@ -788,7 +797,8 @@
       <div class="row" style="border: solid;">
         <div class="col">
           <div id="video_screen"></div>
-          <div id="debug"></div>
+          <video id="remoteVideo" autoplay muted></video>
+          <video id="localVideo" autoplay muted></video>
         </div>
       </div>
     </div>

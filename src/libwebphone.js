@@ -23,6 +23,7 @@ export default class extends EventEmitter {
     this._dialpad = new lwpDialpad(this, config.dialpad);
     this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
     this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas);
+    this._libwebphone._emit("created", this._libwebphone);
   } //end of constructor
 
   getCallControl() {
@@ -63,6 +64,12 @@ export default class extends EventEmitter {
     let bundle = {};
     bundle[module] = resource;
     i18next.addResourceBundle(lang, "libwebphone", bundle, true);
+    this._libwebphone._emit(
+      "language.bundle.added",
+      this._libwebphone,
+      lang,
+      bundle
+    );
   }
 
   i18nTranslator() {

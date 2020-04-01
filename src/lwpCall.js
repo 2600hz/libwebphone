@@ -319,21 +319,17 @@ export default class {
     this._session.on("ended", (...event) => {
       this._libwebphone.getCallList().removeCall(this);
       if (this.isPrimary()) {
-        this._libwebphone.getMediaDevices._setRemoteAudioSourceStream();
+        this._disconnectStreams();
       }
+      this._destoryStreams();
       this._emit("ended", this, ...event);
     });
     this._session.on("failed", (...event) => {
-      let remoteAudio = this.getRemoteAudio();
       this._libwebphone.getCallList().removeCall(this);
       if (this.isPrimary()) {
-        this._libwebphone.getMediaDevices._setRemoteAudioSourceStream();
+        this._disconnectStreams();
       }
-      if (remoteAudio) {
-        remoteAudio.getTracks().forEach(track => {
-          track.stop();
-        });
-      }
+      this._destoryStreams();
       this._emit("failed", this, ...event);
     });
   }
@@ -349,8 +345,6 @@ export default class {
   }
 
   _setPrimary(resume = true) {
-    let remoteAudio = this.getRemoteAudio();
-
     if (this.isPrimary()) {
       return;
     }
@@ -361,11 +355,7 @@ export default class {
       this.unhold();
     }
 
-    if (remoteAudio) {
-      this._libwebphone
-        .getMediaDevices()
-        ._setRemoteAudioSourceStream(remoteAudio);
-    }
+    this._connectStreams();
 
     this._primary = true;
     this._emit("promoted", this);
@@ -388,6 +378,8 @@ export default class {
       this.hold();
     }
 
+    this._disconnectStreams();
+
     this._primary = false;
     this._emit("demoted", this);
   }
@@ -396,9 +388,7 @@ export default class {
     this._remoteAudio = remoteAudio;
 
     if (this.isPrimary()) {
-      this._libwebphone
-        .getMediaDevices()
-        ._setRemoteAudioSourceStream(remoteAudio);
+      this._connectStreams();
     }
 
     this._emit("remote.audio.added", this, remoteAudio);
@@ -410,15 +400,62 @@ export default class {
     element.muted = true;
     element.play();
 
-    this._libwebphone
-      .getVideoCanvas()
-      ._setRemoteVideoSourceStream(remoteStream);
-
     this._remoteStream = remoteStream;
-    this._setRemoteAudio(
-      this._libwebphone.getMediaDevices()._createMediaStreamSource(remoteStream)
-    );
+
+    if (this.isPrimary()) {
+      this._connectStreams();
+    }
 
     this._emit("remote.stream.added", this, remoteStream);
+  }
+
+  _connectStreams() {
+    let remoteAudio = this.getRemoteAudio();
+    let remoteStream = this.getRemoteStream();
+
+    if (remoteStream) {
+      let mediaStream = remoteStream;
+      let videoTrack = mediaStream.getTracks().find(track => {
+        return track.kind == "video" && track.readyState == "live";
+      });
+      if (videoTrack) {
+        this._libwebphone
+          .getVideoCanvas()
+          ._setRemoteVideoSourceStream(mediaStream);
+      }
+    }
+
+    if (this.hasSession() && this._session._localMediaStream) {
+      let mediaStream = this._session._localMediaStream;
+      let videoTrack = mediaStream.getTracks().find(track => {
+        return track.kind == "video" && track.readyState == "live";
+      });
+      if (videoTrack) {
+        this._libwebphone
+          .getVideoCanvas()
+          ._setLocalVideoSourceStream(mediaStream);
+      }
+    }
+
+    if (remoteAudio) {
+      this._libwebphone
+        .getMediaDevices()
+        ._setRemoteAudioSourceStream(remoteAudio);
+    }
+  }
+
+  _disconnectStreams() {
+    this._libwebphone.getMediaDevices()._setRemoteAudioSourceStream();
+    this._libwebphone.getVideoCanvas()._setLocalVideoSourceStream();
+    this._libwebphone.getVideoCanvas()._setRemoteVideoSourceStream();
+  }
+
+  _destoryStreams() {
+    let remoteAudio = this.getRemoteAudio();
+    if (remoteAudio) {
+      remoteAudio.getTracks().forEach(track => {
+        track.stop();
+      });
+    }
   }
 }
