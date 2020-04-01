@@ -404,6 +404,18 @@
       webphone.on("userAgent.configuration.error", (lwp, userAgent, error) => {
         window.alert(error.message);
       });
+      webphone.on("userAgent.call.invalid", (lwp, userAgent, number, ready) => {
+        if (!ready) {
+          window.alert(
+            "Webphone is not ready! Ensure you are connected and registered first."
+          );
+        } else {
+          window.alert('Unable to start call to number "' + number + '"');
+        }
+      });
+      webphone.on("userAgent.call.failed", (lwp, userAgent, error) => {
+        window.alert(error.message);
+      });
       //webphone.onAny((event, ...data) => console.log(event, data));
     </script>
   </head>
@@ -773,6 +785,7 @@
             };
             webphone.on("call.primary.update", callback);
             webphone.on("dialpad.digits.updated", callback);
+            callback();
           </script>
         </div>
       </div>

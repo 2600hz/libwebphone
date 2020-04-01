@@ -120,8 +120,13 @@ export default class extends lwpRenderer {
         this._rescalePip(render);
       });
 
-      this._emit("pictureInPicture.ratiochange", this, ratio);
+      this._emit("pictureInPicture.ratio.change", this, ratio);
     }
+  }
+
+  changeCanvasFramesPerSecond(framesPerSecond) {
+    this._config.canvasLoop.framesPerSecond = framesPerSecond;
+    this._emit("canvas.framesPerSecond.change", this, framesPerSecond);
   }
 
   updateRenders() {
@@ -138,19 +143,26 @@ export default class extends lwpRenderer {
           if (render.by_id[key].canvas) {
             let element = render.by_id[key].element;
             if (element) {
+              if (!render.by_id[key].canvasContext) {
+                render.by_id[key].context = element.getContext("2d");
+              }
+              let canvasContext = render.by_id[key].context;
+
               if (this._remoteVideo && !this._remoteVideo.paused) {
                 let remoteCanvasContext = this._createCanvasContext(
+                  canvasContext,
                   element,
                   this._remoteVideo
                 );
-                render.remoteCanvasContext = remoteCanvasContext;
+                render.data.canvasLoop.remoteCanvasContext = remoteCanvasContext;
 
                 if (this._localVideo && !this._localVideo.paused) {
                   let localCanvasContext = this._createCanvasContext(
+                    canvasContext,
                     element,
                     this._localVideo
                   );
-                  render.localCanvasContext = localCanvasContext;
+                  render.data.canvasLoop.localCanvasContext = localCanvasContext;
                   this._rescalePip(render);
                 }
               }
@@ -168,6 +180,7 @@ export default class extends lwpRenderer {
       en: {
         pipratio: "Preview Ratio",
         pip: "Preview PIP",
+        framespersecond: "Canvas Frames per Second",
         pipenable: "Enable",
         pipdisable: "Disable",
         fullscreen: "Full Screen",
@@ -189,7 +202,15 @@ export default class extends lwpRenderer {
         show: true
       },
       fullscreen: {
-        show: true
+        show: true,
+        supported: !!(
+          document.fullscreenEnabled ||
+          document.mozFullScreenEnabled ||
+          document.msFullscreenEnabled ||
+          document.webkitSupportsFullscreen ||
+          document.webkitFullscreenEnabled ||
+          document.createElement("video").webkitRequestFullScreen
+        )
       },
       pictureInPicture: {
         enabled: true,
@@ -197,22 +218,37 @@ export default class extends lwpRenderer {
         ratio: 0.25
       },
       width: 640,
-      height: 480
+      height: 480,
+      canvasLoop: {
+        show: true,
+        framesPerSecond: 15,
+        offset: {
+          x: 0,
+          y: 0
+        }
+      }
     };
     this._config = merge(defaults, config);
 
     this._remoteVideoStream = null;
     this._remoteVideo = document.createElement("video");
-    this._remoteVideo.mute = true;
-    //this._remoteVideo = document.getElementById("remoteVideo");
+    this._remoteVideo.muted = true;
 
     this._localVideoStream = null;
     this._localVideo = document.createElement("video");
-    this._localVideo.mute = true;
-    //this._localVideo = document.getElementById("localVideo");
+    this._localVideo.muted = true;
 
     this._fullscreen = false;
     this._screenshare = false;
+
+    let updater = event => {
+      this._updatePosition(event);
+    };
+    this._pointerLockContext = {
+      canvas: null,
+      renders: null,
+      positionUpdater: updater
+    };
   }
 
   _initEventBindings() {
@@ -249,6 +285,21 @@ export default class extends lwpRenderer {
     this._libwebphone.on("videoCanvas.pictureInPicture.stop", () => {
       this.updateRenders();
     });
+
+    document.addEventListener(
+      "pointerlockchange",
+      (...data) => {
+        this._lockChangeAlert(...data);
+      },
+      false
+    );
+    document.addEventListener(
+      "mozpointerlockchange",
+      (...data) => {
+        this._lockChangeAlert(...data);
+      },
+      false
+    );
   }
 
   _initRenderTargets() {
@@ -268,6 +319,7 @@ export default class extends lwpRenderer {
         pip: "libwebphone:videoCanvas.pip",
         pipenable: "libwebphone:videoCanvas.pipenable",
         pipdisable: "libwebphone:videoCanvas.pipdisable",
+        framespersecond: "libwebphone:videoCanvas.framespersecond",
         fullscreen: "libwebphone:videoCanvas.fullscreen",
         startfullscreen: "libwebphone:videoCanvas.startfullscreen",
         stopfullscreen: "libwebphone:videoCanvas.stopfullscreen",
@@ -277,6 +329,23 @@ export default class extends lwpRenderer {
       },
       data: merge(this._renderData(), this._config),
       by_id: {
+        canvas: {
+          canvas: true,
+          events: {
+            onmousedown: (event, render) => {
+              if (render.data.canvasLoop.localCanvasContext) {
+                let canvas = event.srcElement;
+                this._pointerLockContext.canvas = canvas;
+                this._pointerLockContext.render = render;
+                this._pointerLockContext.x = render.data.canvasLoop.offset.x;
+                this._pointerLockContext.y = render.data.canvasLoop.offset.y;
+                canvas.requestPointerLock =
+                  canvas.requestPointerLock || canvas.mozRequestPointerLock;
+                canvas.requestPointerLock();
+              }
+            }
+          }
+        },
         pictureInPicture: {
           events: {
             onclick: event => {
@@ -289,11 +358,24 @@ export default class extends lwpRenderer {
             onchange: event => {
               let element = event.srcElement;
               this.changePictureInPictureRatio(element.value / 100);
+            },
+            oninput: event => {
+              let element = event.srcElement;
+              this.changePictureInPictureRatio(element.value / 100);
             }
           }
         },
-        canvas: {
-          canvas: true
+        canvasframesPerSecond: {
+          events: {
+            onchange: event => {
+              let element = event.srcElement;
+              this.changeCanvasFramesPerSecond(element.value);
+            },
+            oninput: event => {
+              let element = event.srcElement;
+              this.changeCanvasFramesPerSecond(element.value);
+            }
+          }
         },
         fullscreen: {
           events: {
@@ -345,6 +427,16 @@ export default class extends lwpRenderer {
         {{/data.pictureInPicture.show}}
 
 
+        {{#data.canvasLoop.show}}
+          <div>
+            <label for="{{by_id.canvasframesPerSecond.elementId}}">
+              {{i18n.framespersecond}}
+            </label>
+            <input type="range" min="1" max="30" value="{{data.canvasLoop.framesPerSecond}}" id="{{by_id.canvasframesPerSecond.elementId}}">
+          </div>
+        {{/data.canvasLoop.show}}
+
+        {{#data.fullscreen.supported}}
         {{#data.fullscreen.show}}
           <div>
             <label for="{{by_id.fullscreen.elementId}}">
@@ -361,6 +453,7 @@ export default class extends lwpRenderer {
             </button>
           </div>
         {{/data.fullscreen.show}}
+        {{/data.fullscreen.supported}}
 
         {{#data.screenshare.show}}
           <div>
@@ -381,11 +474,12 @@ export default class extends lwpRenderer {
     `;
   }
 
-  _renderData(data = { pictureInPicture: {} }) {
+  _renderData(data = { pictureInPicture: {}, canvasLoop: {} }) {
     data.isFullScreen = this.isFullScreen();
     data.isSharingScreen = this.isSharingScreen();
     data.pictureInPicture.enabled = this.isPictureInPicture();
     data.pictureInPicture.ratio = this._config.pictureInPicture.ratio * 100;
+    data.canvasLoop.framesPerSecond = this._config.canvasLoop.framesPerSecond;
 
     return data;
   }
@@ -400,8 +494,9 @@ export default class extends lwpRenderer {
       this._remoteVideo.play();
 
       this._emit("remote.stream.added", this, remoteStream);
-    } else {
+    } else if (this._remoteVideoStream) {
       this._remoteVideo.pause();
+      this._remoteVideoStream = null;
 
       this._emit("remote.stream.removed", this);
     }
@@ -419,8 +514,9 @@ export default class extends lwpRenderer {
       this._localVideo.play();
 
       this._emit("local.stream.added", this, localStream);
-    } else {
+    } else if (this._localVideoStream) {
       this._localVideo.pause();
+      this._localVideoStream = null;
 
       this._emit("local.stream.removed", this);
     }
@@ -430,7 +526,7 @@ export default class extends lwpRenderer {
     return this._localVideoStream;
   }
 
-  _createCanvasContext(canvas, video) {
+  _createCanvasContext(canvasContext, canvas, video) {
     let canvasWidth = canvas.width || 640;
     let canvasHeight = canvas.height || 480;
     let videoWidth = video.videoWidth || 640;
@@ -438,7 +534,7 @@ export default class extends lwpRenderer {
     let scale = Math.min(canvasWidth / videoWidth, canvasHeight / videoHeight);
 
     return {
-      context: canvas.getContext("2d"),
+      context: canvasContext,
       scale: scale,
       canvas: {
         element: canvas,
@@ -471,8 +567,8 @@ export default class extends lwpRenderer {
 
   _canvasLoop() {
     this._renders.forEach(render => {
-      if (render.remoteCanvasContext) {
-        let canvasContext = render.remoteCanvasContext;
+      if (render.data.canvasLoop.remoteCanvasContext) {
+        let canvasContext = render.data.canvasLoop.remoteCanvasContext;
         canvasContext.context.fillStyle = "#black";
         canvasContext.context.fillRect(
           0,
@@ -493,29 +589,36 @@ export default class extends lwpRenderer {
         );
       }
 
-      if (this._config.pictureInPicture.enabled && render.localCanvasContext) {
-        let canvasContext = render.localCanvasContext;
+      if (
+        this._config.pictureInPicture.enabled &&
+        render.data.canvasLoop.localCanvasContext
+      ) {
+        let canvasContext = render.data.canvasLoop.localCanvasContext;
         canvasContext.context.drawImage(
           canvasContext.source.stream,
           canvasContext.source.x,
           canvasContext.source.y,
           canvasContext.source.width,
           canvasContext.source.height,
-          canvasContext.destination.current.x,
-          canvasContext.destination.current.y,
+          render.data.canvasLoop.offset.x,
+          render.data.canvasLoop.offset.y,
           canvasContext.destination.current.width,
           canvasContext.destination.current.height
         );
+        /*
+        canvasContext.destination.current.x,
+        canvasContext.destination.current.y,
+        */
       }
     });
 
     setTimeout(() => {
       this._canvasLoop();
-    }, 1000 / 15); // drawing at 30fps
+    }, 1000 / this._config.canvasLoop.framesPerSecond);
   }
 
   _rescalePip(render) {
-    let canvasContext = render.localCanvasContext;
+    let canvasContext = render.data.canvasLoop.localCanvasContext;
     if (!canvasContext) {
       return;
     }
@@ -530,5 +633,62 @@ export default class extends lwpRenderer {
       canvasContext.canvas.width - canvasContext.destination.current.width;
     canvasContext.destination.current.y =
       canvasContext.canvas.height - canvasContext.destination.current.height;
+  }
+
+  _lockChangeAlert() {
+    if (
+      document.pointerLockElement === this._pointerLockContext.canvas ||
+      document.mozPointerLockElement === this._pointerLockContext.canvas
+    ) {
+      this._emit("pointer.lock", this);
+      document.addEventListener(
+        "mousemove",
+        this._pointerLockContext.positionUpdater,
+        false
+      );
+    } else {
+      this._emit("pointer.unlocked", this);
+      document.removeEventListener(
+        "mousemove",
+        this._pointerLockContext.positionUpdater,
+        false
+      );
+    }
+  }
+
+  _updatePosition(event) {
+    let render = this._pointerLockContext.render;
+    if (render.data.canvasLoop.localCanvasContext) {
+      let canvas = this._pointerLockContext.canvas;
+      let boundingRect = canvas.getBoundingClientRect();
+      let videoWidth =
+        render.data.canvasLoop.localCanvasContext.destination.current.width;
+      let videoHeight =
+        render.data.canvasLoop.localCanvasContext.destination.current.height;
+
+      this._pointerLockContext.x += event.movementX;
+      this._pointerLockContext.y += event.movementY;
+
+      if (this._pointerLockContext.x < boundingRect.left) {
+        this._pointerLockContext.x = boundingRect.left;
+      }
+
+      if (this._pointerLockContext.x + videoWidth > boundingRect.right) {
+        this._pointerLockContext.x = boundingRect.right - videoWidth;
+      }
+
+      if (this._pointerLockContext.y < boundingRect.top) {
+        this._pointerLockContext.y = boundingRect.top;
+      }
+
+      if (this._pointerLockContext.y + videoHeight > boundingRect.bottom) {
+        this._pointerLockContext.y = boundingRect.bottom - videoHeight;
+      }
+
+      render.data.canvasLoop.offset.x =
+        this._pointerLockContext.x - boundingRect.left;
+      render.data.canvasLoop.offset.y =
+        this._pointerLockContext.y - boundingRect.top;
+    }
   }
 }

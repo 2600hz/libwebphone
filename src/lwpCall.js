@@ -60,22 +60,6 @@ export default class {
     return false;
   }
 
-  isOnHold() {
-    if (this.hasSession()) {
-      return this._session.isOnHold();
-    }
-
-    return { local: false, remote: false };
-  }
-
-  isMuted() {
-    if (this.hasSession()) {
-      return this._session.isMuted();
-    }
-
-    return { audio: false, video: false };
-  }
-
   isInTransfer() {
     return this._inTransfer;
   }
@@ -134,6 +118,19 @@ export default class {
     }
   }
 
+  isOnHold(details = false) {
+    let status = { local: false, remote: false };
+    if (this.hasSession()) {
+      status = this._session.isOnHold();
+    }
+
+    if (details) {
+      return status;
+    } else {
+      return status.local || status.remote;
+    }
+  }
+
   unhold() {
     if (this.hasSession()) {
       this._session.unhold();
@@ -149,6 +146,21 @@ export default class {
   unmute() {
     if (this.hasSession()) {
       this._session.unmute();
+    }
+  }
+
+  isMuted(details = false) {
+    let status = { audio: false, video: false };
+    if (this.hasSession()) {
+      status = this._session.isMuted();
+    }
+
+    /** TODO: include the local mute status from lwpMediaDevices? */
+
+    if (details) {
+      return status;
+    } else {
+      return status.audio || status.video;
     }
   }
 
@@ -226,16 +238,14 @@ export default class {
 
   summary() {
     const direction = this.getDirection();
-    const hold = this.isOnHold();
-    const muted = this.isMuted();
     return {
       callId: this.getId(),
       hasSession: this.hasSession(),
       progress: this.isInProgress(),
       established: this.isEstablished(),
       ended: this.isEnded(),
-      hold: hold.local || hold.remote,
-      muted: muted.audio || muted.video,
+      hold: this.isOnHold(),
+      muted: this.isMuted(),
       primary: this.isPrimary(),
       inTransfer: this.isInTransfer(),
       direction: direction,
@@ -384,16 +394,6 @@ export default class {
     this._emit("demoted", this);
   }
 
-  _setRemoteAudio(remoteAudio) {
-    this._remoteAudio = remoteAudio;
-
-    if (this.isPrimary()) {
-      this._connectStreams();
-    }
-
-    this._emit("remote.audio.added", this, remoteAudio);
-  }
-
   _setRemoteStream(remoteStream) {
     let element = document.createElement("audio");
     element.srcObject = remoteStream;
@@ -401,6 +401,9 @@ export default class {
     element.play();
 
     this._remoteStream = remoteStream;
+    this._remoteAudio = this._libwebphone
+      .getMediaDevices()
+      ._createMediaStreamSource(remoteStream);
 
     if (this.isPrimary()) {
       this._connectStreams();
@@ -451,9 +454,9 @@ export default class {
   }
 
   _destoryStreams() {
-    let remoteAudio = this.getRemoteAudio();
-    if (remoteAudio) {
-      remoteAudio.getTracks().forEach(track => {
+    let remoteStream = this.getRemoteStream();
+    if (remoteStream) {
+      remoteStream.getTracks().forEach(track => {
         track.stop();
       });
     }

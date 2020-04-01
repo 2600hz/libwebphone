@@ -45,13 +45,13 @@ export default class extends lwpRenderer {
 
     this._startInputStreams().then(() => {
       this._previewActive = true;
-      this._emit("preview.start", this);
+      this._emit("preview.started", this);
     });
   }
 
   startPreviewOutputTone() {
     this._previewAudio.oscillatorGainNode.gain.value = 1;
-    this._emit("preview.tone.start", this);
+    this._emit("preview.tone.started", this);
   }
 
   stopPreviewOutputTone() {
@@ -65,7 +65,7 @@ export default class extends lwpRenderer {
 
   startPreviewOutputLoopback() {
     this._previewAudio.loopbackGainNode.gain.value = 1;
-    this._emit("preview.loopback.start", this);
+    this._emit("preview.loopback.started", this);
   }
 
   stopPreviewOutputLoopback() {
@@ -124,7 +124,7 @@ export default class extends lwpRenderer {
         }
       });
 
-      this._emit("streams.start", this, mediaStream, stream);
+      this._emit("streams.started", this, mediaStream, stream);
       return stream.stream;
     });
   }
@@ -257,6 +257,7 @@ export default class extends lwpRenderer {
   }
 
   async refreshAvailableDevices() {
+    /** TODO: optimize */
     return this._shimEnumerateDevices()
       .then(async devices => {
         let release = await this._changeStreamMutex.acquire();
@@ -695,16 +696,16 @@ export default class extends lwpRenderer {
       };
     }
 
-    this._libwebphone.on("mediaDevices.preview.start", () => {
+    this._libwebphone.on("mediaDevices.preview.started", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("mediaDevices.preview.tone.start", () => {
+    this._libwebphone.on("mediaDevices.preview.tone.started", () => {
       this.updateRenders();
     });
     this._libwebphone.on("mediaDevices.preview.tone.stop", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("mediaDevices.preview.loopback.start", () => {
+    this._libwebphone.on("mediaDevices.preview.loopback.started", () => {
       this.updateRenders();
     });
     this._libwebphone.on("mediaDevices.preview.loopback.stop", () => {
@@ -713,7 +714,7 @@ export default class extends lwpRenderer {
     this._libwebphone.on("mediaDevices.preview.stop", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("mediaDevices.streams.start", () => {
+    this._libwebphone.on("mediaDevices.streams.started", () => {
       this.updateRenders();
     });
     this._libwebphone.on("mediaDevices.streams.stop", () => {
@@ -1500,7 +1501,6 @@ export default class extends lwpRenderer {
 
   _audioProcessCallback(render) {
     return () => {
-      /** TODO: optimize */
       Object.keys(render.by_id).forEach(key => {
         if (render.by_id[key].preview == "audioinput") {
           let element = render.by_id[key].element;
@@ -1526,14 +1526,14 @@ export default class extends lwpRenderer {
     if (previousSourceStream) {
       previousSourceStream.disconnect();
       this._remoteAudio.sourceStream = null;
+      this._emit("remote.audio.removed", this, previousSourceStream);
     }
 
     if (sourceStream) {
       this._remoteAudio.sourceStream = sourceStream;
       this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
+      this._emit("remote.audio.added", this, sourceStream);
     }
-
-    this._emit("remote.audio.change", this, sourceStream, previousSourceStream);
   }
 
   /** Device Helpers */

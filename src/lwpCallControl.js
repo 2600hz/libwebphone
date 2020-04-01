@@ -143,6 +143,10 @@ export default class extends lwpRenderer {
     this._libwebphone.on("call.primary.transfer.completed", () => {
       this.updateRenders();
     });
+
+    this._libwebphone.on("userAgent.call.failed", () => {
+      this.updateRenders();
+    });
   }
 
   _initRenderTargets() {

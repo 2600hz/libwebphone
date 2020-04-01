@@ -33,21 +33,18 @@ export default class extends lwpRenderer {
       this._digits.push(digit);
     }
 
-    this.updateRenders();
     this._emit("digits.updated", this, this.getDigits(), digit);
   }
 
   backspace() {
     this._digits.pop();
 
-    this.updateRenders();
     this._emit("digits.backspace", this, this.getDigits());
   }
 
   clear() {
     this._digits = [];
 
-    this.updateRenders();
     this._emit("digits.clear", this, this.getDigits());
   }
 
@@ -247,7 +244,16 @@ export default class extends lwpRenderer {
     this._libwebphone.on("callList.calls.switched", () => {
       this.updateRenders();
     });
-    /** TODO: render via bindings */
+
+    this._libwebphone.on("dialpad.digits.updated", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.digits.backspace", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.digits.clear", () => {
+      this.updateRenders();
+    });
   }
 
   _initRenderTargets() {

@@ -50,7 +50,7 @@ export default class extends lwpRenderer {
     this._emit("calls.added", this, newCall);
 
     newCall._setPrimary();
-    this._emit("calls.switched", newCall, previousCall);
+    this._emit("calls.switched", this, newCall, previousCall);
   }
 
   switchCall(callid) {
@@ -71,7 +71,7 @@ export default class extends lwpRenderer {
 
     if (primaryCall) {
       primaryCall._setPrimary();
-      this._emit("calls.switched", primaryCall, previousCall);
+      this._emit("calls.switched", this, primaryCall, previousCall);
     }
   }
 
@@ -90,12 +90,12 @@ export default class extends lwpRenderer {
 
       if (withSession) {
         withSession._setPrimary(false);
-        this._emit("calls.switched", withSession, terminatedCall);
+        this._emit("calls.switched", this, withSession, terminatedCall);
       } else {
         this._libwebphone.getMediaDevices().stopStreams();
         if (this._calls.length > 0) {
           this._calls[0]._setPrimary();
-          this._emit("calls.switched", null, terminatedCall);
+          this._emit("calls.switched", this, null, terminatedCall);
         }
       }
 

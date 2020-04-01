@@ -108,7 +108,10 @@ export default class {
 
           if (by_id.element && by_id.events) {
             Object.keys(by_id.events).forEach(event => {
-              by_id.element[event] = by_id.events[event];
+              by_id.element[event] = (...data) => {
+                data.push(render);
+                by_id.events[event].apply(this, data);
+              };
             });
           }
         });
@@ -125,7 +128,10 @@ export default class {
           if (by_name.elements && by_name.events) {
             by_name.elements.forEach(element => {
               Object.keys(by_name.events).forEach(event => {
-                element[event] = by_name.events[event];
+                element[event] = (...data) => {
+                  data.push(render);
+                  by_name.events[event].apply(this, data);
+                };
               });
             });
           }

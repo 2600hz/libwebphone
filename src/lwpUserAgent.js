@@ -146,7 +146,7 @@ export default class extends lwpRenderer {
   startDebug() {
     this._debug = true;
 
-    JsSIP.debug.enable("JsSIP:*");
+    //JsSIP.debug.enable("JsSIP:*");
 
     this._emit("debug.start", this);
   }
@@ -214,31 +214,39 @@ export default class extends lwpRenderer {
   }
 
   setRedial(number) {
+    if (this._redialNumber == number) {
+      return;
+    }
+
     this._redialNumber = number;
 
     this._emit("redial.update", this, this._redialNumber);
   }
 
   call(numbertocall = null) {
-    if (!numbertocall || !this.isReady()) {
-      this.updateRenders();
-      return;
-    }
-
     this.setRedial(numbertocall);
 
     let mediaDevices = this._libwebphone.getMediaDevices();
-    mediaDevices.startStreams().then(streams => {
-      let options = {
-        mediaStream: streams
-      };
+    mediaDevices
+      .startStreams()
+      .then(streams => {
+        let options = {
+          mediaStream: streams
+        };
 
-      //this._libwebphone.getVideoCanvas()._setLocalVideoSourceStream(streams);
-
-      this._userAgent.call(numbertocall, options);
-
-      this._emit("call.started", this, numbertocall);
-    });
+        try {
+          if (!this.isReady()) {
+            throw new Error("Webphone client not ready yet!");
+          }
+          this._userAgent.call(numbertocall, options);
+          this._emit("call.started", this, numbertocall);
+        } catch (error) {
+          this._emit("call.failed", this, error);
+        }
+      })
+      .catch(error => {
+        this._emit("call.failed", this, error);
+      });
   }
 
   isReady() {
@@ -329,6 +337,9 @@ export default class extends lwpRenderer {
     this._libwebphone.on("userAgent.debug.stop", () => {
       this.updateRenders();
     });
+    this._libwebphone.on("userAgent.call.failed", () => {
+      this.updateRenders();
+    });
     this._libwebphone.onAny((event, ...data) => {
       if (this.isDebugging()) {
         console.log(event, data);
@@ -385,9 +396,7 @@ export default class extends lwpRenderer {
           events: {
             onchange: event => {
               let element = event.srcElement;
-              if (this._userAgent) {
-                this._userAgent.set("authorization_user", element.value);
-              }
+              this._config.authentication.username = element.value;
             }
           }
         },
@@ -395,9 +404,7 @@ export default class extends lwpRenderer {
           events: {
             onchange: event => {
               let element = event.srcElement;
-              if (this._userAgent) {
-                this._userAgent.set("password", element.value);
-              }
+              this._config.authentication.password = element.value;
             }
           }
         },
@@ -405,9 +412,7 @@ export default class extends lwpRenderer {
           events: {
             onchange: event => {
               let element = event.srcElement;
-              if (this._userAgent) {
-                this._userAgent.set("realm", element.value);
-              }
+              this._config.authentication.realm = element.value;
             }
           }
         },
