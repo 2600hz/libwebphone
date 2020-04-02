@@ -130,15 +130,13 @@ export default class extends lwpRenderer {
   }
 
   updateRenders() {
+    this._pointerLockStop();
     this.render(
       render => {
         render.data = this._renderData(render.data);
         return render;
       },
       render => {
-        render.remoteCanvasContext = null;
-        render.localCanvasContext = null;
-
         Object.keys(render.by_id).forEach(key => {
           if (render.by_id[key].canvas) {
             let element = render.by_id[key].element;
@@ -146,31 +144,32 @@ export default class extends lwpRenderer {
               if (!render.by_id[key].canvasContext) {
                 render.by_id[key].context = element.getContext("2d");
               }
-              let canvasContext = render.by_id[key].context;
-
-              if (this._remoteVideo && !this._remoteVideo.paused) {
-                let remoteCanvasContext = this._createCanvasContext(
-                  canvasContext,
-                  element,
-                  this._remoteVideo
-                );
-                render.data.canvasLoop.remoteCanvasContext = remoteCanvasContext;
-
-                if (this._localVideo && !this._localVideo.paused) {
-                  let localCanvasContext = this._createCanvasContext(
-                    canvasContext,
-                    element,
-                    this._localVideo
-                  );
-                  render.data.canvasLoop.localCanvasContext = localCanvasContext;
-                  this._rescalePip(render);
-                }
-              }
+              this.linkCanvas(render, render.by_id[key].context, element);
             }
           }
         });
       }
     );
+  }
+
+  linkCanvas(render, canvasContext, element) {
+    if (this._remoteVideo && !this._remoteVideo.paused) {
+      let remoteCanvasContext = this._createCanvasContext(
+        canvasContext,
+        element,
+        this._remoteVideo
+      );
+      render.data.canvasLoop.remoteCanvasContext = remoteCanvasContext;
+    }
+    if (this._localVideo && !this._localVideo.paused) {
+      let localCanvasContext = this._createCanvasContext(
+        canvasContext,
+        element,
+        this._localVideo
+      );
+      render.data.canvasLoop.localCanvasContext = localCanvasContext;
+      this._rescalePip(render);
+    }
   }
 
   /** Init functions */
@@ -470,14 +469,10 @@ export default class extends lwpRenderer {
               ) {
                 let canvasContext = render.data.canvasLoop.localCanvasContext;
                 let boundingRect = canvas.getBoundingClientRect();
-                let videoWidth =
-                  render.data.canvasLoop.localCanvasContext.destination.current
-                    .width;
-                let videoHeight =
-                  render.data.canvasLoop.localCanvasContext.destination.current
-                    .height;
-                let offsetX = render.data.canvasLoop.offset.x;
-                let offsetY = render.data.canvasLoop.offset.y;
+                let videoWidth = canvasContext.destination.current.width;
+                let videoHeight = canvasContext.destination.current.height;
+                let offsetX = canvasContext.destination.current.x;
+                let offsetY = canvasContext.destination.current.y;
                 let mouseX = event.clientX - boundingRect.left;
                 let mouseY = event.clientY - boundingRect.top;
 
@@ -489,28 +484,18 @@ export default class extends lwpRenderer {
                 ) {
                   this._pointerLockContext.canvas = canvas;
                   this._pointerLockContext.render = render;
-
                   this._pointerLockContext.x =
-                    render.data.canvasLoop.offset.x + boundingRect.left;
+                    canvasContext.destination.current.x + boundingRect.left;
                   this._pointerLockContext.y =
-                    render.data.canvasLoop.offset.y + boundingRect.top;
-                  canvas.requestPointerLock =
-                    canvas.requestPointerLock || canvas.mozRequestPointerLock;
-                  canvas.requestPointerLock();
+                    canvasContext.destination.current.y + boundingRect.top;
+
+                  this._pointerLockStart(canvas);
                 }
               }
             },
-            onmouseup: (event, render) => {
+            onmouseup: event => {
               let canvas = event.srcElement;
-              if (
-                (document.pointerLockElement === canvas ||
-                  document.mozPointerLockElement === canvas) &&
-                this._pointerLockContext.active
-              ) {
-                document.exitPointerLock =
-                  document.exitPointerLock || document.mozExitPointerLock;
-                document.exitPointerLock();
-              }
+              this._pointerLockStop(canvas);
             }
           }
         },
@@ -642,13 +627,17 @@ export default class extends lwpRenderer {
     `;
   }
 
-  _renderData(data = { pictureInPicture: {}, canvasLoop: {} }) {
+  _renderData(
+    data = {
+      pictureInPicture: {},
+      canvasLoop: { remoteCanvasContext: null, localCanvasContext: null }
+    }
+  ) {
     data.isFullScreen = this.isFullScreen();
     data.isSharingScreen = this.isSharingScreen();
     data.pictureInPicture.enabled = this.isPictureInPicture();
     data.pictureInPicture.ratio = this._config.pictureInPicture.ratio * 100;
     data.canvasLoop.framesPerSecond = this._config.canvasLoop.framesPerSecond;
-
     return data;
   }
 
@@ -663,11 +652,7 @@ export default class extends lwpRenderer {
 
       this._emit("remote.stream.added", this, remoteStream);
     } else if (this._remoteVideoStream) {
-      if (this._pointerLockContext.active) {
-        document.exitPointerLock =
-          document.exitPointerLock || document.mozExitPointerLock;
-        document.exitPointerLock();
-      }
+      this._pointerLockStop();
 
       this._remoteVideo.pause();
       this._remoteVideoStream = null;
@@ -689,11 +674,7 @@ export default class extends lwpRenderer {
 
       this._emit("local.stream.added", this, localStream);
     } else if (this._localVideoStream) {
-      if (this._pointerLockContext.active) {
-        document.exitPointerLock =
-          document.exitPointerLock || document.mozExitPointerLock;
-        document.exitPointerLock();
-      }
+      this._pointerLockStop();
 
       this._localVideo.pause();
       this._localVideoStream = null;
@@ -780,15 +761,11 @@ export default class extends lwpRenderer {
           canvasContext.source.y,
           canvasContext.source.width,
           canvasContext.source.height,
-          render.data.canvasLoop.offset.x,
-          render.data.canvasLoop.offset.y,
+          canvasContext.destination.current.x,
+          canvasContext.destination.current.y,
           canvasContext.destination.current.width,
           canvasContext.destination.current.height
         );
-        /*
-        canvasContext.destination.current.x,
-        canvasContext.destination.current.y,
-        */
       }
     });
 
@@ -809,36 +786,45 @@ export default class extends lwpRenderer {
     canvasContext.destination.current.height =
       canvasContext.destination.original.height *
       this._config.pictureInPicture.ratio;
-    canvasContext.destination.current.x =
-      canvasContext.canvas.width - render.data.canvasLoop.offset.x;
-    canvasContext.destination.current.y =
-      canvasContext.canvas.height - render.data.canvasLoop.offset.y;
-
-    console.log(
-      "x: ",
-      canvasContext.destination.current.width +
-        canvasContext.destination.current.x,
-      render.data.canvasLoop.localCanvasContext.canvas.width
-    );
 
     if (
       canvasContext.destination.current.width +
         canvasContext.destination.current.x >
-      render.data.canvasLoop.localCanvasContext.canvas.width
+      canvasContext.canvas.width
     ) {
       canvasContext.destination.current.x =
-        render.data.canvasLoop.localCanvasContext.canvas.width -
-        canvasContext.destination.current.width;
+        canvasContext.canvas.width - canvasContext.destination.current.width;
     }
 
     if (
       canvasContext.destination.current.height +
         canvasContext.destination.current.y >
-      render.data.canvasLoop.localCanvasContext.canvas.height
+      canvasContext.canvas.height
     ) {
       canvasContext.destination.current.y =
-        render.data.canvasLoop.localCanvasContext.canvas.height;
-      canvasContext.destination.current.height;
+        canvasContext.canvas.height - canvasContext.destination.current.height;
+    }
+  }
+
+  _pointerLockStart(canvas) {
+    if (!this._pointerLockContext.active) {
+      canvas.requestPointerLock =
+        canvas.requestPointerLock || canvas.mozRequestPointerLock;
+      canvas.requestPointerLock();
+    }
+  }
+
+  _pointerLockStop(canvas = null) {
+    if (
+      (!canvas ||
+        document.pointerLockElement === canvas ||
+        document.mozPointerLockElement === canvas) &&
+      this._pointerLockContext.active
+    ) {
+      this._pointerLockStop.active = false;
+      document.exitPointerLock =
+        document.exitPointerLock || document.mozExitPointerLock;
+      document.exitPointerLock();
     }
   }
 
@@ -877,6 +863,7 @@ export default class extends lwpRenderer {
       event.which
     ) {
       let canvas = this._pointerLockContext.canvas;
+      let canvasContext = render.data.canvasLoop.localCanvasContext;
       let boundingRect = canvas.getBoundingClientRect();
       let videoWidth =
         render.data.canvasLoop.localCanvasContext.destination.current.width;
@@ -902,9 +889,9 @@ export default class extends lwpRenderer {
         this._pointerLockContext.y = boundingRect.bottom - videoHeight;
       }
 
-      render.data.canvasLoop.offset.x =
+      canvasContext.destination.current.x =
         this._pointerLockContext.x - boundingRect.left;
-      render.data.canvasLoop.offset.y =
+      canvasContext.destination.current.y =
         this._pointerLockContext.y - boundingRect.top;
     }
   }
