@@ -19,7 +19,7 @@ export default class extends lwpRenderer {
   startFullScreen(element = null) {
     /** TODO: figure out which canvas to fullscreen.. */
     element = this._renders[0].remoteCanvasContext.canvas.element;
-    console.log("fullscreen: ", element, this._renders[0]);
+    this._emit("remote.stream.fullscreen: ", element, this._renders[0]);
 
     /*
     if (element) {
@@ -242,16 +242,139 @@ export default class extends lwpRenderer {
     this._screenshare = false;
 
     let updater = event => {
-      this._updatePosition(event);
+      this._pointerLockMoveHandler(event);
     };
     this._pointerLockContext = {
       canvas: null,
       renders: null,
-      positionUpdater: updater
+      active: false,
+      moveHandler: updater
     };
   }
 
   _initEventBindings() {
+    this._remoteVideo.oncanplay = event => {
+      this._emit("remote.stream.canplay", this, event);
+    };
+    this._remoteVideo.oncanplaythrough = event => {
+      this._emit("remote.stream.canplaythrough", this, event);
+    };
+    this._remoteVideo.oncomplete = event => {
+      this._emit("remote.stream.complete", this, event);
+    };
+    this._remoteVideo.durationchange = event => {
+      this._emit("remote.stream.durationchange", this, event);
+    };
+    this._remoteVideo.onemptied = event => {
+      this._emit("remote.stream.emptied", this, event);
+    };
+    this._remoteVideo.onended = event => {
+      this._emit("remote.stream.ended", this, event);
+    };
+    this._remoteVideo.onloadeddata = event => {
+      this._emit("remote.stream.loadeddata", this, event);
+    };
+    this._remoteVideo.onloadedmetadata = event => {
+      this._emit("remote.stream.loadedmetadata", this, event);
+    };
+    this._remoteVideo.onpause = event => {
+      this._emit("remote.stream.pause", this, event);
+    };
+    this._remoteVideo.onplay = event => {
+      this._emit("remote.stream.play", this, event);
+    };
+    this._remoteVideo.onplaying = event => {
+      this._emit("remote.stream.playing", this, event);
+    };
+    this._remoteVideo.onprogress = event => {
+      this._emit("remote.stream.progress", this, event);
+    };
+    this._remoteVideo.onratechange = event => {
+      this._emit("remote.stream.ratechange", this, event);
+    };
+    this._remoteVideo.onseeked = event => {
+      this._emit("remote.stream.seeked", this, event);
+    };
+    this._remoteVideo.onseeking = event => {
+      this._emit("remote.stream.seeking", this, event);
+    };
+    this._remoteVideo.onstalled = event => {
+      this._emit("remote.stream.stalled", this, event);
+    };
+    this._remoteVideo.onsuspend = event => {
+      this._emit("remote.stream.suspend", this, event);
+    };
+    this._remoteVideo.ontimeupdate = event => {
+      this._emit("remote.stream.timeupdate", this, event);
+    };
+    this._remoteVideo.onvolumechange = event => {
+      this._emit("remote.stream.volumechange", this, event);
+    };
+    this._remoteVideo.onwaiting = event => {
+      this._emit("remote.stream.waiting", this, event);
+    };
+
+    this._localVideo.oncanplay = event => {
+      this._emit("local.stream.canplay", this, event);
+    };
+    this._localVideo.oncanplaythrough = event => {
+      this._emit("local.stream.canplaythrough", this, event);
+    };
+    this._localVideo.oncomplete = event => {
+      this._emit("local.stream.complete", this, event);
+    };
+    this._localVideo.durationchange = event => {
+      this._emit("local.stream.durationchange", this, event);
+    };
+    this._localVideo.onemptied = event => {
+      this._emit("local.stream.emptied", this, event);
+    };
+    this._localVideo.onended = event => {
+      this._emit("local.stream.ended", this, event);
+    };
+    this._localVideo.onloadeddata = event => {
+      this._emit("local.stream.loadeddata", this, event);
+    };
+    this._localVideo.onloadedmetadata = event => {
+      this._emit("local.stream.loadedmetadata", this, event);
+    };
+    this._localVideo.onpause = event => {
+      this._emit("local.stream.pause", this, event);
+    };
+    this._localVideo.onplay = event => {
+      this._emit("local.stream.play", this, event);
+    };
+    this._localVideo.onplaying = event => {
+      this._emit("local.stream.playing", this, event);
+    };
+    this._localVideo.onprogress = event => {
+      this._emit("local.stream.progress", this, event);
+    };
+    this._localVideo.onratechange = event => {
+      this._emit("local.stream.ratechange", this, event);
+    };
+    this._localVideo.onseeked = event => {
+      this._emit("local.stream.seeked", this, event);
+    };
+    this._localVideo.onseeking = event => {
+      this._emit("local.stream.seeking", this, event);
+    };
+    this._localVideo.onstalled = event => {
+      this._emit("local.stream.stalled", this, event);
+    };
+    this._localVideo.onsuspend = event => {
+      this._emit("local.stream.suspend", this, event);
+    };
+    this._localVideo.ontimeupdate = event => {
+      this._emit("local.stream.timeupdate", this, event);
+    };
+    this._localVideo.onvolumechange = event => {
+      this._emit("local.stream.volumechange", this, event);
+    };
+    this._localVideo.onwaiting = event => {
+      this._emit("local.stream.waiting", this, event);
+    };
+
     this._libwebphone.on("videoCanvas.remote.stream.added", () => {
       this.updateRenders();
     });
@@ -286,17 +409,24 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
+    this._libwebphone.on("videoCanvas.remote.stream.playing", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("videoCanvas.local.stream.playing", () => {
+      this.updateRenders();
+    });
+
     document.addEventListener(
       "pointerlockchange",
       (...data) => {
-        this._lockChangeAlert(...data);
+        this._pointerLockHandler(...data);
       },
       false
     );
     document.addEventListener(
       "mozpointerlockchange",
       (...data) => {
-        this._lockChangeAlert(...data);
+        this._pointerLockHandler(...data);
       },
       false
     );
@@ -333,15 +463,53 @@ export default class extends lwpRenderer {
           canvas: true,
           events: {
             onmousedown: (event, render) => {
-              if (render.data.canvasLoop.localCanvasContext) {
-                let canvas = event.srcElement;
-                this._pointerLockContext.canvas = canvas;
-                this._pointerLockContext.render = render;
-                this._pointerLockContext.x = render.data.canvasLoop.offset.x;
-                this._pointerLockContext.y = render.data.canvasLoop.offset.y;
-                canvas.requestPointerLock =
-                  canvas.requestPointerLock || canvas.mozRequestPointerLock;
-                canvas.requestPointerLock();
+              let canvas = event.srcElement;
+              if (
+                render.data.canvasLoop &&
+                render.data.canvasLoop.localCanvasContext
+              ) {
+                let canvasContext = render.data.canvasLoop.localCanvasContext;
+                let boundingRect = canvas.getBoundingClientRect();
+                let videoWidth =
+                  render.data.canvasLoop.localCanvasContext.destination.current
+                    .width;
+                let videoHeight =
+                  render.data.canvasLoop.localCanvasContext.destination.current
+                    .height;
+                let offsetX = render.data.canvasLoop.offset.x;
+                let offsetY = render.data.canvasLoop.offset.y;
+                let mouseX = event.clientX - boundingRect.left;
+                let mouseY = event.clientY - boundingRect.top;
+
+                if (
+                  mouseX >= offsetX &&
+                  mouseX <= offsetX + videoWidth &&
+                  mouseY >= offsetY &&
+                  mouseY <= offsetY + videoHeight
+                ) {
+                  this._pointerLockContext.canvas = canvas;
+                  this._pointerLockContext.render = render;
+
+                  this._pointerLockContext.x =
+                    render.data.canvasLoop.offset.x + boundingRect.left;
+                  this._pointerLockContext.y =
+                    render.data.canvasLoop.offset.y + boundingRect.top;
+                  canvas.requestPointerLock =
+                    canvas.requestPointerLock || canvas.mozRequestPointerLock;
+                  canvas.requestPointerLock();
+                }
+              }
+            },
+            onmouseup: (event, render) => {
+              let canvas = event.srcElement;
+              if (
+                (document.pointerLockElement === canvas ||
+                  document.mozPointerLockElement === canvas) &&
+                this._pointerLockContext.active
+              ) {
+                document.exitPointerLock =
+                  document.exitPointerLock || document.mozExitPointerLock;
+                document.exitPointerLock();
               }
             }
           }
@@ -495,6 +663,12 @@ export default class extends lwpRenderer {
 
       this._emit("remote.stream.added", this, remoteStream);
     } else if (this._remoteVideoStream) {
+      if (this._pointerLockContext.active) {
+        document.exitPointerLock =
+          document.exitPointerLock || document.mozExitPointerLock;
+        document.exitPointerLock();
+      }
+
       this._remoteVideo.pause();
       this._remoteVideoStream = null;
 
@@ -515,6 +689,12 @@ export default class extends lwpRenderer {
 
       this._emit("local.stream.added", this, localStream);
     } else if (this._localVideoStream) {
+      if (this._pointerLockContext.active) {
+        document.exitPointerLock =
+          document.exitPointerLock || document.mozExitPointerLock;
+        document.exitPointerLock();
+      }
+
       this._localVideo.pause();
       this._localVideoStream = null;
 
@@ -630,35 +810,72 @@ export default class extends lwpRenderer {
       canvasContext.destination.original.height *
       this._config.pictureInPicture.ratio;
     canvasContext.destination.current.x =
-      canvasContext.canvas.width - canvasContext.destination.current.width;
+      canvasContext.canvas.width - render.data.canvasLoop.offset.x;
     canvasContext.destination.current.y =
-      canvasContext.canvas.height - canvasContext.destination.current.height;
+      canvasContext.canvas.height - render.data.canvasLoop.offset.y;
+
+    console.log(
+      "x: ",
+      canvasContext.destination.current.width +
+        canvasContext.destination.current.x,
+      render.data.canvasLoop.localCanvasContext.canvas.width
+    );
+
+    if (
+      canvasContext.destination.current.width +
+        canvasContext.destination.current.x >
+      render.data.canvasLoop.localCanvasContext.canvas.width
+    ) {
+      canvasContext.destination.current.x =
+        render.data.canvasLoop.localCanvasContext.canvas.width -
+        canvasContext.destination.current.width;
+    }
+
+    if (
+      canvasContext.destination.current.height +
+        canvasContext.destination.current.y >
+      render.data.canvasLoop.localCanvasContext.canvas.height
+    ) {
+      canvasContext.destination.current.y =
+        render.data.canvasLoop.localCanvasContext.canvas.height;
+      canvasContext.destination.current.height;
+    }
   }
 
-  _lockChangeAlert() {
+  _pointerLockHandler() {
     if (
       document.pointerLockElement === this._pointerLockContext.canvas ||
       document.mozPointerLockElement === this._pointerLockContext.canvas
     ) {
-      this._emit("pointer.lock", this);
+      this._pointerLockContext.active = true;
+
       document.addEventListener(
         "mousemove",
-        this._pointerLockContext.positionUpdater,
+        this._pointerLockContext.moveHandler,
         false
       );
+
+      this._emit("pointer.lock", this);
     } else {
-      this._emit("pointer.unlocked", this);
+      this._pointerLockContext.active = false;
+
       document.removeEventListener(
         "mousemove",
-        this._pointerLockContext.positionUpdater,
+        this._pointerLockContext.moveHandler,
         false
       );
+
+      this._emit("pointer.unlocked", this);
     }
   }
 
-  _updatePosition(event) {
+  _pointerLockMoveHandler(event) {
     let render = this._pointerLockContext.render;
-    if (render.data.canvasLoop.localCanvasContext) {
+    if (
+      render.data.canvasLoop.localCanvasContext &&
+      this._pointerLockContext.active &&
+      event.which
+    ) {
       let canvas = this._pointerLockContext.canvas;
       let boundingRect = canvas.getBoundingClientRect();
       let videoWidth =
