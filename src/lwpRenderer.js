@@ -28,7 +28,7 @@ export default class {
   renderAddTarget(config) {
     if (typeof config == "string") {
       config = {
-        root: { elementId: config }
+        root: { elementId: config },
       };
     }
 
@@ -38,11 +38,12 @@ export default class {
       template: config.template,
       root: config.root || {},
       by_id: config.by_id || {},
-      by_name: config.by_name || {}
+      by_name: config.by_name || {},
+      enabled: true,
     });
 
     if (render.by_id) {
-      Object.keys(render.by_id).forEach(index => {
+      Object.keys(render.by_id).forEach((index) => {
         let by_id = render.by_id[index];
         if (!by_id.elementId) {
           by_id.elementId = randomElementId();
@@ -51,7 +52,7 @@ export default class {
     }
 
     if (render.by_name) {
-      Object.keys(render.by_name).forEach(index => {
+      Object.keys(render.by_name).forEach((index) => {
         let by_name = render.by_name[index];
         if (!by_name.elementName) {
           by_name.elementName = randomElementId();
@@ -68,14 +69,14 @@ export default class {
     this._renders.push(render);
   }
 
-  render(premodifier = render => render, postmodifier = render => render) {
-    this._renders.forEach(render => {
-      this._render(premodifier(render)).then(render => postmodifier(render));
+  render(premodifier = (render) => render, postmodifier = (render) => render) {
+    this._renders.forEach((render) => {
+      this._render(premodifier(render)).then((render) => postmodifier(render));
     });
   }
 
   _render(render) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       if (!this._renderReady) {
         resolve(render);
         return;
@@ -85,7 +86,7 @@ export default class {
         data: render.data,
         by_id: render.by_id,
         by_name: render.by_name,
-        i18n: this._i18nTranslate(render.i18n)
+        i18n: this._i18nTranslate(render.i18n),
       };
 
       render.html = Mustache.render(render.template, renderConfig);
@@ -94,12 +95,12 @@ export default class {
         render.root.element = document.getElementById(render.root.elementId);
       }
 
-      if (render.root.element) {
+      if (render.root.element && render.enabled) {
         render.root.element.innerHTML = render.html;
       }
 
       if (render.by_id) {
-        Object.keys(render.by_id).forEach(index => {
+        Object.keys(render.by_id).forEach((index) => {
           let by_id = render.by_id[index];
 
           if (by_id.elementId) {
@@ -107,7 +108,7 @@ export default class {
           }
 
           if (by_id.element && by_id.events) {
-            Object.keys(by_id.events).forEach(event => {
+            Object.keys(by_id.events).forEach((event) => {
               by_id.element[event] = (...data) => {
                 data.push(render);
                 by_id.events[event].apply(this, data);
@@ -118,7 +119,7 @@ export default class {
       }
 
       if (render.by_name) {
-        Object.keys(render.by_name).forEach(index => {
+        Object.keys(render.by_name).forEach((index) => {
           let by_name = render.by_name[index];
 
           if (by_name.elementName) {
@@ -126,8 +127,8 @@ export default class {
           }
 
           if (by_name.elements && by_name.events) {
-            by_name.elements.forEach(element => {
-              Object.keys(by_name.events).forEach(event => {
+            by_name.elements.forEach((element) => {
+              Object.keys(by_name.events).forEach((event) => {
                 element[event] = (...data) => {
                   data.push(render);
                   by_name.events[event].apply(this, data);

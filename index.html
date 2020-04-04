@@ -181,6 +181,30 @@
       video {
         vertical-align: middle;
       }
+      canvas:full-screen {
+        width: 100%;
+        height: 100%;
+      }
+      canvas:-webkit-full-screen {
+        width: 100%;
+        height: 100%;
+      }
+      canvas:-moz-full-screen {
+        width: 100%;
+        height: 100%;
+      }
+      canvas:-ms-full-screen {
+        width: 100%;
+        height: 100%;
+      }
+      canvas:-o-full-screen {
+        width: 100%;
+        height: 100%;
+      }
+      canvas:full-screen {
+        width: 100%;
+        height: 100%;
+      }
       fieldset {
         border: 0;
         margin: 0;
@@ -327,31 +351,31 @@
               data: {
                 dialed: { show: true },
                 dialpad: { show: false },
-                controls: { show: true }
-              }
-            }
-          ]
+                controls: { show: true },
+              },
+            },
+          ],
         },
         callList: {
-          renderTargets: ["call_list"]
+          renderTargets: ["call_list"],
         },
         callControl: {
-          renderTargets: ["call_control"]
+          renderTargets: ["call_control"],
         },
         mediaDevices: {
           videoinput: {
-            startMuted: false
+            startMuted: false,
           },
           audioinput: {
             preferedDeviceIds: [
-              "dfc8e6eb62fa04a069c4ae294119bdb60eebc352e9978661585e440d6baa5d62"
-            ]
+              "dfc8e6eb62fa04a069c4ae294119bdb60eebc352e9978661585e440d6baa5d62",
+            ],
           },
           renderTargets: [
             "media_device_preview",
             {
               root: {
-                elementId: "media_device_selector"
+                elementId: "media_device_selector",
               },
               data: {
                 volume: {
@@ -360,24 +384,24 @@
                   dtmf: { show: false },
                   remote: { show: false },
                   talkback: { show: false },
-                  microphone: { show: false }
+                  microphone: { show: false },
                 },
                 audiooutput: { livePreview: false },
                 audioinput: { livePreview: false },
-                videoinput: { livePreview: false }
-              }
-            }
-          ]
+                videoinput: { livePreview: false },
+              },
+            },
+          ],
         },
         userAgent: {
           renderTargets: ["user_agent"],
           transport: {
             sockets: ["wss://sandbox.2600hz.com:5065"],
             recovery_max_interval: 30,
-            recovery_min_interval: 2
+            recovery_min_interval: 2,
           },
           authentication: {
-            realm: "vbbZ65Q.sb.2600hz.com"
+            realm: "vbbZ65Q.sb.2600hz.com",
           },
           user_agent: {
             //contact_uri: '',
@@ -386,12 +410,12 @@
             no_answer_timeout: 60,
             register: true,
             register_expires: 300,
-            user_agent: "libwebphone 2.x - dev"
-          }
+            user_agent: "libwebphone 2.x - dev",
+          },
         },
         videoCanvas: {
-          renderTargets: ["video_screen"]
-        }
+          renderTargets: ["video_screen"],
+        },
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
@@ -552,8 +576,8 @@
             var customTemplateConfig = {
               template: template,
               root: {
-                elementId: "user_agent_custom"
-              }
+                elementId: "user_agent_custom",
+              },
             };
 
             webphone.getUserAgent().renderAddTarget(customTemplateConfig);
@@ -631,40 +655,40 @@
             var customConfig = {
               template: template,
               root: {
-                elementId: "media_device_custom"
+                elementId: "media_device_custom",
               },
               by_name: {
                 audiooutputselector: {
                   events: {
-                    onchange: event => {
+                    onchange: (event) => {
                       let element = event.srcElement;
                       webphone
                         .getMediaDevices()
                         .changeDevice("audiooutput", element.value);
-                    }
-                  }
+                    },
+                  },
                 },
                 audiooinputselector: {
                   events: {
-                    onchange: event => {
+                    onchange: (event) => {
                       let element = event.srcElement;
                       webphone
                         .getMediaDevices()
                         .changeDevice("audioinput", element.value);
-                    }
-                  }
+                    },
+                  },
                 },
                 videoinputselector: {
                   events: {
-                    onchange: event => {
+                    onchange: (event) => {
                       let element = event.srcElement;
                       webphone
                         .getMediaDevices()
                         .changeDevice("videoinput", element.value);
-                    }
-                  }
-                }
-              }
+                    },
+                  },
+                },
+              },
             };
             webphone.getMediaDevices().renderAddTarget(customConfig);
           </script>
@@ -810,8 +834,8 @@
       <div class="row" style="border: solid;">
         <div class="col">
           <div id="video_screen"></div>
-          <video id="remoteVideo" autoplay muted></video>
-          <video id="localVideo" autoplay muted></video>
+          <video id="remote_video_debug" autoplay muted></video>
+          <video id="local_video_debug" autoplay muted></video>
         </div>
       </div>
     </div>

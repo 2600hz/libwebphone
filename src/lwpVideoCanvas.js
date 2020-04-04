@@ -18,35 +18,79 @@ export default class extends lwpRenderer {
 
   startFullScreen(element = null) {
     /** TODO: figure out which canvas to fullscreen.. */
-    element = this._renders[0].remoteCanvasContext.canvas.element;
+    let elementId = this._renders[0].by_id.canvas.elementId;
+    element = document.getElementById(elementId);
+
     this._emit("remote.stream.fullscreen: ", element, this._renders[0]);
 
+    if (!this._renders[0].data.canvasLoop.remoteCanvasContext.original) {
+      this._renders[0].data.canvasLoop.remoteCanvasContext.original = {};
+    }
+
+    this._renders[0].data.canvasLoop.remoteCanvasContext.original.width =
+      element.width;
+    this._renders[0].data.canvasLoop.remoteCanvasContext.original.height =
+      element.height;
+    element.width = document.body.clientWidth;
+    element.height = document.body.clientHeight;
+
+    //element = this._remoteVideo;
+
+    this._renders[0].enabled = false;
+
+    console.log("startFullScreen: ", element);
     /*
     if (element) {
       return;
     }
     */
 
-    //    this._fullscreen = true;
-
     if (element.requestFullscreen) {
-      element.requestFullscreen();
+      element
+        .requestFullscreen()
+        .then(() => this.updateRenders())
+        .catch((error) => {
+          console.log(error),
+            alert(
+              `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
+            );
+        });
     } else if (element.mozRequestFullScreen) {
       /* Firefox */
-      element.mozRequestFullScreen();
+      element
+        .mozRequestFullScreen()
+        .then(() => this.updateRenders())
+        .catch((error) => console.log(error));
     } else if (element.webkitRequestFullscreen) {
       /* Chrome, Safari and Opera */
-      element.webkitRequestFullscreen();
+      element
+        .webkitRequestFullscreen()
+        .then(() => this.updateRenders())
+        .catch((error) => {
+          console.log(error);
+          alert(
+            `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
+          );
+        });
     } else if (element.msRequestFullscreen) {
       /* IE/Edge */
-      element.msRequestFullscreen();
+      element
+        .msRequestFullscreen()
+        .then(() => this.updateRenders())
+        .catch((error) => console.log(error));
     }
 
     this._emit("fullscreen.start", this);
   }
 
   stopFullScreen() {
-    this._fullscreen = false;
+    if (this._renders[0].data.canvasLoop.remoteCanvasContext.original) {
+      element = this._renders[0].data.canvasLoop.remoteCanvasContext.canvas
+        .element;
+
+      element.width = this._renders[0].data.canvasLoop.remoteCanvasContext.original.width;
+      element.height = this._renders[0].data.canvasLoop.remoteCanvasContext.original.height;
+    }
 
     this._emit("fullscreen.stop", this);
   }
@@ -66,7 +110,41 @@ export default class extends lwpRenderer {
   startScreenShare() {
     this._screenshare = true;
 
+    console.log("attempting screenshare");
+
+    this._getScreenStream((screenStream) => {
+      console.log("screenStream: ", screenStream);
+    });
+
     this._emit("screenshare.start", this);
+  }
+
+  _getScreenStream(callback) {
+    if (navigator.getDisplayMedia) {
+      navigator
+        .getDisplayMedia({
+          video: true,
+        })
+        .then((screenStream) => {
+          callback(screenStream);
+        });
+    } else if (navigator.mediaDevices.getDisplayMedia) {
+      navigator.mediaDevices
+        .getDisplayMedia({
+          video: true,
+        })
+        .then((screenStream) => {
+          callback(screenStream);
+        });
+    } else {
+      getScreenId(function (error, sourceId, screen_constraints) {
+        navigator.mediaDevices
+          .getUserMedia(screen_constraints)
+          .then(function (screenStream) {
+            callback(screenStream);
+          });
+      });
+    }
   }
 
   stopScreenShare() {
@@ -116,7 +194,7 @@ export default class extends lwpRenderer {
     if (ratio > 0 && ratio <= 1) {
       this._config.pictureInPicture.ratio = ratio;
 
-      this._renders.forEach(render => {
+      this._renders.forEach((render) => {
         this._rescalePip(render);
       });
 
@@ -132,12 +210,12 @@ export default class extends lwpRenderer {
   updateRenders() {
     this._pointerLockStop();
     this.render(
-      render => {
+      (render) => {
         render.data = this._renderData(render.data);
         return render;
       },
-      render => {
-        Object.keys(render.by_id).forEach(key => {
+      (render) => {
+        Object.keys(render.by_id).forEach((key) => {
           if (render.by_id[key].canvas) {
             let element = render.by_id[key].element;
             if (element) {
@@ -187,8 +265,8 @@ export default class extends lwpRenderer {
         stopfullscreen: "Exit",
         screenshare: "Screen Share",
         startscreenshare: "Start",
-        stopscreenshare: "Stop"
-      }
+        stopscreenshare: "Stop",
+      },
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
     this._libwebphone.i18nAddResourceBundles("videoCanvas", resourceBundles);
@@ -198,7 +276,7 @@ export default class extends lwpRenderer {
     let defaults = {
       renderTargets: [],
       screenshare: {
-        show: true
+        show: true,
       },
       fullscreen: {
         show: true,
@@ -209,12 +287,12 @@ export default class extends lwpRenderer {
           document.webkitSupportsFullscreen ||
           document.webkitFullscreenEnabled ||
           document.createElement("video").webkitRequestFullScreen
-        )
+        ),
       },
       pictureInPicture: {
         enabled: true,
         show: true,
-        ratio: 0.25
+        ratio: 0.25,
       },
       width: 640,
       height: 480,
@@ -223,9 +301,9 @@ export default class extends lwpRenderer {
         framesPerSecond: 15,
         offset: {
           x: 0,
-          y: 0
-        }
-      }
+          y: 0,
+        },
+      },
     };
     this._config = merge(defaults, config);
 
@@ -240,137 +318,137 @@ export default class extends lwpRenderer {
     this._fullscreen = false;
     this._screenshare = false;
 
-    let updater = event => {
+    let updater = (event) => {
       this._pointerLockMoveHandler(event);
     };
     this._pointerLockContext = {
       canvas: null,
       renders: null,
       active: false,
-      moveHandler: updater
+      moveHandler: updater,
     };
   }
 
   _initEventBindings() {
-    this._remoteVideo.oncanplay = event => {
+    this._remoteVideo.oncanplay = (event) => {
       this._emit("remote.stream.canplay", this, event);
     };
-    this._remoteVideo.oncanplaythrough = event => {
+    this._remoteVideo.oncanplaythrough = (event) => {
       this._emit("remote.stream.canplaythrough", this, event);
     };
-    this._remoteVideo.oncomplete = event => {
+    this._remoteVideo.oncomplete = (event) => {
       this._emit("remote.stream.complete", this, event);
     };
-    this._remoteVideo.durationchange = event => {
+    this._remoteVideo.durationchange = (event) => {
       this._emit("remote.stream.durationchange", this, event);
     };
-    this._remoteVideo.onemptied = event => {
+    this._remoteVideo.onemptied = (event) => {
       this._emit("remote.stream.emptied", this, event);
     };
-    this._remoteVideo.onended = event => {
+    this._remoteVideo.onended = (event) => {
       this._emit("remote.stream.ended", this, event);
     };
-    this._remoteVideo.onloadeddata = event => {
+    this._remoteVideo.onloadeddata = (event) => {
       this._emit("remote.stream.loadeddata", this, event);
     };
-    this._remoteVideo.onloadedmetadata = event => {
+    this._remoteVideo.onloadedmetadata = (event) => {
       this._emit("remote.stream.loadedmetadata", this, event);
     };
-    this._remoteVideo.onpause = event => {
+    this._remoteVideo.onpause = (event) => {
       this._emit("remote.stream.pause", this, event);
     };
-    this._remoteVideo.onplay = event => {
+    this._remoteVideo.onplay = (event) => {
       this._emit("remote.stream.play", this, event);
     };
-    this._remoteVideo.onplaying = event => {
+    this._remoteVideo.onplaying = (event) => {
       this._emit("remote.stream.playing", this, event);
     };
-    this._remoteVideo.onprogress = event => {
+    this._remoteVideo.onprogress = (event) => {
       this._emit("remote.stream.progress", this, event);
     };
-    this._remoteVideo.onratechange = event => {
+    this._remoteVideo.onratechange = (event) => {
       this._emit("remote.stream.ratechange", this, event);
     };
-    this._remoteVideo.onseeked = event => {
+    this._remoteVideo.onseeked = (event) => {
       this._emit("remote.stream.seeked", this, event);
     };
-    this._remoteVideo.onseeking = event => {
+    this._remoteVideo.onseeking = (event) => {
       this._emit("remote.stream.seeking", this, event);
     };
-    this._remoteVideo.onstalled = event => {
+    this._remoteVideo.onstalled = (event) => {
       this._emit("remote.stream.stalled", this, event);
     };
-    this._remoteVideo.onsuspend = event => {
+    this._remoteVideo.onsuspend = (event) => {
       this._emit("remote.stream.suspend", this, event);
     };
-    this._remoteVideo.ontimeupdate = event => {
+    this._remoteVideo.ontimeupdate = (event) => {
       this._emit("remote.stream.timeupdate", this, event);
     };
-    this._remoteVideo.onvolumechange = event => {
+    this._remoteVideo.onvolumechange = (event) => {
       this._emit("remote.stream.volumechange", this, event);
     };
-    this._remoteVideo.onwaiting = event => {
+    this._remoteVideo.onwaiting = (event) => {
       this._emit("remote.stream.waiting", this, event);
     };
 
-    this._localVideo.oncanplay = event => {
+    this._localVideo.oncanplay = (event) => {
       this._emit("local.stream.canplay", this, event);
     };
-    this._localVideo.oncanplaythrough = event => {
+    this._localVideo.oncanplaythrough = (event) => {
       this._emit("local.stream.canplaythrough", this, event);
     };
-    this._localVideo.oncomplete = event => {
+    this._localVideo.oncomplete = (event) => {
       this._emit("local.stream.complete", this, event);
     };
-    this._localVideo.durationchange = event => {
+    this._localVideo.durationchange = (event) => {
       this._emit("local.stream.durationchange", this, event);
     };
-    this._localVideo.onemptied = event => {
+    this._localVideo.onemptied = (event) => {
       this._emit("local.stream.emptied", this, event);
     };
-    this._localVideo.onended = event => {
+    this._localVideo.onended = (event) => {
       this._emit("local.stream.ended", this, event);
     };
-    this._localVideo.onloadeddata = event => {
+    this._localVideo.onloadeddata = (event) => {
       this._emit("local.stream.loadeddata", this, event);
     };
-    this._localVideo.onloadedmetadata = event => {
+    this._localVideo.onloadedmetadata = (event) => {
       this._emit("local.stream.loadedmetadata", this, event);
     };
-    this._localVideo.onpause = event => {
+    this._localVideo.onpause = (event) => {
       this._emit("local.stream.pause", this, event);
     };
-    this._localVideo.onplay = event => {
+    this._localVideo.onplay = (event) => {
       this._emit("local.stream.play", this, event);
     };
-    this._localVideo.onplaying = event => {
+    this._localVideo.onplaying = (event) => {
       this._emit("local.stream.playing", this, event);
     };
-    this._localVideo.onprogress = event => {
+    this._localVideo.onprogress = (event) => {
       this._emit("local.stream.progress", this, event);
     };
-    this._localVideo.onratechange = event => {
+    this._localVideo.onratechange = (event) => {
       this._emit("local.stream.ratechange", this, event);
     };
-    this._localVideo.onseeked = event => {
+    this._localVideo.onseeked = (event) => {
       this._emit("local.stream.seeked", this, event);
     };
-    this._localVideo.onseeking = event => {
+    this._localVideo.onseeking = (event) => {
       this._emit("local.stream.seeking", this, event);
     };
-    this._localVideo.onstalled = event => {
+    this._localVideo.onstalled = (event) => {
       this._emit("local.stream.stalled", this, event);
     };
-    this._localVideo.onsuspend = event => {
+    this._localVideo.onsuspend = (event) => {
       this._emit("local.stream.suspend", this, event);
     };
-    this._localVideo.ontimeupdate = event => {
+    this._localVideo.ontimeupdate = (event) => {
       this._emit("local.stream.timeupdate", this, event);
     };
-    this._localVideo.onvolumechange = event => {
+    this._localVideo.onvolumechange = (event) => {
       this._emit("local.stream.volumechange", this, event);
     };
-    this._localVideo.onwaiting = event => {
+    this._localVideo.onwaiting = (event) => {
       this._emit("local.stream.waiting", this, event);
     };
 
@@ -415,6 +493,22 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
+    document.addEventListener("fullscreenchange", (event) => {
+      if (document.fullscreenElement) {
+        this._fullscreen = true;
+        this._renders[0].enabled = false;
+        this.updateRenders();
+        console.log(
+          `Element: ${document.fullscreenElement.id} entered full-screen mode.`
+        );
+      } else {
+        this._fullscreen = false;
+        this._renders[0].enabled = true;
+        this.updateRenders();
+        this.stopFullScreen();
+        console.log("Leaving full-screen mode.");
+      }
+    });
     document.addEventListener(
       "pointerlockchange",
       (...data) => {
@@ -432,7 +526,7 @@ export default class extends lwpRenderer {
   }
 
   _initRenderTargets() {
-    this._config.renderTargets.map(renderTarget => {
+    this._config.renderTargets.map((renderTarget) => {
       return this.renderAddTarget(renderTarget);
     });
     this._canvasLoop();
@@ -454,7 +548,7 @@ export default class extends lwpRenderer {
         stopfullscreen: "libwebphone:videoCanvas.stopfullscreen",
         screenshare: "libwebphone:videoCanvas.screenshare",
         startscreenshare: "libwebphone:videoCanvas.startscreenshare",
-        stopscreenshare: "libwebphone:videoCanvas.stopscreenshare"
+        stopscreenshare: "libwebphone:videoCanvas.stopscreenshare",
       },
       data: merge(this._renderData(), this._config),
       by_id: {
@@ -493,64 +587,64 @@ export default class extends lwpRenderer {
                 }
               }
             },
-            onmouseup: event => {
+            onmouseup: (event) => {
               let canvas = event.srcElement;
               this._pointerLockStop(canvas);
-            }
-          }
+            },
+          },
         },
         pictureInPicture: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               this.togglePictureInPicture();
-            }
-          }
+            },
+          },
         },
         pictureInPictureRatio: {
           events: {
-            onchange: event => {
+            onchange: (event) => {
               let element = event.srcElement;
               this.changePictureInPictureRatio(element.value / 100);
             },
-            oninput: event => {
+            oninput: (event) => {
               let element = event.srcElement;
               this.changePictureInPictureRatio(element.value / 100);
-            }
-          }
+            },
+          },
         },
         canvasframesPerSecond: {
           events: {
-            onchange: event => {
+            onchange: (event) => {
               let element = event.srcElement;
               this.changeCanvasFramesPerSecond(element.value);
             },
-            oninput: event => {
+            oninput: (event) => {
               let element = event.srcElement;
               this.changeCanvasFramesPerSecond(element.value);
-            }
-          }
+            },
+          },
         },
         fullscreen: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               this.toggleFullScreen();
-            }
-          }
+            },
+          },
         },
         screenshare: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               this.toggleScreenShare();
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     };
   }
 
   _renderDefaultTemplate() {
     return `
-        <canvas id="{{by_id.canvas.elementId}}" width="{{data.width}}" height="{{data.height}}"></canvas>
+        <canvas id="{{by_id.canvas.elementId}}"></canvas>
 
         {{#data.pictureInPicture.show}}
           <div>
@@ -630,7 +724,7 @@ export default class extends lwpRenderer {
   _renderData(
     data = {
       pictureInPicture: {},
-      canvasLoop: { remoteCanvasContext: null, localCanvasContext: null }
+      canvasLoop: { remoteCanvasContext: null, localCanvasContext: null },
     }
   ) {
     data.isFullScreen = this.isFullScreen();
@@ -647,6 +741,7 @@ export default class extends lwpRenderer {
     this._remoteVideoStream = remoteStream;
 
     if (remoteStream) {
+      //this._remoteVideo = document.getElementById("remote_video_debug");
       this._remoteVideo.srcObject = this._remoteVideoStream;
       this._remoteVideo.play();
 
@@ -669,6 +764,7 @@ export default class extends lwpRenderer {
     this._localVideoStream = localStream;
 
     if (localStream) {
+      //this._localVideo = document.getElementById("local_video_debug");
       this._localVideo.srcObject = this._localVideoStream;
       this._localVideo.play();
 
@@ -694,40 +790,46 @@ export default class extends lwpRenderer {
     let videoHeight = video.videoHeight || 480;
     let scale = Math.min(canvasWidth / videoWidth, canvasHeight / videoHeight);
 
+    if (this._fullscreen) {
+      videoWidth = document.body.clientWidth;
+      videoHeight = document.body.clientHeight;
+    }
+    console.log(canvasWidth, canvasHeight, video, videoWidth, videoHeight);
+
     return {
       context: canvasContext,
       scale: scale,
       canvas: {
         element: canvas,
         width: canvasWidth,
-        height: canvasHeight
+        height: canvasHeight,
       },
       source: {
         stream: video,
         x: 0,
         y: 0,
         width: videoWidth,
-        height: videoHeight
+        height: videoHeight,
       },
       destination: {
         original: {
           x: canvasWidth / 2 - (videoWidth / 2) * scale,
           y: canvasHeight / 2 - (videoHeight / 2) * scale,
           width: videoWidth * scale,
-          height: videoHeight * scale
+          height: videoHeight * scale,
         },
         current: {
           x: canvasWidth / 2 - (videoWidth / 2) * scale,
           y: canvasHeight / 2 - (videoHeight / 2) * scale,
           width: videoWidth * scale,
-          height: videoHeight * scale
-        }
-      }
+          height: videoHeight * scale,
+        },
+      },
     };
   }
 
   _canvasLoop() {
-    this._renders.forEach(render => {
+    this._renders.forEach((render) => {
       if (render.data.canvasLoop.remoteCanvasContext) {
         let canvasContext = render.data.canvasLoop.remoteCanvasContext;
         canvasContext.context.fillStyle = "#black";
@@ -841,7 +943,7 @@ export default class extends lwpRenderer {
         false
       );
 
-      this._emit("pointer.lock", this);
+      this._emit("pointer.locked", this);
     } else {
       this._pointerLockContext.active = false;
 
@@ -865,10 +967,8 @@ export default class extends lwpRenderer {
       let canvas = this._pointerLockContext.canvas;
       let canvasContext = render.data.canvasLoop.localCanvasContext;
       let boundingRect = canvas.getBoundingClientRect();
-      let videoWidth =
-        render.data.canvasLoop.localCanvasContext.destination.current.width;
-      let videoHeight =
-        render.data.canvasLoop.localCanvasContext.destination.current.height;
+      let videoWidth = canvasContext.destination.current.width;
+      let videoHeight = canvasContext.destination.current.height;
 
       this._pointerLockContext.x += event.movementX;
       this._pointerLockContext.y += event.movementY;
