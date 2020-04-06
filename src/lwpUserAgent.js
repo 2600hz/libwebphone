@@ -57,11 +57,11 @@ export default class extends lwpRenderer {
         register: this._config.user_agent.register,
         register_expires: this._config.user_agent.register_expires,
         user_agent: this._config.user_agent.user_agent,
-        session_timers: false
+        session_timers: false,
       };
 
       this._userAgent = new JsSIP.UA(config);
-      this._userAgent.receiveRequest = request => {
+      this._userAgent.receiveRequest = (request) => {
         /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
         let config_user = this._userAgent._configuration.uri.user;
         let ruri_user = request.ruri.user;
@@ -105,7 +105,8 @@ export default class extends lwpRenderer {
         this._emit("registration.expiring", this, ...event);
       });
       this._userAgent.on("newRTCSession", (...event) => {
-        let call = new lwpCall(this._libwebphone, event[0].session);
+        let session = event[0].session;
+        let call = new lwpCall(this._libwebphone, session);
         this._libwebphone.getCallList().addCall(call);
       });
       this._userAgent.on("newMessage", (...event) => {
@@ -180,7 +181,7 @@ export default class extends lwpRenderer {
   unregister() {
     if (this.isStarted()) {
       this._userAgent.unregister({
-        all: true
+        all: true,
       });
     }
   }
@@ -229,9 +230,9 @@ export default class extends lwpRenderer {
     let mediaDevices = this._libwebphone.getMediaDevices();
     mediaDevices
       .startStreams()
-      .then(streams => {
+      .then((streams) => {
         let options = {
-          mediaStream: streams
+          mediaStream: streams,
         };
 
         try {
@@ -244,7 +245,7 @@ export default class extends lwpRenderer {
           this._emit("call.failed", this, error);
         }
       })
-      .catch(error => {
+      .catch((error) => {
         this._emit("call.failed", this, error);
       });
   }
@@ -254,7 +255,7 @@ export default class extends lwpRenderer {
   }
 
   updateRenders() {
-    this.render(render => {
+    this.render((render) => {
       render.data = this._renderData(render.data);
       render.data;
       return render;
@@ -277,8 +278,8 @@ export default class extends lwpRenderer {
         realm: "Realm",
         registrar: "Registrar",
         register: "Register",
-        unregister: "Unregister"
-      }
+        unregister: "Unregister",
+      },
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
     this._libwebphone.i18nAddResourceBundles("userAgent", resourceBundles);
@@ -289,12 +290,12 @@ export default class extends lwpRenderer {
       transport: {
         sockets: [],
         recovery_max_interval: 30,
-        recovery_min_interval: 2
+        recovery_min_interval: 2,
       },
       authentication: {
         username: "",
         password: "",
-        realm: ""
+        realm: "",
       },
       user_agent: {
         //contact_uri: "",
@@ -304,9 +305,9 @@ export default class extends lwpRenderer {
         register: true,
         register_expires: 300,
         user_agent: "libwebphone 2.x - dev",
-        redial: "*97"
+        redial: "*97",
       },
-      debug: false
+      debug: false,
     };
 
     this._config = merge(defaults, config);
@@ -324,7 +325,7 @@ export default class extends lwpRenderer {
   }
 
   _initSockets() {
-    this._config.transport.sockets.forEach(socket => {
+    this._config.transport.sockets.forEach((socket) => {
       // TODO: handle when socket is an object with weights...
       this._sockets.push(new JsSIP.WebSocketInterface(socket));
     });
@@ -348,7 +349,7 @@ export default class extends lwpRenderer {
   }
 
   _initRenderTargets() {
-    this._config.renderTargets.map(renderTarget => {
+    this._config.renderTargets.map((renderTarget) => {
       return this.renderAddTarget(renderTarget);
     });
   }
@@ -370,71 +371,71 @@ export default class extends lwpRenderer {
         unregister: "libwebphone:userAgent.unregister",
         username: "libwebphone:userAgent.username",
         password: "libwebphone:userAgent.password",
-        realm: "libwebphone:userAgent.realm"
+        realm: "libwebphone:userAgent.realm",
       },
       data: merge(this._renderData(), this._config),
       by_id: {
         debug: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.toggleDebug();
-            }
-          }
+            },
+          },
         },
         registrar: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.toggleRegistration();
-            }
-          }
+            },
+          },
         },
         username: {
           events: {
-            onchange: event => {
+            onchange: (event) => {
               let element = event.srcElement;
               this._config.authentication.username = element.value;
-            }
-          }
+            },
+          },
         },
         password: {
           events: {
-            onchange: event => {
+            onchange: (event) => {
               let element = event.srcElement;
               this._config.authentication.password = element.value;
-            }
-          }
+            },
+          },
         },
         realm: {
           events: {
-            onchange: event => {
+            onchange: (event) => {
               let element = event.srcElement;
               this._config.authentication.realm = element.value;
-            }
-          }
+            },
+          },
         },
         agentstart: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.start();
-            }
-          }
+            },
+          },
         },
         agentstop: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.stop();
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     };
   }
 

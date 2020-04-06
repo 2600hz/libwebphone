@@ -16,12 +16,19 @@ export default class {
     return this._id;
   }
 
-  getSession() {
-    return this._session;
-  }
-
   hasSession() {
     return this._session != null;
+  }
+
+  hasPeerConnection() {
+    let session = this._getSession();
+    return session && session.connection;
+  }
+
+  getPeerConnection() {
+    if (this.hasPeerConnection()) {
+      return this._getSession().connection;
+    }
   }
 
   isPrimary() {
@@ -32,13 +39,52 @@ export default class {
     return this._remoteAudio;
   }
 
-  getRemoteStream() {
-    return this._remoteStream;
+  getRemoteVideo() {
+    return this._remoteVideo;
+  }
+
+  updateRemoteVideoTrack(newTrack = null) {
+    let peerConnection = this.getPeerConnection();
+    if (!peerConnection) {
+      return;
+    }
+
+    let senders = peerConnection.getSenders();
+    let sender = senders.find((sender) => {
+      let track = sender.track;
+      if (track) {
+        return track.kind == "video";
+      }
+    });
+
+    if (sender) {
+      if (newTrack && newTrack.track) {
+        console.log("replaceTrack: ", sender, newTrack);
+        sender
+          .replaceTrack(newTrack.track)
+          .then(() => {
+            console.log("replaceTrack done!");
+            this.renegotiate();
+            this._updateStreams();
+          })
+          .catch((error) => {
+            console.log("error: ", error);
+          });
+      }
+    }
+  }
+
+  getLocalAudio() {
+    return this._localAudio;
+  }
+
+  getLocalVideo() {
+    return this._localVideo;
   }
 
   isInProgress() {
     if (this.hasSession()) {
-      return this._session.isInProgress();
+      return this._getSession().isInProgress();
     }
 
     return false;
@@ -46,7 +92,7 @@ export default class {
 
   isEstablished() {
     if (this.hasSession()) {
-      return this._session.isEstablished();
+      return this._getSession().isEstablished();
     }
 
     return false;
@@ -54,7 +100,7 @@ export default class {
 
   isEnded() {
     if (this.hasSession()) {
-      return this._session.isEnded();
+      return this._getSession().isEnded();
     }
 
     return false;
@@ -66,7 +112,7 @@ export default class {
 
   getDirection() {
     if (this.hasSession()) {
-      if (this._session.direction == "incoming") {
+      if (this._getSession().direction == "incoming") {
         return "terminating";
       } else {
         return "originating";
@@ -78,13 +124,13 @@ export default class {
 
   localIdentity() {
     if (this.hasSession()) {
-      return this._session.local_identity;
+      return this._getSession().local_identity;
     }
   }
 
   remoteIdentity() {
     if (this.hasSession()) {
-      return this._session.remote_identity;
+      return this._getSession().remote_identity;
     }
   }
 
@@ -99,29 +145,35 @@ export default class {
   }
 
   cancel() {
+    let callList = this._libwebphone.getCallList();
     if (this.hasSession()) {
-      this._session.terminate();
-      this._libwebphone.getCallList().removeCall(this);
+      this._getSession().terminate();
+      if (callList) {
+        callList.removeCall(this);
+      }
     }
   }
 
   hangup() {
+    let callList = this._libwebphone.getCallList();
     if (this.hasSession()) {
-      this._session.terminate();
-      this._libwebphone.getCallList().removeCall(this);
+      this._getSession().terminate();
+      if (callList) {
+        callList.removeCall(this);
+      }
     }
   }
 
   hold() {
     if (this.hasSession()) {
-      this._session.hold();
+      this._getSession().hold();
     }
   }
 
   isOnHold(details = false) {
     let status = { local: false, remote: false };
     if (this.hasSession()) {
-      status = this._session.isOnHold();
+      status = this._getSession().isOnHold();
     }
 
     if (details) {
@@ -133,26 +185,26 @@ export default class {
 
   unhold() {
     if (this.hasSession()) {
-      this._session.unhold();
+      this._getSession().unhold();
     }
   }
 
   mute() {
     if (this.hasSession()) {
-      this._session.mute();
+      this._getSession().mute();
     }
   }
 
   unmute() {
     if (this.hasSession()) {
-      this._session.unmute();
+      this._getSession().unmute();
     }
   }
 
   isMuted(details = false) {
     let status = { audio: false, video: false };
     if (this.hasSession()) {
-      status = this._session.isMuted();
+      status = this._getSession().isMuted();
     }
 
     /** TODO: include the local mute status from lwpMediaDevices? */
@@ -167,16 +219,17 @@ export default class {
   transfer(numbertotransfer = null, autoHold = true) {
     if (this.hasSession()) {
       let dialpad = this._libwebphone.getDialpad();
+
       if (this.isInTransfer() || numbertotransfer) {
         this._inTransfer = false;
 
-        if (!numbertotransfer) {
+        if (!numbertotransfer && dialpad) {
           numbertotransfer = dialpad.getDigits().join("");
           dialpad.clear();
         }
 
         if (numbertotransfer) {
-          this._session.refer(numbertotransfer);
+          this._getSession().refer(numbertotransfer);
           this._emit("transfer.started", this, numbertotransfer);
         } else {
           if (autoHold) {
@@ -193,7 +246,9 @@ export default class {
           this.hold();
         }
 
-        dialpad.clear();
+        if (dialpad) {
+          dialpad.clear();
+        }
 
         this._emit("transfer.collecting", this, numbertotransfer);
       }
@@ -201,37 +256,40 @@ export default class {
   }
 
   answer() {
-    if (this.hasSession()) {
-      let mediaDevices = this._libwebphone.getMediaDevices();
-      mediaDevices.startStreams().then(streams => {
+    let mediaDevices = this._libwebphone.getMediaDevices();
+    if (this.hasSession() && mediaDevices) {
+      mediaDevices.startStreams().then((streams) => {
         let options = {
-          mediaStream: streams
+          mediaStream: streams,
         };
 
-        this._session.answer(options);
+        this._getSession().answer(options);
         this._emit("answered", this);
       });
     }
   }
 
   reject() {
+    let callList = this._libwebphone.getCallList();
     if (this.hasSession()) {
-      this._session.terminate();
-      this._libwebphone.getCallList().removeCall(this);
+      this._getSession().terminate();
+      if (callList) {
+        callList.removeCall(this);
+      }
       this._emit("rejected", this);
     }
   }
 
   renegotiate() {
-    if (this.hasSession()) {
-      this._session.renegotiate();
+    if (this.hasSession() && !this.isOnHold()) {
+      this._getSession().renegotiate();
       this._emit("renegotiated", this);
     }
   }
 
   sendDTMF(signal) {
     if (this.hasSession()) {
-      this._session.sendDTMF(signal);
+      this._getSession().sendDTMF(signal);
       this._emit("send.dtmf", this, signal);
     }
   }
@@ -252,106 +310,134 @@ export default class {
       terminating: direction == "terminating",
       originating: direction == "originating",
       local_identity: this.localIdentity(),
-      remote_identity: this.remoteIdentity()
+      remote_identity: this.remoteIdentity(),
     };
   }
 
   /** Init functions */
 
   _initProperties() {
+    let mediaDevices = this._libwebphone.getMediaDevices();
+
     this._id = uuid();
     this._primary = false;
-    this._remoteStream = null;
-    this._remoteAudio = null;
     this._inTransfer = false;
+    this._streams = {
+      remote: {
+        mediaStream: new MediaStream(),
+        audioElementStream: null,
+        elements: {
+          audio: document.createElement("audio"),
+          video: document.createElement("video"),
+        },
+      },
+      local: {
+        mediaStream: new MediaStream(),
+        elements: {
+          audio: document.createElement("audio"),
+          video: document.createElement("video"),
+        },
+      },
+    };
+
+    Object.keys(this._streams).forEach((type) => {
+      Object.keys(this._streams[type].elements).forEach((kind) => {
+        let element = this._streams[type].elements[kind];
+        element.muted = true;
+        element.pause();
+      });
+    });
+
+    if (mediaDevices) {
+      this._streams.remote.audioElementStream = mediaDevices._createMediaElementSource(
+        this._streams.remote.elements.audio
+      );
+    }
   }
 
   _initEventBindings() {
-    if (!this.hasSession()) {
-      return;
+    this._libwebphone.on(
+      "mediaDevices.video.input.changed",
+      (lwp, mediaDevices, newTrack, previousTrack) => {
+        this.updateRemoteVideoTrack(newTrack);
+      }
+    );
+    if (this.hasPeerConnection()) {
+      let peerConnection = this.getPeerConnection();
+      this._emit("peerconnection", this, peerConnection);
+      peerConnection.addEventListener("addstream", (...event) => {
+        this._emit("peerconnection.add.stream", this, ...event);
+        this._updateStreams();
+      });
+      peerConnection.addEventListener("removestream", (...event) => {
+        this._emit("peerconnection.remove.stream", this, ...event);
+        this._updateStreams();
+      });
     }
-
-    this._listenForNewStreams();
-    this._session.on("peerconnection", (...event) => {
-      this._listenForNewStreams();
-    });
-
-    /*
-    this._session.on("connecting", (...event) => {
-      this._emit("connecting", this, ...event);
-    });
-    this._session.on("sending", (...event) => {
-      this._emit("sending", this, ...event);
-    });
-    */
-
-    this._session.on("progress", (...event) => {
-      this._emit("progress", this, ...event);
-    });
-
-    /*
-    this._session.on("accepted", (...event) => {
-      this._emit("accepted", this, ...event);
-    });
-    */
-
-    this._session.on("confirmed", (...event) => {
-      this._emit("established", this, ...event);
-      /*
-      if (!this.isPrimary()) {
-        this.hold();
-      }
-      */
-    });
-    this._session.on("newDTMF", (...event) => {
-      this._emit("receive.dtmf", this, ...event);
-    });
-    this._session.on("newInfo", (...event) => {
-      this._emit("receive.info", this, ...event);
-    });
-    this._session.on("hold", (...event) => {
-      this._emit("hold", this, ...event);
-    });
-    this._session.on("unhold", (...event) => {
-      this._emit("unhold", this, ...event);
-    });
-    this._session.on("muted", (...event) => {
-      this._emit("muted", this, ...event);
-    });
-    this._session.on("unmuted", (...event) => {
-      this._emit("unmuted", this, ...event);
-    });
-    /*
-    this._session.on("reinvite", (...event) => {
-      this._emit("reinvite", this, ...event);
-    });
-    */
-    this._session.on("ended", (...event) => {
-      this._libwebphone.getCallList().removeCall(this);
-      if (this.isPrimary()) {
-        this._disconnectStreams();
-      }
-      this._destoryStreams();
-      this._emit("ended", this, ...event);
-    });
-    this._session.on("failed", (...event) => {
-      this._libwebphone.getCallList().removeCall(this);
-      if (this.isPrimary()) {
-        this._disconnectStreams();
-      }
-      this._destoryStreams();
-      this._emit("failed", this, ...event);
-    });
+    if (this.hasSession()) {
+      this._getSession().on("progress", (...event) => {
+        this._emit("progress", this, ...event);
+      });
+      this._getSession().on("confirmed", (...event) => {
+        this._emit("established", this, ...event);
+      });
+      this._getSession().on("newDTMF", (...event) => {
+        this._emit("receive.dtmf", this, ...event);
+      });
+      this._getSession().on("newInfo", (...event) => {
+        this._emit("receive.info", this, ...event);
+      });
+      this._getSession().on("hold", (...event) => {
+        this._emit("hold", this, ...event);
+      });
+      this._getSession().on("unhold", (...event) => {
+        this._emit("unhold", this, ...event);
+      });
+      this._getSession().on("muted", (...event) => {
+        this._emit("muted", this, ...event);
+      });
+      this._getSession().on("unmuted", (...event) => {
+        this._emit("unmuted", this, ...event);
+      });
+      this._getSession().on("ended", (...event) => {
+        this._destroyCall();
+        this._emit("ended", this, ...event);
+      });
+      this._getSession().on("failed", (...event) => {
+        this._destroyCall();
+        this._emit("failed", this, ...event);
+      });
+      this._getSession().on("peerconnection", (...data) => {
+        let peerConnection = data[0].peerconnection;
+        this._emit("peerconnection", this, peerConnection);
+        peerConnection.addEventListener("addstream", (...event) => {
+          this._emit("peerconnection.add.stream", this, ...event);
+          this._updateStreams();
+        });
+        peerConnection.addEventListener("remotestream", (...event) => {
+          this._emit("peerconnection.remove.stream", this, ...event);
+          this._updateStreams();
+        });
+      });
+    }
   }
 
   /** Helper functions */
-
-  _listenForNewStreams() {
-    if (this._session.connection) {
-      this._session.connection.addEventListener("addstream", event => {
-        this._setRemoteStream(event.stream);
-      });
+  _destroyCall() {
+    let callList = this._libwebphone.getCallList();
+    if (callList) {
+      callList.removeCall(this);
     }
+
+    if (this.isPrimary()) {
+      this._disconnectStreams();
+    }
+
+    this._destroyStreams();
+  }
+
+  _getSession() {
+    return this._session;
   }
 
   _setPrimary(resume = true) {
@@ -359,12 +445,11 @@ export default class {
       return;
     }
 
-    this.unmute();
-
     if (resume && this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
 
+    this._updateStreams();
     this._connectStreams();
 
     this._primary = true;
@@ -376,13 +461,14 @@ export default class {
       return;
     }
 
-    if (this._inTransfer) {
-      this._libwebphone.getDialpad().clear();
+    if (this.isInTransfer()) {
+      let dialpad = this._libwebphone.getDialpad();
+      if (dialpad) {
+        dialpad.clear();
+      }
       this._inTransfer = false;
       this._emit("transfer.failed", this, numbertotransfer);
     }
-
-    this.mute();
 
     if (pause && this.isEstablished() && !this.isOnHold()) {
       this.hold();
@@ -394,69 +480,132 @@ export default class {
     this._emit("demoted", this);
   }
 
-  _setRemoteStream(remoteStream) {
-    let element = document.createElement("audio");
-    element.srcObject = remoteStream;
-    element.muted = true;
-    element.play();
+  _updateStreams() {
+    let peerConnection = this.getPeerConnection();
 
-    this._remoteStream = remoteStream;
-    this._remoteAudio = this._libwebphone
-      .getMediaDevices()
-      ._createMediaStreamSource(remoteStream);
+    Object.keys(this._streams).forEach((type) => {
+      let mediaStream = this._streams[type].mediaStream;
+      if (peerConnection) {
+        let peerTracks = [];
+        switch (type) {
+          case "remote":
+            peerConnection.getReceivers().forEach((peer) => {
+              peerTracks.push(peer.track);
+            });
+            break;
+          case "local":
+            peerConnection.getSenders().forEach((peer) => {
+              peerTracks.push(peer.track);
+            });
+            break;
+        }
+        this._syncTracks(mediaStream, peerTracks);
+      }
 
-    if (this.isPrimary()) {
-      this._connectStreams();
-    }
+      Object.keys(this._streams[type].elements).forEach((kind) => {
+        let mediaStream = this._streams[type].mediaStream;
+        let element = this._streams[type].elements[kind];
+        let track = mediaStream.getTracks().find((track) => {
+          return track.kind == kind;
+        });
+        if (track) {
+          if (!element.srcObject || element.srcObject.id != mediaStream.id) {
+            if (!element.paused) {
+              element.pause();
+            }
+            element.srcObject = mediaStream;
+            if (element.playHint) {
+              element.play();
+            }
+          }
+        } else {
+          if (!element.paused) {
+            element.pause();
+          }
+          element.srcObject = null;
+        }
+      });
+    });
+  }
 
-    this._emit("remote.stream.added", this, remoteStream);
+  _syncTracks(mediaStream, peerTracks) {
+    let peerIds = peerTracks.map((track) => {
+      return track.id;
+    });
+    let currentIds = mediaStream.getTracks().map((track) => {
+      return track.id;
+    });
+    let addIds = peerIds.filter((peerId) => {
+      return !currentIds.includes(peerId);
+    });
+    let removeIds = currentIds.filter((currentId) => {
+      return !peerIds.includes(currentId);
+    });
+    mediaStream.getTracks().forEach((track) => {
+      if (removeIds.includes(track.id)) {
+        mediaStream.removeTrack(track);
+      }
+    });
+    peerTracks.forEach((track) => {
+      if (addIds.includes(track.id)) {
+        mediaStream.addTrack(track);
+      }
+    });
   }
 
   _connectStreams() {
-    let remoteAudio = this.getRemoteAudio();
-    let remoteStream = this.getRemoteStream();
+    let mediaDevices = this._libwebphone.getMediaDevices();
+    let videoCanvas = this._libwebphone.getVideoCanvas();
 
-    if (remoteStream) {
-      let mediaStream = remoteStream;
-      let videoTrack = mediaStream.getTracks().find(track => {
-        return track.kind == "video" && track.readyState == "live";
+    Object.keys(this._streams).forEach((type) => {
+      Object.keys(this._streams[type].elements).forEach((kind) => {
+        let element = this._streams[type].elements[kind];
+        element.playHint = true;
+        console.log("element src: ", element.srcObject);
+        if (element.srcObject) {
+          element.play();
+          element.muted = false;
+        }
       });
-      if (videoTrack) {
-        this._libwebphone
-          .getVideoCanvas()
-          ._setRemoteVideoSourceStream(mediaStream);
-      }
-    }
+    });
 
-    if (this.hasSession() && this._session._localMediaStream) {
-      let mediaStream = this._session._localMediaStream;
-      let videoTrack = mediaStream.getTracks().find(track => {
-        return track.kind == "video" && track.readyState == "live";
-      });
-      if (videoTrack) {
-        this._libwebphone
-          .getVideoCanvas()
-          ._setLocalVideoSourceStream(mediaStream);
-      }
-    }
-
-    if (remoteAudio) {
-      this._libwebphone
-        .getMediaDevices()
-        ._setRemoteAudioSourceStream(remoteAudio);
+    if (mediaDevices) {
+      mediaDevices._setRemoteAudioSourceStream(
+        this._streams.remote.audioElementStream
+      );
     }
   }
 
   _disconnectStreams() {
-    this._libwebphone.getMediaDevices()._setRemoteAudioSourceStream();
-    this._libwebphone.getVideoCanvas()._setLocalVideoSourceStream();
-    this._libwebphone.getVideoCanvas()._setRemoteVideoSourceStream();
+    let mediaDevices = this._libwebphone.getMediaDevices();
+    let videoCanvas = this._libwebphone.getVideoCanvas();
+
+    Object.keys(this._streams).forEach((type) => {
+      Object.keys(this._streams[type].elements).forEach((kind) => {
+        let element = this._streams[type].elements[kind];
+        element.playHint = false;
+        if (!element.paused) {
+          element.pause();
+          element.muted = true;
+        }
+      });
+    });
+
+    if (mediaDevices) {
+      mediaDevices._setRemoteAudioSourceStream();
+    }
+
+    if (videoCanvas) {
+      videoCanvas._setLocalVideoSourceStream();
+      videoCanvas._setRemoteVideoSourceStream();
+    }
   }
 
-  _destoryStreams() {
-    let remoteStream = this.getRemoteStream();
+  _destroyStreams() {
+    /** TODO: should we destroy localMediaStream? */
+    let remoteStream = this._streams.remote.mediaStream;
     if (remoteStream) {
-      remoteStream.getTracks().forEach(track => {
+      remoteStream.getTracks().forEach((track) => {
         track.stop();
       });
     }

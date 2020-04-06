@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
+import { merge, randomElementId } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 
 export default class extends lwpRenderer {
@@ -17,10 +17,56 @@ export default class extends lwpRenderer {
   }
 
   startFullScreen(element = null) {
+    if (!element) {
+      element = document.getElementById(this._fullScreenVideo.id);
+    }
+
+    if (!element) {
+      element = document.body.appendChild(this._fullScreenVideo);
+    }
+
+    if (element.requestFullscreen) {
+      element
+        .requestFullscreen()
+        .then(() => this.updateRenders())
+        .catch((error) => {
+          console.log(error),
+            alert(
+              `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
+            );
+        });
+    } else if (element.mozRequestFullScreen) {
+      /* Firefox */
+      element
+        .mozRequestFullScreen()
+        .then(() => this.updateRenders())
+        .catch((error) => console.log(error));
+    } else if (element.webkitRequestFullscreen) {
+      /* Chrome, Safari and Opera */
+      element
+        .webkitRequestFullscreen()
+        .then(() => this.updateRenders())
+        .catch((error) => {
+          console.log(error);
+          alert(
+            `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
+          );
+        });
+    } else if (element.msRequestFullscreen) {
+      /* IE/Edge */
+      element
+        .msRequestFullscreen()
+        .then(() => this.updateRenders())
+        .catch((error) => console.log(error));
+    }
+
+    this._emit("fullscreen.start", this);
+  }
+
+  oldFullScreen() {
     /** TODO: figure out which canvas to fullscreen.. */
     let elementId = this._renders[0].by_id.canvas.elementId;
     element = document.getElementById(elementId);
-
     this._emit("remote.stream.fullscreen: ", element, this._renders[0]);
 
     if (!this._renders[0].data.canvasLoop.remoteCanvasContext.original) {
@@ -114,6 +160,14 @@ export default class extends lwpRenderer {
 
     this._getScreenStream((screenStream) => {
       console.log("screenStream: ", screenStream);
+      let newTrack = screenStream.getTracks().find((track) => {
+        return track.kind == "video" && track.readyState == "live";
+      });
+      console.log("new track: ", newTrack);
+      let call = this._libwebphone.getCallList().getCall();
+      if (call) {
+        call.updateRemoteVideoTrack({ track: newTrack });
+      }
     });
 
     this._emit("screenshare.start", this);
@@ -222,32 +276,16 @@ export default class extends lwpRenderer {
               if (!render.by_id[key].canvasContext) {
                 render.by_id[key].context = element.getContext("2d");
               }
-              this.linkCanvas(render, render.by_id[key].context, element);
+
+              this._fullScreenVideoStream = element.captureStream(
+                this._config.canvasLoop.framesPerSecond
+              );
+              this._fullScreenVideo.srcObject = this._fullScreenVideoStream;
             }
           }
         });
       }
     );
-  }
-
-  linkCanvas(render, canvasContext, element) {
-    if (this._remoteVideo && !this._remoteVideo.paused) {
-      let remoteCanvasContext = this._createCanvasContext(
-        canvasContext,
-        element,
-        this._remoteVideo
-      );
-      render.data.canvasLoop.remoteCanvasContext = remoteCanvasContext;
-    }
-    if (this._localVideo && !this._localVideo.paused) {
-      let localCanvasContext = this._createCanvasContext(
-        canvasContext,
-        element,
-        this._localVideo
-      );
-      render.data.canvasLoop.localCanvasContext = localCanvasContext;
-      this._rescalePip(render);
-    }
   }
 
   /** Init functions */
@@ -294,8 +332,6 @@ export default class extends lwpRenderer {
         show: true,
         ratio: 0.25,
       },
-      width: 640,
-      height: 480,
       canvasLoop: {
         show: true,
         framesPerSecond: 15,
@@ -307,15 +343,19 @@ export default class extends lwpRenderer {
     };
     this._config = merge(defaults, config);
 
-    this._remoteVideoStream = null;
-    this._remoteVideo = document.createElement("video");
-    this._remoteVideo.muted = true;
+    this._canvas = {};
+    this._canvas.element = document.createElement("canvas");
+    this._canvas.context = this._canvas.element.getContext("2d");
 
-    this._localVideoStream = null;
-    this._localVideo = document.createElement("video");
-    this._localVideo.muted = true;
+    this._remoteVideo = null;
+
+    this._localVideo = null;
 
     this._fullscreen = false;
+    this._fullScreenVideo = document.createElement("video");
+    this._fullScreenVideo.muted = true;
+    this._fullScreenVideo.id = randomElementId();
+
     this._screenshare = false;
 
     let updater = (event) => {
@@ -327,142 +367,22 @@ export default class extends lwpRenderer {
       active: false,
       moveHandler: updater,
     };
+
+    this._canvasLoop();
   }
 
   _initEventBindings() {
-    this._remoteVideo.oncanplay = (event) => {
-      this._emit("remote.stream.canplay", this, event);
-    };
-    this._remoteVideo.oncanplaythrough = (event) => {
-      this._emit("remote.stream.canplaythrough", this, event);
-    };
-    this._remoteVideo.oncomplete = (event) => {
-      this._emit("remote.stream.complete", this, event);
-    };
-    this._remoteVideo.durationchange = (event) => {
-      this._emit("remote.stream.durationchange", this, event);
-    };
-    this._remoteVideo.onemptied = (event) => {
-      this._emit("remote.stream.emptied", this, event);
-    };
-    this._remoteVideo.onended = (event) => {
-      this._emit("remote.stream.ended", this, event);
-    };
-    this._remoteVideo.onloadeddata = (event) => {
-      this._emit("remote.stream.loadeddata", this, event);
-    };
-    this._remoteVideo.onloadedmetadata = (event) => {
-      this._emit("remote.stream.loadedmetadata", this, event);
-    };
-    this._remoteVideo.onpause = (event) => {
-      this._emit("remote.stream.pause", this, event);
-    };
-    this._remoteVideo.onplay = (event) => {
-      this._emit("remote.stream.play", this, event);
-    };
-    this._remoteVideo.onplaying = (event) => {
-      this._emit("remote.stream.playing", this, event);
-    };
-    this._remoteVideo.onprogress = (event) => {
-      this._emit("remote.stream.progress", this, event);
-    };
-    this._remoteVideo.onratechange = (event) => {
-      this._emit("remote.stream.ratechange", this, event);
-    };
-    this._remoteVideo.onseeked = (event) => {
-      this._emit("remote.stream.seeked", this, event);
-    };
-    this._remoteVideo.onseeking = (event) => {
-      this._emit("remote.stream.seeking", this, event);
-    };
-    this._remoteVideo.onstalled = (event) => {
-      this._emit("remote.stream.stalled", this, event);
-    };
-    this._remoteVideo.onsuspend = (event) => {
-      this._emit("remote.stream.suspend", this, event);
-    };
-    this._remoteVideo.ontimeupdate = (event) => {
-      this._emit("remote.stream.timeupdate", this, event);
-    };
-    this._remoteVideo.onvolumechange = (event) => {
-      this._emit("remote.stream.volumechange", this, event);
-    };
-    this._remoteVideo.onwaiting = (event) => {
-      this._emit("remote.stream.waiting", this, event);
-    };
-
-    this._localVideo.oncanplay = (event) => {
-      this._emit("local.stream.canplay", this, event);
-    };
-    this._localVideo.oncanplaythrough = (event) => {
-      this._emit("local.stream.canplaythrough", this, event);
-    };
-    this._localVideo.oncomplete = (event) => {
-      this._emit("local.stream.complete", this, event);
-    };
-    this._localVideo.durationchange = (event) => {
-      this._emit("local.stream.durationchange", this, event);
-    };
-    this._localVideo.onemptied = (event) => {
-      this._emit("local.stream.emptied", this, event);
-    };
-    this._localVideo.onended = (event) => {
-      this._emit("local.stream.ended", this, event);
-    };
-    this._localVideo.onloadeddata = (event) => {
-      this._emit("local.stream.loadeddata", this, event);
-    };
-    this._localVideo.onloadedmetadata = (event) => {
-      this._emit("local.stream.loadedmetadata", this, event);
-    };
-    this._localVideo.onpause = (event) => {
-      this._emit("local.stream.pause", this, event);
-    };
-    this._localVideo.onplay = (event) => {
-      this._emit("local.stream.play", this, event);
-    };
-    this._localVideo.onplaying = (event) => {
-      this._emit("local.stream.playing", this, event);
-    };
-    this._localVideo.onprogress = (event) => {
-      this._emit("local.stream.progress", this, event);
-    };
-    this._localVideo.onratechange = (event) => {
-      this._emit("local.stream.ratechange", this, event);
-    };
-    this._localVideo.onseeked = (event) => {
-      this._emit("local.stream.seeked", this, event);
-    };
-    this._localVideo.onseeking = (event) => {
-      this._emit("local.stream.seeking", this, event);
-    };
-    this._localVideo.onstalled = (event) => {
-      this._emit("local.stream.stalled", this, event);
-    };
-    this._localVideo.onsuspend = (event) => {
-      this._emit("local.stream.suspend", this, event);
-    };
-    this._localVideo.ontimeupdate = (event) => {
-      this._emit("local.stream.timeupdate", this, event);
-    };
-    this._localVideo.onvolumechange = (event) => {
-      this._emit("local.stream.volumechange", this, event);
-    };
-    this._localVideo.onwaiting = (event) => {
-      this._emit("local.stream.waiting", this, event);
-    };
-
-    this._libwebphone.on("videoCanvas.remote.stream.added", () => {
+    this._libwebphone.on("videoCanvas.remote.video.added", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("videoCanvas.remote.stream.removed", () => {
+    this._libwebphone.on("videoCanvas.remote.video.removed", () => {
       this.updateRenders();
     });
 
-    this._libwebphone.on("videoCanvas.local.stream.added", () => {
+    this._libwebphone.on("videoCanvas.local.video.added", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("videoCanvas.local.stream.removed", () => {
+    this._libwebphone.on("videoCanvas.local.video.removed", () => {
       this.updateRenders();
     });
 
@@ -529,7 +449,6 @@ export default class extends lwpRenderer {
     this._config.renderTargets.map((renderTarget) => {
       return this.renderAddTarget(renderTarget);
     });
-    this._canvasLoop();
   }
 
   /** Render Helpers */
@@ -557,11 +476,8 @@ export default class extends lwpRenderer {
           events: {
             onmousedown: (event, render) => {
               let canvas = event.srcElement;
-              if (
-                render.data.canvasLoop &&
-                render.data.canvasLoop.localCanvasContext
-              ) {
-                let canvasContext = render.data.canvasLoop.localCanvasContext;
+              if (this._canvasLoop && this._canvasLoop.localCanvasContext) {
+                let canvasContext = this._canvasLoop.localCanvasContext;
                 let boundingRect = canvas.getBoundingClientRect();
                 let videoWidth = canvasContext.destination.current.width;
                 let videoHeight = canvasContext.destination.current.height;
@@ -737,64 +653,55 @@ export default class extends lwpRenderer {
 
   /** Helper functions */
 
-  _setRemoteVideoSourceStream(remoteStream = null) {
-    this._remoteVideoStream = remoteStream;
+  _setRemoteVideo(remoteVideo = null) {
+    if (remoteVideo) {
+      this._remoteVideo = remoteVideo;
+      let remoteCanvasContext = this._createCanvasContext(
+        canvasContext,
+        element,
+        this._remoteVideo
+      );
+      this._canvasLoop.remoteCanvasContext = remoteCanvasContext;
 
-    if (remoteStream) {
-      //this._remoteVideo = document.getElementById("remote_video_debug");
-      this._remoteVideo.srcObject = this._remoteVideoStream;
-      this._remoteVideo.play();
-
-      this._emit("remote.stream.added", this, remoteStream);
-    } else if (this._remoteVideoStream) {
-      this._pointerLockStop();
-
-      this._remoteVideo.pause();
-      this._remoteVideoStream = null;
-
-      this._emit("remote.stream.removed", this);
+      this._emit("remote.video.added", this, this._removeVideo);
+      return;
     }
+
+    this._pointerLockStop();
+
+    this._remoteVideo = null;
+
+    this._emit("remote.video.removed", this);
   }
 
-  _getRemoteVideoSourceStream() {
-    return this._remoteVideoStream;
-  }
+  _setLocalVideo(localVideo = null) {
+    if (localVideo) {
+      this._localVideo = localVideo;
+      let localCanvasContext = this._createCanvasContext(
+        canvasContext,
+        element,
+        this._localVideo
+      );
+      this._canvasLoop.localCanvasContext = localCanvasContext;
+      this._rescalePip(render);
 
-  _setLocalVideoSourceStream(localStream = null) {
-    this._localVideoStream = localStream;
-
-    if (localStream) {
-      //this._localVideo = document.getElementById("local_video_debug");
-      this._localVideo.srcObject = this._localVideoStream;
-      this._localVideo.play();
-
-      this._emit("local.stream.added", this, localStream);
-    } else if (this._localVideoStream) {
-      this._pointerLockStop();
-
-      this._localVideo.pause();
-      this._localVideoStream = null;
-
-      this._emit("local.stream.removed", this);
+      this._emit("local.video.added", this, this._localVideo);
+      return;
     }
-  }
 
-  _getLocalVideoSourceStream() {
-    return this._localVideoStream;
+    this._pointerLockStop();
+
+    this._localVideo = null;
+
+    this._emit("local.video.removed", this);
   }
 
   _createCanvasContext(canvasContext, canvas, video) {
-    let canvasWidth = canvas.width || 640;
-    let canvasHeight = canvas.height || 480;
     let videoWidth = video.videoWidth || 640;
     let videoHeight = video.videoHeight || 480;
+    let canvasWidth = videoWidth; //canvas.width || 640;
+    let canvasHeight = videoHeight; //canvas.height || 480;
     let scale = Math.min(canvasWidth / videoWidth, canvasHeight / videoHeight);
-
-    if (this._fullscreen) {
-      videoWidth = document.body.clientWidth;
-      videoHeight = document.body.clientHeight;
-    }
-    console.log(canvasWidth, canvasHeight, video, videoWidth, videoHeight);
 
     return {
       context: canvasContext,
@@ -830,8 +737,8 @@ export default class extends lwpRenderer {
 
   _canvasLoop() {
     this._renders.forEach((render) => {
-      if (render.data.canvasLoop.remoteCanvasContext) {
-        let canvasContext = render.data.canvasLoop.remoteCanvasContext;
+      if (this._canvasLoop.remoteCanvasContext) {
+        let canvasContext = this._canvasLoop.remoteCanvasContext;
         canvasContext.context.fillStyle = "#black";
         canvasContext.context.fillRect(
           0,
@@ -854,9 +761,9 @@ export default class extends lwpRenderer {
 
       if (
         this._config.pictureInPicture.enabled &&
-        render.data.canvasLoop.localCanvasContext
+        this._canvasLoop.localCanvasContext
       ) {
-        let canvasContext = render.data.canvasLoop.localCanvasContext;
+        let canvasContext = this._canvasLoop.localCanvasContext;
         canvasContext.context.drawImage(
           canvasContext.source.stream,
           canvasContext.source.x,
@@ -877,7 +784,7 @@ export default class extends lwpRenderer {
   }
 
   _rescalePip(render) {
-    let canvasContext = render.data.canvasLoop.localCanvasContext;
+    let canvasContext = this._canvasLoop.localCanvasContext;
     if (!canvasContext) {
       return;
     }
@@ -960,12 +867,12 @@ export default class extends lwpRenderer {
   _pointerLockMoveHandler(event) {
     let render = this._pointerLockContext.render;
     if (
-      render.data.canvasLoop.localCanvasContext &&
+      this._canvasLoop.localCanvasContext &&
       this._pointerLockContext.active &&
       event.which
     ) {
       let canvas = this._pointerLockContext.canvas;
-      let canvasContext = render.data.canvasLoop.localCanvasContext;
+      let canvasContext = this._canvasLoop.localCanvasContext;
       let boundingRect = canvas.getBoundingClientRect();
       let videoWidth = canvasContext.destination.current.width;
       let videoHeight = canvasContext.destination.current.height;

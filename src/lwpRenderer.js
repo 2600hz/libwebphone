@@ -139,7 +139,7 @@ export default class {
         });
       }
 
-      this._emit("render.rendered", this, render);
+      //this._emit("render.rendered", this, render);
 
       resolve(render);
     });

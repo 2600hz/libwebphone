@@ -22,7 +22,7 @@ export default class extends EventEmitter {
     this._callControl = new lwpCallControl(this, config.callControl);
     this._dialpad = new lwpDialpad(this, config.dialpad);
     this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
-    this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas);
+    //this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas);
     this._libwebphone._emit("created", this._libwebphone);
   } //end of constructor
 
@@ -77,7 +77,7 @@ export default class extends EventEmitter {
   }
 
   _initInternationalization(config = { fallbackLng: "en" }) {
-    this._i18nPromise = i18next.init(config).then(translator => {
+    this._i18nPromise = i18next.init(config).then((translator) => {
       this._translator = translator;
       this._libwebphone._emit(
         "language.changed",

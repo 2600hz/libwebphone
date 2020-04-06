@@ -1562,11 +1562,8 @@ export default class extends lwpRenderer {
     };
   }
 
-  _createMediaStreamSource(mediaStream) {
-    let sourceStream = this._audioContext.createMediaStreamSource(mediaStream);
-
-    this._emit("remote.audio.created", this, sourceStream);
-    return sourceStream;
+  _createMediaElementSource(mediaElement) {
+    return this._audioContext.createMediaElementSource(mediaElement);
   }
 
   _setRemoteAudioSourceStream(sourceStream = null) {
