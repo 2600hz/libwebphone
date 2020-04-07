@@ -378,7 +378,7 @@
                 elementId: "media_device_selector",
               },
               data: {
-                volume: {
+                audiomixer: {
                   master: { show: false },
                   ringer: { show: false },
                   dtmf: { show: false },
@@ -421,6 +421,11 @@
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
+      webphone.on("userAgent.recieved.notify", (lwp, userAgent, data) => {
+        let eventName = data.event.event;
+        let request = data.request;
+        alert(eventName + "\n" + request.body);
+      });
       webphone.on(
         "mediaDevices.getUserMedia.error",
         (lwp, mediaDevices, error) => {

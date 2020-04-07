@@ -43,7 +43,7 @@ export default class {
     return this._remoteVideo;
   }
 
-  updateRemoteVideoTrack(newTrack = null) {
+  updateLocalVideoTrack(newTrack = null) {
     let peerConnection = this.getPeerConnection();
     if (!peerConnection) {
       return;
@@ -59,17 +59,10 @@ export default class {
 
     if (sender) {
       if (newTrack && newTrack.track) {
-        console.log("replaceTrack: ", sender, newTrack);
-        sender
-          .replaceTrack(newTrack.track)
-          .then(() => {
-            console.log("replaceTrack done!");
-            this.renegotiate();
-            this._updateStreams();
-          })
-          .catch((error) => {
-            console.log("error: ", error);
-          });
+        sender.replaceTrack(newTrack.track).then(() => {
+          this.renegotiate();
+          this._updateStreams();
+        });
       }
     }
   }
@@ -294,6 +287,10 @@ export default class {
     }
   }
 
+  isRinging() {
+    return this.getDirection() == "terminating" && !this.isEstablished();
+  }
+
   summary() {
     const direction = this.getDirection();
     return {
@@ -317,15 +314,17 @@ export default class {
   /** Init functions */
 
   _initProperties() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
-
     this._id = uuid();
     this._primary = false;
     this._inTransfer = false;
     this._streams = {
       remote: {
         mediaStream: new MediaStream(),
-        audioElementStream: null,
+        sourceStream: null,
+        kinds: {
+          audio: false,
+          video: false,
+        },
         elements: {
           audio: document.createElement("audio"),
           video: document.createElement("video"),
@@ -333,6 +332,10 @@ export default class {
       },
       local: {
         mediaStream: new MediaStream(),
+        kinds: {
+          audio: false,
+          video: false,
+        },
         elements: {
           audio: document.createElement("audio"),
           video: document.createElement("video"),
@@ -348,10 +351,11 @@ export default class {
       });
     });
 
-    if (mediaDevices) {
-      this._streams.remote.audioElementStream = mediaDevices._createMediaElementSource(
-        this._streams.remote.elements.audio
-      );
+    if (this.isRinging()) {
+      let mediaDevices = this._libwebphone.getMediaDevices();
+      if (mediaDevices) {
+        mediaDevices.startRinging(this);
+      }
     }
   }
 
@@ -359,7 +363,9 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.video.input.changed",
       (lwp, mediaDevices, newTrack, previousTrack) => {
-        this.updateRemoteVideoTrack(newTrack);
+        if (this.isPrimary()) {
+          this.updateLocalVideoTrack(newTrack);
+        }
       }
     );
     if (this.hasPeerConnection()) {
@@ -379,6 +385,10 @@ export default class {
         this._emit("progress", this, ...event);
       });
       this._getSession().on("confirmed", (...event) => {
+        let mediaDevices = this._libwebphone.getMediaDevices();
+        if (mediaDevices) {
+          mediaDevices.stopRinging(this);
+        }
         this._emit("established", this, ...event);
       });
       this._getSession().on("newDTMF", (...event) => {
@@ -445,12 +455,12 @@ export default class {
       return;
     }
 
+    this._updateStreams();
+    this._connectStreams();
+
     if (resume && this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
-
-    this._updateStreams();
-    this._connectStreams();
 
     this._primary = true;
     this._emit("promoted", this);
@@ -460,6 +470,8 @@ export default class {
     if (!this.isPrimary()) {
       return;
     }
+
+    this._disconnectStreams();
 
     if (this.isInTransfer()) {
       let dialpad = this._libwebphone.getDialpad();
@@ -474,16 +486,13 @@ export default class {
       this.hold();
     }
 
-    this._disconnectStreams();
-
     this._primary = false;
     this._emit("demoted", this);
   }
 
   _updateStreams() {
-    let peerConnection = this.getPeerConnection();
-
     Object.keys(this._streams).forEach((type) => {
+      let peerConnection = this.getPeerConnection();
       let mediaStream = this._streams[type].mediaStream;
       if (peerConnection) {
         let peerTracks = [];
@@ -503,29 +512,34 @@ export default class {
       }
 
       Object.keys(this._streams[type].elements).forEach((kind) => {
-        let mediaStream = this._streams[type].mediaStream;
         let element = this._streams[type].elements[kind];
         let track = mediaStream.getTracks().find((track) => {
           return track.kind == kind;
         });
+
         if (track) {
+          this._streams[type].kinds[kind] = true;
           if (!element.srcObject || element.srcObject.id != mediaStream.id) {
             if (!element.paused) {
-              element.pause();
+              element.playHint = true;
             }
+            element.pause();
             element.srcObject = mediaStream;
             if (element.playHint) {
-              element.play();
+              element.play().catch((error) => console.log(error));
             }
           }
         } else {
-          if (!element.paused) {
-            element.pause();
-          }
+          this._streams[type].kinds[kind] = false;
+          element.pause();
           element.srcObject = null;
         }
       });
     });
+
+    if (this.isPrimary()) {
+      this._connectStreams();
+    }
   }
 
   _syncTracks(mediaStream, peerTracks) {
@@ -561,17 +575,18 @@ export default class {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
         element.playHint = true;
-        console.log("element src: ", element.srcObject);
         if (element.srcObject) {
           element.play();
-          element.muted = false;
         }
       });
     });
 
-    if (mediaDevices) {
+    if (mediaDevices && this._streams.remote.kinds.audio) {
+      this._streams.remote.sourceStream = mediaDevices._createMediaStreamSource(
+        this._streams.remote.mediaStream
+      );
       mediaDevices._setRemoteAudioSourceStream(
-        this._streams.remote.audioElementStream
+        this._streams.remote.sourceStream
       );
     }
   }
@@ -586,7 +601,6 @@ export default class {
         element.playHint = false;
         if (!element.paused) {
           element.pause();
-          element.muted = true;
         }
       });
     });
@@ -602,12 +616,17 @@ export default class {
   }
 
   _destroyStreams() {
+    let mediaDevices = this._libwebphone.getMediaDevices();
     /** TODO: should we destroy localMediaStream? */
     let remoteStream = this._streams.remote.mediaStream;
     if (remoteStream) {
       remoteStream.getTracks().forEach((track) => {
         track.stop();
       });
+    }
+
+    if (mediaDevices) {
+      mediaDevices.stopRinging(this);
     }
   }
 }

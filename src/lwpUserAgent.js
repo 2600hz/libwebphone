@@ -76,11 +76,6 @@ export default class extends lwpRenderer {
 
       this._userAgent.start();
 
-      /*
-    this._userAgent.on("connecting", (...event) => {
-      this._emit("connecting", this, ...event);
-    });
-    */
       this._userAgent.on("connected", (...event) => {
         this.updateRenders();
         this._emit("connected", this, ...event);
@@ -99,7 +94,7 @@ export default class extends lwpRenderer {
       });
       this._userAgent.on("registrationFailed", (...event) => {
         this.updateRenders();
-        this._emit("registration.dailed", this, ...event);
+        this._emit("registration.failed", this, ...event);
       });
       this._userAgent.on("registrationExpiring", (...event) => {
         this._emit("registration.expiring", this, ...event);
@@ -147,7 +142,7 @@ export default class extends lwpRenderer {
   startDebug() {
     this._debug = true;
 
-    //JsSIP.debug.enable("JsSIP:*");
+    JsSIP.debug.enable("JsSIP:*");
 
     this._emit("debug.start", this);
   }
@@ -257,7 +252,6 @@ export default class extends lwpRenderer {
   updateRenders() {
     this.render((render) => {
       render.data = this._renderData(render.data);
-      render.data;
       return render;
     });
   }

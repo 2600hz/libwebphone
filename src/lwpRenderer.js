@@ -1,7 +1,7 @@
 "use strict";
 
 import Mustache from "mustache";
-import { merge, randomElementId, cloneDeep } from "./lwpUtils";
+import { merge, randomElementId } from "./lwpUtils";
 
 export default class {
   constructor(libwebphone) {
@@ -32,7 +32,7 @@ export default class {
       };
     }
 
-    let render = merge(cloneDeep(this._renderDefaultConfig()), {
+    let render = merge(this._renderDefaultConfig(), {
       data: config.data || {},
       i18n: config.i18n || {},
       template: config.template,
@@ -70,8 +70,15 @@ export default class {
   }
 
   render(premodifier = (render) => render, postmodifier = (render) => render) {
+    let renderPromises = [];
     this._renders.forEach((render) => {
-      this._render(premodifier(render)).then((render) => postmodifier(render));
+      renderPromises.push(
+        this._render(premodifier(render)).then((render) => postmodifier(render))
+      );
+    });
+    return Promise.all(renderPromises).then((rendered) => {
+      this._emit("render.rendered", this, rendered);
+      return rendered;
     });
   }
 
@@ -79,69 +86,68 @@ export default class {
     return new Promise((resolve) => {
       if (!this._renderReady) {
         resolve(render);
-        return;
-      }
+      } else {
+        let renderConfig = {
+          data: render.data,
+          by_id: render.by_id,
+          by_name: render.by_name,
+          i18n: this._i18nTranslate(render.i18n),
+        };
 
-      let renderConfig = {
-        data: render.data,
-        by_id: render.by_id,
-        by_name: render.by_name,
-        i18n: this._i18nTranslate(render.i18n),
-      };
+        render.html = Mustache.render(render.template, renderConfig);
 
-      render.html = Mustache.render(render.template, renderConfig);
+        if (!render.root.element && render.root.elementId) {
+          render.root.element = document.getElementById(render.root.elementId);
+        }
 
-      if (!render.root.element && render.root.elementId) {
-        render.root.element = document.getElementById(render.root.elementId);
-      }
+        if (render.root.element && render.enabled) {
+          render.root.element.innerHTML = render.html;
+        }
 
-      if (render.root.element && render.enabled) {
-        render.root.element.innerHTML = render.html;
-      }
+        if (render.by_id) {
+          Object.keys(render.by_id).forEach((index) => {
+            let by_id = render.by_id[index];
 
-      if (render.by_id) {
-        Object.keys(render.by_id).forEach((index) => {
-          let by_id = render.by_id[index];
+            if (by_id.elementId) {
+              by_id.element = document.getElementById(by_id.elementId);
+            }
 
-          if (by_id.elementId) {
-            by_id.element = document.getElementById(by_id.elementId);
-          }
-
-          if (by_id.element && by_id.events) {
-            Object.keys(by_id.events).forEach((event) => {
-              by_id.element[event] = (...data) => {
-                data.push(render);
-                by_id.events[event].apply(this, data);
-              };
-            });
-          }
-        });
-      }
-
-      if (render.by_name) {
-        Object.keys(render.by_name).forEach((index) => {
-          let by_name = render.by_name[index];
-
-          if (by_name.elementName) {
-            by_name.elements = document.getElementsByName(by_name.elementName);
-          }
-
-          if (by_name.elements && by_name.events) {
-            by_name.elements.forEach((element) => {
-              Object.keys(by_name.events).forEach((event) => {
-                element[event] = (...data) => {
+            if (by_id.element && by_id.events) {
+              Object.keys(by_id.events).forEach((event) => {
+                by_id.element[event] = (...data) => {
                   data.push(render);
-                  by_name.events[event].apply(this, data);
+                  by_id.events[event].apply(this, data);
                 };
               });
-            });
-          }
-        });
+            }
+          });
+        }
+
+        if (render.by_name) {
+          Object.keys(render.by_name).forEach((index) => {
+            let by_name = render.by_name[index];
+
+            if (by_name.elementName) {
+              by_name.elements = document.getElementsByName(
+                by_name.elementName
+              );
+            }
+
+            if (by_name.elements && by_name.events) {
+              by_name.elements.forEach((element) => {
+                Object.keys(by_name.events).forEach((event) => {
+                  element[event] = (...data) => {
+                    data.push(render);
+                    by_name.events[event].apply(this, data);
+                  };
+                });
+              });
+            }
+          });
+        }
+
+        resolve(render);
       }
-
-      //this._emit("render.rendered", this, render);
-
-      resolve(render);
     });
   }
 
