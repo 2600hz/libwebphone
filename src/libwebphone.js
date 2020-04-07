@@ -9,6 +9,7 @@ import lwpCallControl from "./lwpCallControl";
 import lwpDialpad from "./lwpDialpad";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpVideoCanvas from "./lwpVideoCanvas";
+import lwpAudioMixer from "./lwpAudioMixer";
 
 export default class extends EventEmitter {
   constructor(config = {}) {
@@ -17,12 +18,15 @@ export default class extends EventEmitter {
 
     this._initInternationalization(config.i18n);
 
-    this._userAgent = new lwpUserAgent(this, config.userAgent);
-    this._callList = new lwpCallList(this, config.callList);
-    this._callControl = new lwpCallControl(this, config.callControl);
-    this._dialpad = new lwpDialpad(this, config.dialpad);
-    this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices);
-    //this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas);
+    this._userAgent = new lwpUserAgent(this, config.userAgent || {});
+    this._callList = new lwpCallList(this, config.callList || {});
+    this._callControl = new lwpCallControl(this, config.callControl || {});
+    this._dialpad = new lwpDialpad(this, config.dialpad || {});
+    //this._mediaPreviews = new lwpMediaPreviews(this, config.mediaPreviews || {});
+    this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices || {});
+    //this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas || {});
+    //this._audioMixer = new lwpAudioMixer(this, config.audioMixer || {});
+
     this._libwebphone._emit("created", this._libwebphone);
   } //end of constructor
 
@@ -48,6 +52,14 @@ export default class extends EventEmitter {
 
   getVideoCanvas() {
     return this._videoCanvas;
+  }
+
+  getAudioMixer() {
+    return this._audioMixer;
+  }
+
+  getMediaPreviews() {
+    return this._mediaPreviews;
   }
 
   geti18n() {

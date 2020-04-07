@@ -101,8 +101,7 @@ export default class extends lwpRenderer {
       });
       this._userAgent.on("newRTCSession", (...event) => {
         let session = event[0].session;
-        let call = new lwpCall(this._libwebphone, session);
-        this._libwebphone.getCallList().addCall(call);
+        new lwpCall(this._libwebphone, session);
       });
       this._userAgent.on("newMessage", (...event) => {
         this._emit("recieved.message", this, ...event);
@@ -120,7 +119,7 @@ export default class extends lwpRenderer {
 
   stop() {
     if (this.isStarted()) {
-      this._userAgent.terminateSessions();
+      this.hangupAll();
       this._userAgent.stop();
       this._userAgent = null;
       this._emit("stopped", this);
@@ -198,51 +197,63 @@ export default class extends lwpRenderer {
   }
 
   redial() {
-    let redialNumber = this.getRedial();
+    let redialTarget = this.getRedial();
 
-    this._emit("redial.started", this, redialNumber);
+    this._emit("redial.started", this, redialTarget);
 
-    return this.call(redialNumber);
+    return this.call(redialTarget);
   }
 
   getRedial() {
-    return this._redialNumber;
+    return this._redialTarget;
   }
 
-  setRedial(number) {
-    if (this._redialNumber == number) {
+  setRedial(target) {
+    if (this._redialTarget == target) {
       return;
     }
 
-    this._redialNumber = number;
+    this._redialTarget = target;
 
-    this._emit("redial.update", this, this._redialNumber);
+    this._emit("redial.update", this, this._redialTarget);
   }
 
-  call(numbertocall = null) {
-    this.setRedial(numbertocall);
-
+  call(target = null) {
+    let options = {};
     let mediaDevices = this._libwebphone.getMediaDevices();
-    mediaDevices
-      .startStreams()
-      .then((streams) => {
-        let options = {
-          mediaStream: streams,
-        };
+    let callList = this._libwebphone.getCallList();
 
-        try {
-          if (!this.isReady()) {
-            throw new Error("Webphone client not ready yet!");
-          }
-          this._userAgent.call(numbertocall, options);
-          this._emit("call.started", this, numbertocall);
-        } catch (error) {
+    if (!target) {
+      target = this.getRedial();
+    } else {
+      this.setRedial(target);
+    }
+
+    if (!callList) {
+      this.hangupAll();
+    }
+
+    if (mediaDevices) {
+      mediaDevices
+        .startStreams()
+        .then((streams) => {
+          options = merge(options, {
+            mediaStream: streams,
+          });
+          this._call(target, options);
+        })
+        .catch((error) => {
           this._emit("call.failed", this, error);
-        }
-      })
-      .catch((error) => {
-        this._emit("call.failed", this, error);
-      });
+        });
+    } else {
+      this._call(target, options);
+    }
+  }
+
+  hangupAll() {
+    if (this.isStarted()) {
+      this._userAgent.terminateSessions();
+    }
   }
 
   isReady() {
@@ -517,4 +528,18 @@ export default class extends lwpRenderer {
   }
 
   /** Helper functions */
+
+  _call(target, options) {
+    try {
+      if (!this.isReady()) {
+        throw new Error("Webphone client not ready yet!");
+      }
+
+      this._userAgent.call(target, options);
+
+      this._emit("call.started", this, target);
+    } catch (error) {
+      this._emit("call.failed", this, error);
+    }
+  }
 }

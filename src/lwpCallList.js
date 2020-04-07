@@ -22,7 +22,7 @@ export default class extends lwpRenderer {
   }
 
   getCall(callId = null) {
-    return this._calls.find(call => {
+    return this._calls.find((call) => {
       if (callId) {
         return call.getId() == callId;
       } else {
@@ -34,7 +34,7 @@ export default class extends lwpRenderer {
   addCall(newCall) {
     let previousCall = this.getCall();
 
-    this._calls.map(call => {
+    this._calls.map((call) => {
       if (call.isPrimary) {
         call._clearPrimary();
       }
@@ -57,7 +57,7 @@ export default class extends lwpRenderer {
     let previousCall = this.getCall();
     let primaryCall = this.getCall(callid);
 
-    this._calls.map(call => {
+    this._calls.map((call) => {
       if (call.isPrimary) {
         call._clearPrimary();
       }
@@ -71,20 +71,24 @@ export default class extends lwpRenderer {
 
     if (primaryCall) {
       primaryCall._setPrimary();
-      this._emit("calls.switched", this, primaryCall, previousCall);
+      if (primaryCall.hasSession()) {
+        this._emit("calls.switched", this, primaryCall, previousCall);
+      } else {
+        this._emit("calls.switched", this, null, previousCall);
+      }
     }
   }
 
   removeCall(terminatedCall) {
     let terminatedId = terminatedCall.getId();
 
-    this._calls = this._calls.filter(call => {
+    this._calls = this._calls.filter((call) => {
       return call.getId() != terminatedId;
     });
     this._emit("calls.removed", this, terminatedCall);
 
     if (terminatedCall.isPrimary()) {
-      let withSession = this._calls.find(call => {
+      let withSession = this._calls.find((call) => {
         return call.hasSession();
       });
 
@@ -92,7 +96,6 @@ export default class extends lwpRenderer {
         withSession._setPrimary(false);
         this._emit("calls.switched", this, withSession, terminatedCall);
       } else {
-        this._libwebphone.getMediaDevices().stopStreams();
         if (this._calls.length > 0) {
           this._calls[0]._setPrimary();
           this._emit("calls.switched", this, null, terminatedCall);
@@ -104,7 +107,7 @@ export default class extends lwpRenderer {
   }
 
   updateRenders() {
-    this.render(render => {
+    this.render((render) => {
       render.data = this._renderData(render.data);
       return render;
     });
@@ -115,8 +118,8 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     let defaults = {
       en: {
-        new: "New Call"
-      }
+        new: "New Call",
+      },
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
     this._libwebphone.i18nAddResourceBundles("callList", resourceBundles);
@@ -124,7 +127,7 @@ export default class extends lwpRenderer {
 
   _initProperties(config) {
     let defaults = {
-      renderTargets: []
+      renderTargets: [],
     };
     this._config = merge(defaults, config);
 
@@ -134,6 +137,13 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
+    this._libwebphone.on("call.created", (lwp, call) => {
+      this.addCall(call);
+    });
+    this._libwebphone.on("call.terminated", (lwp, call) => {
+      this.removeCall(call);
+    });
+
     this._libwebphone.on("callList.calls.switched", () => {
       this.updateRenders();
     });
@@ -182,7 +192,7 @@ export default class extends lwpRenderer {
   }
 
   _initRenderTargets() {
-    this._config.renderTargets.map(renderTarget => {
+    this._config.renderTargets.map((renderTarget) => {
       return this.renderAddTarget(renderTarget);
     });
   }
@@ -193,20 +203,20 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        new: "libwebphone:callList.new"
+        new: "libwebphone:callList.new",
       },
       data: merge(this._renderData(), this._config),
       by_name: {
         calls: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               let callid = element.value;
               this.switchCall(callid);
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     };
   }
 
@@ -256,7 +266,7 @@ export default class extends lwpRenderer {
   }
 
   _renderData(data = {}) {
-    data.calls = this.getCalls().map(call => {
+    data.calls = this.getCalls().map((call) => {
       return call.summary();
     });
 

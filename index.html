@@ -366,11 +366,6 @@
           videoinput: {
             startMuted: false,
           },
-          audioinput: {
-            preferedDeviceIds: [
-              "dfc8e6eb62fa04a069c4ae294119bdb60eebc352e9978661585e440d6baa5d62",
-            ],
-          },
           renderTargets: [
             "media_device_preview",
             {
@@ -378,17 +373,8 @@
                 elementId: "media_device_selector",
               },
               data: {
-                audiomixer: {
-                  master: { show: false },
-                  ringer: { show: false },
-                  dtmf: { show: false },
-                  remote: { show: false },
-                  talkback: { show: false },
-                  microphone: { show: false },
-                },
-                audiooutput: { livePreview: false },
-                audioinput: { livePreview: false },
-                videoinput: { livePreview: false },
+                audiooutput: { show: false },
+                audioinput: { show: false },
               },
             },
           ],
@@ -422,9 +408,8 @@
 
       var webphone = new libwebphone(config);
       webphone.on("userAgent.recieved.notify", (lwp, userAgent, data) => {
-        let eventName = data.event.event;
         let request = data.request;
-        alert(eventName + "\n" + request.body);
+        console.log(request.body);
       });
       webphone.on(
         "mediaDevices.getUserMedia.error",
@@ -697,7 +682,9 @@
                 },
               },
             };
-            webphone.getMediaDevices().renderAddTarget(customConfig);
+            if (webphone.getMediaDevices()) {
+              webphone.getMediaDevices().renderAddTarget(customConfig);
+            }
           </script>
         </div>
       </div>
@@ -786,27 +773,30 @@
           <script type="text/javascript">
             let callback = () => {
               let color = "#093";
-              switch (webphone.getDialpad().getAutoAction()) {
-                case "answer":
-                  document.getElementById("dialpad_action").innerHTML =
-                    "Answer";
-                  break;
-                case "redial":
-                  document.getElementById("dialpad_action").innerHTML =
-                    "Redial";
-                  break;
-                case "call":
-                  document.getElementById("dialpad_action").innerHTML = "Call";
-                  break;
-                case "transfer":
-                  document.getElementById("dialpad_action").innerHTML =
-                    "Transfer";
-                  color = "#0000ffba";
-                  break;
-                case "terminate":
-                  document.getElementById("dialpad_action").innerHTML = "End";
-                  color = "#ff0000ba";
-                  break;
+              if (webphone.getDialpad()) {
+                switch (webphone.getDialpad().getAutoAction()) {
+                  case "answer":
+                    document.getElementById("dialpad_action").innerHTML =
+                      "Answer";
+                    break;
+                  case "redial":
+                    document.getElementById("dialpad_action").innerHTML =
+                      "Redial";
+                    break;
+                  case "call":
+                    document.getElementById("dialpad_action").innerHTML =
+                      "Call";
+                    break;
+                  case "transfer":
+                    document.getElementById("dialpad_action").innerHTML =
+                      "Transfer";
+                    color = "#0000ffba";
+                    break;
+                  case "terminate":
+                    document.getElementById("dialpad_action").innerHTML = "End";
+                    color = "#ff0000ba";
+                    break;
+                }
               }
 
               let elements = document.getElementsByClassName("pad-action");

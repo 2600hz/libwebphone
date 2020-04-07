@@ -9,6 +9,12 @@ export default class {
     this._session = session;
     this._initProperties();
     this._initEventBindings();
+
+    let callList = this._libwebphone.getCallList();
+    if (!callList) {
+      this._setPrimary();
+    }
+
     this._emit("created", this);
   }
 
@@ -22,6 +28,7 @@ export default class {
 
   hasPeerConnection() {
     let session = this._getSession();
+
     return session && session.connection;
   }
 
@@ -41,30 +48,6 @@ export default class {
 
   getRemoteVideo() {
     return this._remoteVideo;
-  }
-
-  updateLocalVideoTrack(newTrack = null) {
-    let peerConnection = this.getPeerConnection();
-    if (!peerConnection) {
-      return;
-    }
-
-    let senders = peerConnection.getSenders();
-    let sender = senders.find((sender) => {
-      let track = sender.track;
-      if (track) {
-        return track.kind == "video";
-      }
-    });
-
-    if (sender) {
-      if (newTrack && newTrack.track) {
-        sender.replaceTrack(newTrack.track).then(() => {
-          this.renegotiate();
-          this._updateStreams();
-        });
-      }
-    }
   }
 
   getLocalAudio() {
@@ -97,6 +80,10 @@ export default class {
     }
 
     return false;
+  }
+
+  isRinging() {
+    return this.getDirection() == "terminating" && !this.isEstablished();
   }
 
   isInTransfer() {
@@ -138,22 +125,14 @@ export default class {
   }
 
   cancel() {
-    let callList = this._libwebphone.getCallList();
     if (this.hasSession()) {
       this._getSession().terminate();
-      if (callList) {
-        callList.removeCall(this);
-      }
     }
   }
 
   hangup() {
-    let callList = this._libwebphone.getCallList();
     if (this.hasSession()) {
       this._getSession().terminate();
-      if (callList) {
-        callList.removeCall(this);
-      }
     }
   }
 
@@ -165,6 +144,7 @@ export default class {
 
   isOnHold(details = false) {
     let status = { local: false, remote: false };
+
     if (this.hasSession()) {
       status = this._getSession().isOnHold();
     }
@@ -179,6 +159,7 @@ export default class {
   unhold() {
     if (this.hasSession()) {
       this._getSession().unhold();
+      this._updateStreams();
     }
   }
 
@@ -200,8 +181,6 @@ export default class {
       status = this._getSession().isMuted();
     }
 
-    /** TODO: include the local mute status from lwpMediaDevices? */
-
     if (details) {
       return status;
     } else {
@@ -209,29 +188,28 @@ export default class {
     }
   }
 
-  transfer(numbertotransfer = null, autoHold = true) {
+  transfer(target = null, autoHold = true) {
     if (this.hasSession()) {
-      let dialpad = this._libwebphone.getDialpad();
+      if (this.isInTransfer() || target) {
+        let dialpad = this._libwebphone.getDialpad();
 
-      if (this.isInTransfer() || numbertotransfer) {
         this._inTransfer = false;
 
-        if (!numbertotransfer && dialpad) {
-          numbertotransfer = dialpad.getDigits().join("");
-          dialpad.clear();
+        if (!target && dialpad) {
+          target = dialpad.getTarget(true);
         }
 
-        if (numbertotransfer) {
-          this._getSession().refer(numbertotransfer);
-          this._emit("transfer.started", this, numbertotransfer);
+        if (target) {
+          this._getSession().refer(target);
+          this._emit("transfer.started", this, target);
         } else {
           if (autoHold) {
             this.unhold();
           }
 
-          this._emit("transfer.failed", this, numbertotransfer);
+          this._emit("transfer.failed", this, target);
         }
-        this._emit("transfer.complete", this, numbertotransfer);
+        this._emit("transfer.complete", this, target);
       } else {
         this._inTransfer = true;
 
@@ -239,36 +217,34 @@ export default class {
           this.hold();
         }
 
-        if (dialpad) {
-          dialpad.clear();
-        }
-
-        this._emit("transfer.collecting", this, numbertotransfer);
+        this._emit("transfer.collecting", this, target);
       }
     }
   }
 
   answer() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
-    if (this.hasSession() && mediaDevices) {
-      mediaDevices.startStreams().then((streams) => {
-        let options = {
-          mediaStream: streams,
-        };
+    if (this.hasSession()) {
+      let mediaDevices = this._libwebphone.getMediaDevices();
 
-        this._getSession().answer(options);
+      if (mediaDevices) {
+        mediaDevices.startStreams().then((streams) => {
+          let options = {
+            mediaStream: streams,
+          };
+
+          this._getSession().answer(options);
+          this._emit("answered", this);
+        });
+      } else {
+        this._getSession().answer({});
         this._emit("answered", this);
-      });
+      }
     }
   }
 
   reject() {
-    let callList = this._libwebphone.getCallList();
     if (this.hasSession()) {
       this._getSession().terminate();
-      if (callList) {
-        callList.removeCall(this);
-      }
       this._emit("rejected", this);
     }
   }
@@ -287,8 +263,41 @@ export default class {
     }
   }
 
-  isRinging() {
-    return this.getDirection() == "terminating" && !this.isEstablished();
+  replaceSenderTrack(newTrack) {
+    let peerConnection = this.getPeerConnection();
+    if (!peerConnection) {
+      return;
+    }
+
+    if (
+      peerConnection.signalingState == "closed" ||
+      peerConnection.connectionState == "closed"
+    ) {
+      return;
+    }
+
+    let senders = peerConnection.getSenders();
+    let sender = senders.find((sender) => {
+      let track = sender.track;
+      if (track) {
+        return track.kind == newTrack.kind;
+      }
+    });
+
+    if (sender) {
+      sender.replaceTrack(newTrack).then(() => {
+        if (!this.isOnHold()) {
+          this.renegotiate();
+          this._updateStreams();
+        }
+      });
+    } else {
+      peerConnection.addTrack(newTrack);
+      if (!this.isOnHold()) {
+        this.renegotiate();
+        this._updateStreams();
+      }
+    }
   }
 
   summary() {
@@ -352,9 +361,9 @@ export default class {
     });
 
     if (this.isRinging()) {
-      let mediaDevices = this._libwebphone.getMediaDevices();
-      if (mediaDevices) {
-        mediaDevices.startRinging(this);
+      let audioMixer = this._libwebphone.getAudioMixer();
+      if (audioMixer) {
+        audioMixer.startRinging(this);
       }
     }
   }
@@ -363,9 +372,19 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.video.input.changed",
       (lwp, mediaDevices, newTrack, previousTrack) => {
-        if (this.isPrimary()) {
-          this.updateLocalVideoTrack(newTrack);
-        }
+        this.replaceSenderTrack(newTrack.track);
+      }
+    );
+    this._libwebphone.on(
+      "mediaDevices.audio.input.changed",
+      (lwp, mediaDevices, newTrack, previousTrack) => {
+        this.replaceSenderTrack(newTrack.track);
+      }
+    );
+    this._libwebphone.on(
+      "mediaDevices.audio.output.changed",
+      (lwp, mediaDevices, preferedDevice) => {
+        this._streams.remote.elements.audio.setSinkId(preferedDevice.id);
       }
     );
     if (this.hasPeerConnection()) {
@@ -385,9 +404,9 @@ export default class {
         this._emit("progress", this, ...event);
       });
       this._getSession().on("confirmed", (...event) => {
-        let mediaDevices = this._libwebphone.getMediaDevices();
-        if (mediaDevices) {
-          mediaDevices.stopRinging(this);
+        let audioMixer = this._libwebphone.getAudioMixer();
+        if (audioMixer) {
+          audioMixer.stopRinging(this);
         }
         this._emit("established", this, ...event);
       });
@@ -434,16 +453,15 @@ export default class {
 
   /** Helper functions */
   _destroyCall() {
-    let callList = this._libwebphone.getCallList();
-    if (callList) {
-      callList.removeCall(this);
-    }
+    this._emit("terminated", this);
 
     if (this.isPrimary()) {
       this._disconnectStreams();
     }
 
     this._destroyStreams();
+
+    this._session = null;
   }
 
   _getSession() {
@@ -474,12 +492,9 @@ export default class {
     this._disconnectStreams();
 
     if (this.isInTransfer()) {
-      let dialpad = this._libwebphone.getDialpad();
-      if (dialpad) {
-        dialpad.clear();
-      }
       this._inTransfer = false;
-      this._emit("transfer.failed", this, numbertotransfer);
+
+      this._emit("transfer.failed", this);
     }
 
     if (pause && this.isEstablished() && !this.isOnHold()) {
@@ -499,12 +514,16 @@ export default class {
         switch (type) {
           case "remote":
             peerConnection.getReceivers().forEach((peer) => {
-              peerTracks.push(peer.track);
+              if (peer.track) {
+                peerTracks.push(peer.track);
+              }
             });
             break;
           case "local":
             peerConnection.getSenders().forEach((peer) => {
-              peerTracks.push(peer.track);
+              if (peer.track) {
+                peerTracks.push(peer.track);
+              }
             });
             break;
         }
@@ -568,7 +587,7 @@ export default class {
   }
 
   _connectStreams() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
+    let audioMixer = this._libwebphone.getAudioMixer();
     let videoCanvas = this._libwebphone.getVideoCanvas();
 
     Object.keys(this._streams).forEach((type) => {
@@ -581,18 +600,18 @@ export default class {
       });
     });
 
-    if (mediaDevices && this._streams.remote.kinds.audio) {
-      this._streams.remote.sourceStream = mediaDevices._createMediaStreamSource(
+    if (audioMixer) {
+      this._streams.remote.sourceStream = audioMixer._createMediaStreamSource(
         this._streams.remote.mediaStream
       );
-      mediaDevices._setRemoteAudioSourceStream(
-        this._streams.remote.sourceStream
-      );
+      audioMixer._setRemoteAudioSourceStream(this._streams.remote.sourceStream);
+    } else {
+      this._streams.remote.elements.audio.muted = false;
     }
   }
 
   _disconnectStreams() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
+    let audioMixer = this._libwebphone.getAudioMixer();
     let videoCanvas = this._libwebphone.getVideoCanvas();
 
     Object.keys(this._streams).forEach((type) => {
@@ -605,8 +624,14 @@ export default class {
       });
     });
 
-    if (mediaDevices) {
-      mediaDevices._setRemoteAudioSourceStream();
+    if (!audioMixer) {
+      this._streams.remote.elements.audio.muted = true;
+    }
+
+    if (audioMixer) {
+      audioMixer._setRemoteAudioSourceStream();
+    } else {
+      this._streams.remote.elements.audio.muted = true;
     }
 
     if (videoCanvas) {
@@ -616,7 +641,7 @@ export default class {
   }
 
   _destroyStreams() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
+    let audioMixer = this._libwebphone.getAudioMixer();
     /** TODO: should we destroy localMediaStream? */
     let remoteStream = this._streams.remote.mediaStream;
     if (remoteStream) {
@@ -625,8 +650,8 @@ export default class {
       });
     }
 
-    if (mediaDevices) {
-      mediaDevices.stopRinging(this);
+    if (audioMixer) {
+      audioMixer.stopRinging(this);
     }
   }
 }

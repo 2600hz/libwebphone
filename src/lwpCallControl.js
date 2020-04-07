@@ -17,68 +17,85 @@ export default class extends lwpRenderer {
   }
 
   redial() {
-    this._libwebphone.getUserAgent().redial();
+    let userAgent = this._libwebphone.getUserAgent();
+    if (userAgent) {
+      userAgent.redial();
+    }
   }
 
   cancel() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.cancel();
     }
   }
 
   hangup() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.hangup();
     }
   }
 
   hold() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.hold();
     }
   }
 
   unhold() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.unhold();
     }
   }
 
   mute() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.mute();
     }
   }
 
   unmute() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.unmute();
     }
   }
 
   transfer() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.transfer();
     }
   }
 
   answer() {
-    let currentCall = this._currentCall();
+    let currentCall = this._getCall();
     if (currentCall) {
       currentCall.answer();
     }
   }
 
-  updateRenders() {
-    this.render(render => {
-      render.data = this._renderData(render.data);
+  updateRenders(call = null) {
+    if (!call) {
+      let callList = this._libwebphone.getCallList();
+
+      if (callList) {
+        call = callList.getCall();
+      }
+    }
+
+    this._call = call;
+
+    if (call) {
+      call = call.summary();
+    }
+
+    this.render((render) => {
+      render.data = this._renderData(render.data, call);
       return render;
     });
   }
@@ -98,8 +115,8 @@ export default class extends lwpRenderer {
         unmute: "Unmute",
         transferblind: "Blind Transfer",
         transferattended: "Attended Transfer",
-        transfercomplete: "Transfer (complete)"
-      }
+        transfercomplete: "Transfer (complete)",
+      },
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
     this._libwebphone.i18nAddResourceBundles("callControl", resourceBundles);
@@ -107,40 +124,44 @@ export default class extends lwpRenderer {
 
   _initProperties(config) {
     let defaults = {
-      renderTargets: []
+      renderTargets: [],
     };
     this._config = merge(defaults, config);
   }
 
   _initEventBindings() {
-    this._libwebphone.on("call.primary.promoted", () => {
-      this.updateRenders();
+    this._libwebphone.on("call.primary.promoted", (lwp, call) => {
+      this.updateRenders(call);
     });
 
-    this._libwebphone.on("call.primary.progress", () => {
-      this.updateRenders();
+    this._libwebphone.on("call.primary.progress", (lwp, call) => {
+      this.updateRenders(call);
     });
-    this._libwebphone.on("call.primary.established", () => {
-      this.updateRenders();
-    });
-
-    this._libwebphone.on("call.primary.hold", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("call.primary.unhold", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("call.primary.muted", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("call.primary.unmuted", () => {
-      this.updateRenders();
+    this._libwebphone.on("call.primary.established", (lwp, call) => {
+      this.updateRenders(call);
     });
 
-    this._libwebphone.on("call.primary.transfer.collecting", () => {
-      this.updateRenders();
+    this._libwebphone.on("call.primary.hold", (lwp, call) => {
+      this.updateRenders(call);
     });
-    this._libwebphone.on("call.primary.transfer.completed", () => {
+    this._libwebphone.on("call.primary.unhold", (lwp, call) => {
+      this.updateRenders(call);
+    });
+    this._libwebphone.on("call.primary.muted", (lwp, call) => {
+      this.updateRenders(call);
+    });
+    this._libwebphone.on("call.primary.unmuted", (lwp, call) => {
+      this.updateRenders(call);
+    });
+
+    this._libwebphone.on("call.primary.transfer.collecting", (lwp, call) => {
+      this.updateRenders(call);
+    });
+    this._libwebphone.on("call.primary.transfer.completed", (lwp, call) => {
+      this.updateRenders(call);
+    });
+
+    this._libwebphone.on("call.primary.terminated", () => {
       this.updateRenders();
     });
 
@@ -150,7 +171,7 @@ export default class extends lwpRenderer {
   }
 
   _initRenderTargets() {
-    this._config.renderTargets.map(renderTarget => {
+    this._config.renderTargets.map((renderTarget) => {
       return this.renderAddTarget(renderTarget);
     });
   }
@@ -171,90 +192,90 @@ export default class extends lwpRenderer {
         unmute: "libwebphone:callControl.unmute",
         transfercomplete: "libwebphone:callControl.transfercomplete",
         transferblind: "libwebphone:callControl.transferblind",
-        transferattended: "libwebphone:callControl.transferattended"
+        transferattended: "libwebphone:callControl.transferattended",
       },
       data: merge(this._renderData(), this._config),
       by_id: {
         redial: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.redial();
-            }
-          }
+            },
+          },
         },
         cancel: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.cancel();
-            }
-          }
+            },
+          },
         },
         hangup: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.hangup();
-            }
-          }
+            },
+          },
         },
         hold: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.hold();
-            }
-          }
+            },
+          },
         },
         unhold: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.unhold();
-            }
-          }
+            },
+          },
         },
         mute: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.mute();
-            }
-          }
+            },
+          },
         },
         unmute: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.unmute();
-            }
-          }
+            },
+          },
         },
         transfer: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               this.transfer();
-            }
-          }
+            },
+          },
         },
         answer: {
           events: {
-            onclick: event => {
+            onclick: (event) => {
               let element = event.srcElement;
               element.disabled = true;
               this.answer();
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     };
   }
 
@@ -328,26 +349,23 @@ export default class extends lwpRenderer {
     `;
   }
 
-  _renderData(data = {}) {
-    let currentCall = this._currentCall();
+  _renderData(data = {}, callSummary = null) {
     let userAgent = this._libwebphone.getUserAgent();
-
-    if (currentCall) {
-      data.call = currentCall.summary();
-    } else {
-      data.call = null;
-    }
 
     if (userAgent) {
       data.redial = userAgent.getRedial();
+    } else {
+      data.redial = null;
     }
+
+    data.call = callSummary;
 
     return data;
   }
 
   /** Helper functions */
 
-  _currentCall() {
-    return this._libwebphone.getCallList().getCall();
+  _getCall() {
+    return this._call;
   }
 }
