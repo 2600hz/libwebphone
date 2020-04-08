@@ -2,7 +2,6 @@
 
 import { merge } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
-import AudioStreamMeter from "audio-stream-meter";
 import { Mutex } from "async-mutex";
 import adapter from "webrtc-adapter";
 
@@ -24,7 +23,6 @@ export default class extends lwpRenderer {
   startStreams() {
     let mediaPreviews = this._libwebphone.getMediaPreviews();
     if (mediaPreviews) {
-      // NOTE:: technically we only need to do this for firefox...
       mediaPreviews.stopPreviews();
     }
 
@@ -888,37 +886,6 @@ export default class extends lwpRenderer {
         return "audioinput";
       case "video":
         return "videoinput";
-    }
-  }
-
-  /**  TODO: update the element srcObject */
-  _createMediaStreamSource(mediaStream) {
-    let track = mediaStream.getTracks().find((track) => {
-      return track.kind == "audio";
-    });
-    if (track) {
-      return this._audioContext.createMediaStreamSource(mediaStream);
-    }
-  }
-
-  _createMediaElementSource(mediaElement) {
-    return this._audioContext.createMediaElementSource(mediaElement);
-  }
-
-  _setRemoteAudioSourceStream(sourceStream = null) {
-    let previousSourceStream = this._remoteAudio.sourceStream;
-
-    if (previousSourceStream) {
-      previousSourceStream.disconnect();
-      this._remoteAudio.sourceStream = null;
-      this._emit("remote.audio.removed", this, previousSourceStream);
-    }
-
-    if (sourceStream) {
-      this._remoteAudio.sourceStream = sourceStream;
-      this._remoteAudio.sourceStream.connect(this._remoteAudio.remoteGainNode);
-
-      this._emit("remote.audio.added", this, sourceStream);
     }
   }
 

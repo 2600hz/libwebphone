@@ -70,12 +70,12 @@ export default class {
   }
 
   render(premodifier = (render) => render, postmodifier = (render) => render) {
-    let renderPromises = [];
-    this._renders.forEach((render) => {
-      renderPromises.push(
-        this._render(premodifier(render)).then((render) => postmodifier(render))
+    let renderPromises = this._renders.map((render) => {
+      return this._render(premodifier(render)).then((render) =>
+        postmodifier(render)
       );
     });
+
     return Promise.all(renderPromises).then((rendered) => {
       this._emit("render.rendered", this, rendered);
       return rendered;
