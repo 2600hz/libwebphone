@@ -25,7 +25,7 @@ export default class extends EventEmitter {
     //this._mediaPreviews = new lwpMediaPreviews(this, config.mediaPreviews || {});
     this._mediaDevices = new lwpMediaDevices(this, config.mediaDevices || {});
     //this._videoCanvas = new lwpVideoCanvas(this, config.videoCanvas || {});
-    //this._audioMixer = new lwpAudioMixer(this, config.audioMixer || {});
+    this._audioMixer = new lwpAudioMixer(this, config.audioMixer || {});
 
     this._libwebphone._emit("created", this._libwebphone);
   } //end of constructor

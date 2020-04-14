@@ -24,7 +24,7 @@ export default class extends lwpRenderer {
     }
 
     if (tones) {
-      this._playTones(...tones);
+      this._playDTMF(...tones);
     }
 
     if (call && !call.isInTransfer()) {
@@ -593,7 +593,7 @@ export default class extends lwpRenderer {
     let call = this._getCall();
 
     if (tones) {
-      this._playTones(...tones);
+      this._playDTMF(...tones);
     }
 
     if (call && !call.isInTransfer()) {
@@ -613,11 +613,11 @@ export default class extends lwpRenderer {
     this._emit("digits.updated", this, this.getTarget(), event.data);
   }
 
-  _playTones(...tones) {
+  _playDTMF(...tones) {
     let audioMixer = this._libwebphone.getAudioMixer();
 
     if (audioMixer) {
-      audioMixer.playTones(...tones);
+      audioMixer.playDTMF(...tones);
     }
   }
 

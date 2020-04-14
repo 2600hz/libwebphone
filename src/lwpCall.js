@@ -604,7 +604,7 @@ export default class {
       this._streams.remote.sourceStream = audioMixer._createMediaStreamSource(
         this._streams.remote.mediaStream
       );
-      audioMixer._setRemoteAudioSourceStream(this._streams.remote.sourceStream);
+      audioMixer._setRemoteSourceStream(this._streams.remote.sourceStream);
     } else {
       this._streams.remote.elements.audio.muted = false;
     }
@@ -629,7 +629,7 @@ export default class {
     }
 
     if (audioMixer) {
-      audioMixer._setRemoteAudioSourceStream();
+      audioMixer._setRemoteSourceStream();
     } else {
       this._streams.remote.elements.audio.muted = true;
     }

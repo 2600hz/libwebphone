@@ -379,6 +379,9 @@
             },
           ],
         },
+        audioMixer: {
+          renderTargets: ["audio_mixer"],
+        },
         userAgent: {
           renderTargets: ["user_agent"],
           transport: {
@@ -687,6 +690,15 @@
             }
           </script>
         </div>
+      </div>
+
+      <!-- Audio Mixer -->
+      <div class="row" style="border: solid;">
+        <div class="col" style="border-right: dashed;">
+          <div id="audio_mixer"></div>
+        </div>
+        <div class="col" style="border-right: dashed;"></div>
+        <div class="col"></div>
       </div>
 
       <!-- Dialpad -->

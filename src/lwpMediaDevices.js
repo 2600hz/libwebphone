@@ -343,7 +343,6 @@ export default class extends lwpRenderer {
       this._libwebphone.on(
         "callList.calls.switched",
         (lwp, callList, newCall) => {
-          console.log("newCall: ", newCall);
           if (!newCall) {
             this.stopStreams();
           }
@@ -724,7 +723,7 @@ export default class extends lwpRenderer {
   _updateInputChain(mediaStream) {
     let audioMixer = this._libwebphone.getAudioMixer();
     if (audioMixer) {
-      audioMixer._updateInputChain(mediaStream);
+      audioMixer._setInputSourceStream(mediaStream);
     }
   }
 
