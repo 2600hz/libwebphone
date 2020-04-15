@@ -20,6 +20,13 @@ export default class extends lwpRenderer {
     return this;
   }
 
+  startOutputAudio() {
+    let element = this._config.audiooutput.mediaElement.element;
+    if (element.paused && element.srcObject) {
+      element.play();
+    }
+  }
+
   startStreams() {
     let mediaPreviews = this._libwebphone.getMediaPreviews();
     if (mediaPreviews) {
@@ -35,23 +42,23 @@ export default class extends lwpRenderer {
 
     return this._startInputStreams(null, startMuted).then((mediaStream) => {
       let audioMixer = this._libwebphone.getAudioMixer();
-      let newMediaStream = mediaStream;
+      let stream = mediaStream;
 
       this._inputActive = true;
 
       if (audioMixer) {
-        let stream = audiomixer._createMediaStreamDestination();
-        audiomixer.connectInputAudio(stream);
+        stream = audioMixer._getLocalMediaStream();
         mediaStream.getTracks().forEach((track) => {
           if (track.readyState == "live" && track.kind != "audio") {
-            stream.stream.addTrack(track);
+            stream.addTrack(track);
           }
         });
-        newMediaStream = stream.stream;
       }
 
-      this._emit("streams.started", this, newMediaStream);
-      return newMediaStream;
+      this.startOutputAudio();
+
+      this._emit("streams.started", this, stream);
+      return stream;
     });
   }
 
@@ -90,6 +97,18 @@ export default class extends lwpRenderer {
       default:
         return this._toggleMuteInput(deviceKind);
     }
+  }
+
+  getAudioOutputElement() {
+    return this._config.audiooutput.mediaElement.element;
+  }
+
+  getAudioInputElement() {
+    return this._config.audioinput.mediaElement.element;
+  }
+
+  getVideoInputElement() {
+    return this._config.videoinput.mediaElement.element;
   }
 
   async changeDevice(deviceKind, deviceId) {
@@ -236,6 +255,10 @@ export default class extends lwpRenderer {
         show: "sinkId" in HTMLMediaElement.prototype,
         startMuted: false,
         preferedDeviceIds: [],
+        mediaElement: {
+          elementId: null,
+          element: null,
+        },
       },
       audioinput: {
         enabled: true,
@@ -243,6 +266,10 @@ export default class extends lwpRenderer {
         startMuted: false,
         constraints: {},
         preferedDeviceIds: [],
+        mediaElement: {
+          elementId: null,
+          element: null,
+        },
       },
       videoinput: {
         enabled: true,
@@ -250,6 +277,10 @@ export default class extends lwpRenderer {
         startMuted: true,
         constraints: {},
         preferedDeviceIds: [],
+        mediaElement: {
+          elementId: null,
+          element: null,
+        },
       },
       renderTargets: [],
       detectDeviceChanges: true,
@@ -257,6 +288,53 @@ export default class extends lwpRenderer {
       startStreams: false,
     };
     this._config = merge(defaults, config);
+
+    if (
+      !this._config.audiooutput.mediaElement.element &&
+      this._config.audiooutput.mediaElement.elementId
+    ) {
+      this._config.audiooutput.mediaElement.element = document.getElementById(
+        this._config.audiooutput.mediaElement.elementId
+      );
+    }
+
+    if (!this._config.audiooutput.mediaElement.element) {
+      this._config.audiooutput.mediaElement.element = document.createElement(
+        "audio"
+      );
+    }
+
+    if (
+      !this._config.audioinput.mediaElement.element &&
+      this._config.audioinput.mediaElement.elementId
+    ) {
+      this._config.audioinput.mediaElement.element = document.getElementById(
+        this._config.audioinput.mediaElement.elementId
+      );
+    }
+
+    if (!this._config.audioinput.mediaElement.element) {
+      this._config.audioinput.mediaElement.element = document.createElement(
+        "audio"
+      );
+    }
+
+    if (
+      !this._config.videoinput.mediaElement.element &&
+      this._config.videoinput.mediaElement.elementId
+    ) {
+      this._config.videoinput.mediaElement.element = document.getElementById(
+        this._config.videoinput.mediaElement.elementId
+      );
+    }
+
+    if (!this._config.videoinput.mediaElement.element) {
+      this._config.videoinput.mediaElement.element = document.createElement(
+        "video"
+      );
+    }
+
+    this._config.videoinput.mediaElement.element.muted = true;
 
     // NOTE: it makes more sense if configured with highest priority to
     //   lowest, but we use the index number to represent that so flip it
@@ -279,6 +357,11 @@ export default class extends lwpRenderer {
       ],
     };
 
+    this._elements = {
+      audio: document.createElement("audio"),
+      video: document.createElement("video"),
+    };
+
     this._loaded = false;
     this._changeStreamMutex = new Mutex();
   }
@@ -291,7 +374,7 @@ export default class extends lwpRenderer {
 
     this._mediaStreamPromise = this._shimGetUserMedia(constraints)
       .then((mediaStream) => {
-        this._updateInputChain(mediaStream);
+        this._updateMediaElements(mediaStream);
         return mediaStream;
       })
       .catch((error) => {
@@ -353,6 +436,10 @@ export default class extends lwpRenderer {
         this.stopStreams();
       });
     }
+
+    this._libwebphone.on("audioMixer.audio.context.started", () => {
+      this.startOutputAudio();
+    });
 
     if (this._config.detectDeviceChanges) {
       navigator.mediaDevices.ondevicechange = (event) => {
@@ -522,20 +609,22 @@ export default class extends lwpRenderer {
 
   /** Helper functions */
 
-  _changeOutputDevice(preferedDevice) {
-    this._availableDevices[preferedDevice.deviceKind].forEach(
-      (availableDevice) => {
-        if (availableDevice.id == preferedDevice.id) {
-          availableDevice.active = true;
-        } else {
-          availableDevice.active = false;
-        }
-      }
-    );
+  async _changeOutputDevice(preferedDevice) {
+    return this._config.audiooutput.mediaElement.element
+      .setSinkId(preferedDevice.id)
+      .then(() => {
+        this._availableDevices[preferedDevice.deviceKind].forEach(
+          (availableDevice) => {
+            if (availableDevice.id == preferedDevice.id) {
+              availableDevice.active = true;
+            } else {
+              availableDevice.active = false;
+            }
+          }
+        );
 
-    this._emit("audio.output.changed", this, preferedDevice);
-
-    return Promise.resolve();
+        this._emit("audio.output.changed", this, preferedDevice);
+      });
   }
 
   _muteInput(deviceKind = null) {
@@ -711,7 +800,7 @@ export default class extends lwpRenderer {
           return mediaStream;
         })
         .then((mediaStream) => {
-          this._updateInputChain(mediaStream);
+          this._updateMediaElements(mediaStream);
           return mediaStream;
         })
         .catch((error) => {
@@ -720,10 +809,51 @@ export default class extends lwpRenderer {
     });
   }
 
-  _updateInputChain(mediaStream) {
-    let audioMixer = this._libwebphone.getAudioMixer();
-    if (audioMixer) {
-      audioMixer._setInputSourceStream(mediaStream);
+  _updateMediaElements(mediaStream) {
+    console.log(this._config);
+    let audioElement = this._config.audioinput.mediaElement.element;
+    let audioTrack = mediaStream.getTracks().find((track) => {
+      return track.kind == "audio";
+    });
+    let videoElement = this._config.videoinput.mediaElement.element;
+    let videoTrack = mediaStream.getTracks().find((track) => {
+      return track.kind == "audio";
+    });
+
+    if (audioTrack) {
+      if (
+        !audioElement.srcObject ||
+        audioElement.srcObject.id != mediaStream.id
+      ) {
+        audioElement.srcObject = mediaStream;
+      }
+
+      if (audioElement.paused) {
+        audioElement.play();
+      }
+    } else {
+      if (!audioElement.paused) {
+        audioElement.pause();
+      }
+      audioElement.srcObject = null;
+    }
+
+    if (videoTrack) {
+      if (
+        !videoElement.srcObject ||
+        videoElement.srcObject.id != mediaStream.id
+      ) {
+        videoElement.srcObject = mediaStream;
+      }
+
+      if (videoElement.paused) {
+        videoElement.play();
+      }
+    } else {
+      if (!videoElement.paused) {
+        videoElement.pause();
+      }
+      videoElement.srcObject = null;
     }
   }
 
