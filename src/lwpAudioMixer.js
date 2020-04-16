@@ -148,34 +148,46 @@ export default class extends lwpRenderer {
     }, (duration + 0.5) * 1000);
   }
 
-  startRinging(newCall = null) {
+  startRinging(call = null) {
     this.startAudioContext();
 
-    if (this._ringAudio.calls.length == 0) {
-      this._ringAudio.calls.push(newCall);
+    if (!call) {
+      this._ringAudio.calls.push(null);
+    } else if (
+      !this._ringAudio.calls.find((currentCall) => {
+        return call.getId() == currentCall.getId();
+      })
+    ) {
+      this._ringAudio.calls.push(call);
+    }
+
+    if (!this._ringing && this._ringAudio.calls.length > 0) {
+      this._ringing = true;
       this._ringTimer();
-    } else {
-      let call = this._ringAudio.calls.find((currentCall) => {
-        return newCall.getId() == currentCall.getId();
-      });
-      if (!call) {
-        this._ringAudio.calls.push(newCall);
-      }
     }
   }
 
-  stopRinging(answeredCall = null) {
-    if (!answeredCall) {
-      this._ringAudio.calls = [];
+  stopRinging(call = null) {
+    if (!call) {
+      let index = this._ringAudio.calls.indexOf(null);
+      if (index != -1) {
+        this._ringAudio.calls.splice(index, 1);
+      }
     } else {
       this._ringAudio.calls = this._ringAudio.calls.filter((currentCall) => {
-        return answeredCall.getId() != currentCall.getId();
+        return call.getId() != currentCall.getId();
       });
     }
 
     if (this._ringAudio.calls.length == 0) {
-      this._ringerMute();
+      this.stopAllRinging();
     }
+  }
+
+  stopAllRinging() {
+    this._ringing = false;
+    this._ringAudio.calls = [];
+    this._ringerMute();
   }
 
   updateRenders() {
@@ -206,7 +218,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    var defaults = {
+    let defaults = {
       output: {
         master: {
           type: "output",
@@ -270,6 +282,8 @@ export default class extends lwpRenderer {
     this.maxVolume = 10000;
     this.minVolume = 0;
 
+    this._ringing = false;
+
     this._audioContext = new (window.AudioContext ||
       window.webkitAudioContext)();
   }
@@ -295,29 +309,15 @@ export default class extends lwpRenderer {
   }
 
   _initInputAudio() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
-
     this._inputAudio = {};
+
+    this._inputAudio.sourceStream = null;
 
     this._inputAudio.volumeGainNode = this._audioContext.createGain();
     this._inputAudio.volumeGainNode.gain.value = this._config.input.microphone.default;
 
     this._inputAudio.destinationStream = this._createMediaStreamDestination();
-    this._inputAudio.volumeGainNode.connect(this._audioContext.destination);
-
-    if (mediaDevices) {
-      this._inputAudio.sourceStream = this._audioContext.createMediaElementSource(
-        mediaDevices.getAudioInputElement()
-      );
-      this._inputAudio.sourceStream.connect(this._inputAudio.volumeGainNode);
-
-      console.log(
-        mediaDevices.getAudioInputElement(),
-        this._inputAudio.sourceStream
-      );
-    } else {
-      this._inputAudio.sourceStream = null;
-    }
+    this._inputAudio.volumeGainNode.connect(this._inputAudio.destinationStream);
   }
 
   _initRemoteAudio() {
@@ -397,7 +397,29 @@ export default class extends lwpRenderer {
     this._ringAudio.calls = [];
   }
 
-  _initEventBindings() {}
+  _initEventBindings() {
+    this._libwebphone.on("call.ringing.start", (lwp, call) => {
+      this.startRinging(call);
+    });
+    this._libwebphone.on("call.ringing.stop", (lwp, call) => {
+      this.stopRinging(call);
+    });
+    this._libwebphone.on("dialpad.tones.play", (lwp, dialpad, tones) => {
+      this.playDTMF.apply(this, tones);
+    });
+    this._libwebphone.on(
+      "mediaDevices.audio.input.changed",
+      (lwp, dialpad, track) => {
+        if (track) {
+          this._setLocalSourceStream(
+            this._createMediaStreamSource(track.mediaStream)
+          );
+        } else {
+          this._setLocalSourceStream();
+        }
+      }
+    );
+  }
 
   _initRenderTargets() {
     this._config.renderTargets.map((renderTarget) => {

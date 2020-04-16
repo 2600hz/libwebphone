@@ -21,3 +21,30 @@ export function merge(...args) {
 export function randomElementId() {
   return "lwp" + Math.random().toString(36).substr(2, 9);
 }
+
+export function audioEvents() {
+  return [
+    "abort",
+    "canplay",
+    "canplaythrough",
+    "durationchange",
+    "emptied",
+    "ended",
+    "error",
+    "loadeddata",
+    "loadedmetadata",
+    "loadstart",
+    "pause",
+    "play",
+    "playing",
+    //"progress",
+    "ratechange",
+    "seeked",
+    "seeking",
+    "stalled",
+    "suspend",
+    //"timeupdate",
+    "volumechange",
+    "waiting",
+  ];
+}

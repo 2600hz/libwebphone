@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
+import { merge, audioEvents } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import { Mutex } from "async-mutex";
 import adapter from "webrtc-adapter";
@@ -41,24 +41,12 @@ export default class extends lwpRenderer {
     });
 
     return this._startInputStreams(null, startMuted).then((mediaStream) => {
-      let audioMixer = this._libwebphone.getAudioMixer();
-      let stream = mediaStream;
-
       this._inputActive = true;
-
-      if (audioMixer) {
-        stream = audioMixer._getLocalMediaStream();
-        mediaStream.getTracks().forEach((track) => {
-          if (track.readyState == "live" && track.kind != "audio") {
-            stream.addTrack(track);
-          }
-        });
-      }
 
       this.startOutputAudio();
 
-      this._emit("streams.started", this, stream);
-      return stream;
+      this._emit("streams.started", this, mediaStream);
+      return mediaStream;
     });
   }
 
@@ -250,7 +238,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    var defaults = {
+    let defaults = {
       audiooutput: {
         show: "sinkId" in HTMLMediaElement.prototype,
         startMuted: false,
@@ -289,81 +277,56 @@ export default class extends lwpRenderer {
     };
     this._config = merge(defaults, config);
 
-    if (
-      !this._config.audiooutput.mediaElement.element &&
-      this._config.audiooutput.mediaElement.elementId
-    ) {
-      this._config.audiooutput.mediaElement.element = document.getElementById(
-        this._config.audiooutput.mediaElement.elementId
-      );
-    }
+    this._loaded = false;
 
-    if (!this._config.audiooutput.mediaElement.element) {
-      this._config.audiooutput.mediaElement.element = document.createElement(
-        "audio"
-      );
-    }
-
-    if (
-      !this._config.audioinput.mediaElement.element &&
-      this._config.audioinput.mediaElement.elementId
-    ) {
-      this._config.audioinput.mediaElement.element = document.getElementById(
-        this._config.audioinput.mediaElement.elementId
-      );
-    }
-
-    if (!this._config.audioinput.mediaElement.element) {
-      this._config.audioinput.mediaElement.element = document.createElement(
-        "audio"
-      );
-    }
-
-    if (
-      !this._config.videoinput.mediaElement.element &&
-      this._config.videoinput.mediaElement.elementId
-    ) {
-      this._config.videoinput.mediaElement.element = document.getElementById(
-        this._config.videoinput.mediaElement.elementId
-      );
-    }
-
-    if (!this._config.videoinput.mediaElement.element) {
-      this._config.videoinput.mediaElement.element = document.createElement(
-        "video"
-      );
-    }
-
-    this._config.videoinput.mediaElement.element.muted = true;
-
-    // NOTE: it makes more sense if configured with highest priority to
-    //   lowest, but we use the index number to represent that so flip it
-    this._config.audiooutput.preferedDeviceIds.reverse();
-    this._config.audioinput.preferedDeviceIds.reverse();
-    this._config.videoinput.preferedDeviceIds.reverse();
+    this._changeStreamMutex = new Mutex();
 
     this._inputActive = false;
 
-    this._availableDevices = {
-      audiooutput: [],
-      audioinput: [],
-      videoinput: [
-        this._deviceParameters({
-          deviceId: "none",
-          label: "libwebphone:mediaDevices.none",
-          kind: "videoinput",
-          displayOrder: 0,
-        }),
-      ],
-    };
+    this._availableDevices = {};
 
-    this._elements = {
-      audio: document.createElement("audio"),
-      video: document.createElement("video"),
-    };
+    this._deviceKinds().forEach((deviceKind) => {
+      if (
+        !this._config[deviceKind].mediaElement.element &&
+        this._config[deviceKind].mediaElement.elementId
+      ) {
+        this._config[deviceKind].mediaElement.element = document.getElementById(
+          this._config[deviceKind].mediaElement.elementId
+        );
+      }
 
-    this._loaded = false;
-    this._changeStreamMutex = new Mutex();
+      if (!this._config[deviceKind].mediaElement.element) {
+        this._config[deviceKind].mediaElement.element = document.createElement(
+          this._deviceKindtoTrackKind(deviceKind)
+        );
+      }
+
+      this._config[deviceKind].mediaElement.element.muted = true;
+
+      audioEvents().forEach((eventName) => {
+        this._config[deviceKind].mediaElement.element.addEventListener(
+          eventName,
+          (event) => {
+            console.log(deviceKind, eventName, event);
+          }
+        );
+      });
+
+      // NOTE: it makes more sense if configured with highest priority to
+      //   lowest, but we use the index number to represent that so flip it
+      this._config[deviceKind].preferedDeviceIds.reverse();
+
+      this._availableDevices[deviceKind] = [];
+    });
+
+    this._availableDevices.videoinput = [
+      this._deviceParameters({
+        deviceId: "none",
+        label: "libwebphone:mediaDevices.none",
+        kind: "videoinput",
+        displayOrder: 0,
+      }),
+    ];
   }
 
   _initInputStreams() {
@@ -810,64 +773,41 @@ export default class extends lwpRenderer {
   }
 
   _updateMediaElements(mediaStream) {
-    console.log(this._config);
-    let audioElement = this._config.audioinput.mediaElement.element;
-    let audioTrack = mediaStream.getTracks().find((track) => {
-      return track.kind == "audio";
+    this._trackKinds().forEach((trackKind) => {
+      let deviceKind = this._trackKindtoDeviceKind(trackKind);
+      let element = this._config[deviceKind].mediaElement.element;
+      let track = mediaStream.getTracks().find((track) => {
+        return track.kind == trackKind;
+      });
+
+      if (track) {
+        if (!element.srcObject || element.srcObject.id != mediaStream.id) {
+          element.srcObject = mediaStream;
+        }
+
+        if (element.paused) {
+          audioElement.play();
+        }
+      } else {
+        if (!element.paused) {
+          element.pause();
+        }
+        element.srcObject = null;
+      }
     });
-    let videoElement = this._config.videoinput.mediaElement.element;
-    let videoTrack = mediaStream.getTracks().find((track) => {
-      return track.kind == "audio";
-    });
-
-    if (audioTrack) {
-      if (
-        !audioElement.srcObject ||
-        audioElement.srcObject.id != mediaStream.id
-      ) {
-        audioElement.srcObject = mediaStream;
-      }
-
-      if (audioElement.paused) {
-        audioElement.play();
-      }
-    } else {
-      if (!audioElement.paused) {
-        audioElement.pause();
-      }
-      audioElement.srcObject = null;
-    }
-
-    if (videoTrack) {
-      if (
-        !videoElement.srcObject ||
-        videoElement.srcObject.id != mediaStream.id
-      ) {
-        videoElement.srcObject = mediaStream;
-      }
-
-      if (videoElement.paused) {
-        videoElement.play();
-      }
-    } else {
-      if (!videoElement.paused) {
-        videoElement.pause();
-      }
-      videoElement.srcObject = null;
-    }
   }
 
   _createConstraints(...preferedDevices) {
-    var constraints = {
+    let constraints = {
       audio: this._config.audioinput.constraints || {},
       video: this._config.videoinput.constraints || {},
     };
-    var preferedAudioDevice = this._availableDevices["audioinput"].find(
+    let preferedAudioDevice = this._availableDevices["audioinput"].find(
       (availableAudioDevice) => {
         return availableAudioDevice.active && availableAudioDevice.connected;
       }
     );
-    var preferedVideoDevice = this._availableDevices["videoinput"].find(
+    let preferedVideoDevice = this._availableDevices["videoinput"].find(
       (availableVideoDevice) => {
         return availableVideoDevice.active && availableVideoDevice.connected;
       }
@@ -940,7 +880,7 @@ export default class extends lwpRenderer {
   /** MediaStream Helpers */
 
   _addTrack(mediaStream, track) {
-    var trackParameters = this._trackParameters(mediaStream, track);
+    let trackParameters = this._trackParameters(mediaStream, track);
 
     mediaStream.addTrack(track);
 
@@ -964,7 +904,7 @@ export default class extends lwpRenderer {
   }
 
   _removeTrack(mediaStream, track, updateActive = true) {
-    var trackParameters = this._trackParameters(mediaStream, track);
+    let trackParameters = this._trackParameters(mediaStream, track);
 
     track.enabled = false;
     track.stop();
@@ -1016,6 +956,10 @@ export default class extends lwpRenderer {
       case "video":
         return "videoinput";
     }
+  }
+
+  _trackKinds() {
+    return ["audio", "video"];
   }
 
   /** Device Helpers */
@@ -1099,6 +1043,10 @@ export default class extends lwpRenderer {
       case "videoinput":
         return "video";
     }
+  }
+
+  _deviceKinds() {
+    return ["audiooutput", "audioinput", "videoinput"];
   }
 
   /** Shims */

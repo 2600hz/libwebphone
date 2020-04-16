@@ -361,10 +361,7 @@ export default class {
     });
 
     if (this.isRinging()) {
-      let audioMixer = this._libwebphone.getAudioMixer();
-      if (audioMixer) {
-        audioMixer.startRinging(this);
-      }
+      this._emit("ringing.start", this);
     }
   }
 
@@ -404,10 +401,7 @@ export default class {
         this._emit("progress", this, ...event);
       });
       this._getSession().on("confirmed", (...event) => {
-        let audioMixer = this._libwebphone.getAudioMixer();
-        if (audioMixer) {
-          audioMixer.stopRinging(this);
-        }
+        this._emit("ringing.stop", this);
         this._emit("established", this, ...event);
       });
       this._getSession().on("newDTMF", (...event) => {
@@ -601,10 +595,12 @@ export default class {
     });
 
     if (audioMixer) {
+      /*
       this._streams.remote.sourceStream = audioMixer._createMediaStreamSource(
         this._streams.remote.mediaStream
       );
       audioMixer._setRemoteSourceStream(this._streams.remote.sourceStream);
+      */
     } else {
       this._streams.remote.elements.audio.muted = false;
     }
@@ -642,16 +638,14 @@ export default class {
 
   _destroyStreams() {
     let audioMixer = this._libwebphone.getAudioMixer();
-    /** TODO: should we destroy localMediaStream? */
     let remoteStream = this._streams.remote.mediaStream;
+
+    this._emit("ringing.stop", this);
+
     if (remoteStream) {
       remoteStream.getTracks().forEach((track) => {
         track.stop();
       });
-    }
-
-    if (audioMixer) {
-      audioMixer.stopRinging(this);
     }
   }
 }

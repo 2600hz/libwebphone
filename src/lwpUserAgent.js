@@ -291,7 +291,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    var defaults = {
+    let defaults = {
       transport: {
         sockets: [],
         recovery_max_interval: 30,
