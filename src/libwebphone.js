@@ -10,7 +10,7 @@ import lwpCallControl from "./lwpCallControl";
 import lwpDialpad from "./lwpDialpad";
 import lwpMediaDevices from "./lwpMediaDevices";
 import lwpVideoCanvas from "./lwpVideoCanvas";
-import lwpAudioMixer from "./lwpAudioMixer";
+import lwpAudioContext from "./lwpAudioContext";
 
 export default class extends EventEmitter {
   constructor(config = {}) {
@@ -27,12 +27,12 @@ export default class extends EventEmitter {
       this._callList = new lwpCallList(this, this._config.callList);
     }
 
-    if (this._config.mediaDevices.enabled) {
-      this._mediaDevices = new lwpMediaDevices(this, this._config.mediaDevices);
+    if (this._config.audioContext.enabled) {
+      this._audioContext = new lwpAudioContext(this, this._config.audioContext);
     }
 
-    if (this._config.audioMixer.enabled) {
-      this._audioMixer = new lwpAudioMixer(this, this._config.audioMixer);
+    if (this._config.mediaDevices.enabled) {
+      this._mediaDevices = new lwpMediaDevices(this, this._config.mediaDevices);
     }
 
     if (this._config.callControl.enabled) {
@@ -81,8 +81,8 @@ export default class extends EventEmitter {
     return this._videoCanvas;
   }
 
-  getAudioMixer() {
-    return this._audioMixer;
+  getAudioContext() {
+    return this._audioContext;
   }
 
   getMediaPreviews() {
@@ -125,7 +125,7 @@ export default class extends EventEmitter {
       callControl: { enabled: true },
       mediaDevices: { enabled: true },
       mediaPreviews: { enabled: false },
-      audioMixer: { enabled: true },
+      audioContext: { enabled: true },
       userAgent: { enabled: true },
       videoCanvas: { enabled: false },
     };
@@ -179,10 +179,10 @@ export default class extends EventEmitter {
     this._libwebphone._emit.apply(this._libwebphone, data);
   }
 
-  _audioMixerEvent(type, audioMixer, ...data) {
-    data.unshift(audioMixer);
+  _audioContextEvent(type, audioContext, ...data) {
+    data.unshift(audioContext);
     data.unshift(this._libwebphone);
-    data.unshift("audioMixer." + type);
+    data.unshift("audioContext." + type);
     this._libwebphone._emit.apply(this._libwebphone, data);
   }
 

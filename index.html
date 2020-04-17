@@ -379,7 +379,7 @@
             },
           ],
         },
-        audioMixer: {
+        audioContext: {
           renderTargets: ["audio_mixer"],
         },
         userAgent: {
@@ -603,7 +603,7 @@
                     <fieldset id="audiooutput">
                       {{#data.audiooutput.devices}}
                         {{#connected}}
-                          <div><input type="radio" value="{{id}}" name="{{by_name.audiooutputselector.elementName}}" {{#active}}checked{{/active}}>{{name}}</input></div>
+                          <div><input type="radio" value="{{id}}" name="{{by_name.audiooutputselector.elementName}}" {{#selected}}checked{{/selected}}>{{name}}</input></div>
                         {{/connected}}
                       {{/data.audiooutput.devices}}
                     </fieldset>
@@ -623,7 +623,7 @@
                     <fieldset id="audioinput">
                       {{#data.audioinput.devices}}
                         {{#connected}}
-                          <div><input type="radio" value="{{id}}" name="{{by_name.audiooinputselector.elementName}}" {{#active}}checked{{/active}}>{{name}}</input></div>
+                          <div><input type="radio" value="{{id}}" name="{{by_name.audiooinputselector.elementName}}" {{#selected}}checked{{/selected}}>{{name}}</input></div>
                         {{/connected}}
                       {{/data.audioinput.devices}}
                     </fieldset>
@@ -638,7 +638,7 @@
                     <fieldset id="videoinput">
                       {{#data.videoinput.devices}}
                         {{#connected}}
-                          <div><input type="radio" value="{{id}}" name="{{by_name.videoinputselector.elementName}}" {{#active}}checked{{/active}}>{{name}}</input></div>
+                          <div><input type="radio" value="{{id}}" name="{{by_name.videoinputselector.elementName}}" {{#selected}}checked{{/selected}}>{{name}}</input></div>
                         {{/connected}}
                       {{/data.videoinput.devices}}
                     </fieldset>

@@ -22,7 +22,7 @@ export function randomElementId() {
   return "lwp" + Math.random().toString(36).substr(2, 9);
 }
 
-export function audioEvents() {
+export function mediaElementEvents() {
   return [
     "abort",
     "canplay",

@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge, audioEvents } from "./lwpUtils";
+import { merge, mediaElementEvents } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import { Mutex } from "async-mutex";
 import adapter from "webrtc-adapter";
@@ -20,17 +20,16 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  startOutputAudio() {
-    let element = this._config.audiooutput.mediaElement.element;
-    if (element.paused && element.srcObject) {
-      element.play();
-    }
-  }
-
-  startStreams() {
-    let mediaPreviews = this._libwebphone.getMediaPreviews();
-    if (mediaPreviews) {
-      mediaPreviews.stopPreviews();
+  startStreams(requestId = null) {
+    if (this._inputActive) {
+      return this._mediaStreamPromise.then((mediaStream) => {
+        if (!requestId) {
+          this._startedStreams.push(null);
+        } else if (!this._startedStreams.includes(requestId)) {
+          this._startedStreams.push(requestId);
+        }
+        return mediaStream;
+      });
     }
 
     let startMuted = [];
@@ -43,21 +42,45 @@ export default class extends lwpRenderer {
     return this._startInputStreams(null, startMuted).then((mediaStream) => {
       this._inputActive = true;
 
-      this.startOutputAudio();
+      if (!requestId) {
+        this._startedStreams.push(null);
+      } else if (!this._startedStreams.includes(requestId)) {
+        this._startedStreams.push(requestId);
+      }
 
       this._emit("streams.started", this, mediaStream);
+
       return mediaStream;
     });
   }
 
-  stopStreams() {
-    let mediaPreviews = this._libwebphone.getMediaPreviews();
-    if (!mediaPreviews || !mediaPreviews.previewActive()) {
-      this._stopAllInputs();
+  stopStreams(requestId = null) {
+    if (!requestId) {
+      requestId = null;
     }
 
-    this._inputActive = false;
-    this._emit("streams.stop", this);
+    let requestIndex = this._startedStreams.indexOf(requestId);
+
+    if (requestIndex != -1) {
+      this._startedStreams.splice(requestIndex, 1);
+    }
+
+    if (this._startedStreams.length == 0) {
+      this.stopAllStreams();
+    }
+  }
+
+  stopAllStreams() {
+    this._startedStreams = [];
+
+    return this._mediaStreamPromise.then((mediaStream) => {
+      mediaStream.getTracks().forEach((track) => {
+        this._removeTrack(mediaStream, track, false);
+      });
+
+      this._inputActive = false;
+      this._emit("streams.stopped", this);
+    });
   }
 
   mute(deviceKind = null) {
@@ -87,16 +110,14 @@ export default class extends lwpRenderer {
     }
   }
 
-  getAudioOutputElement() {
-    return this._config.audiooutput.mediaElement.element;
-  }
-
-  getAudioInputElement() {
-    return this._config.audioinput.mediaElement.element;
-  }
-
-  getVideoInputElement() {
-    return this._config.videoinput.mediaElement.element;
+  getMediaElement(deviceKind) {
+    if (
+      this._config.manageMediaElements &&
+      this._config[deviceKind] &&
+      this._config[deviceKind].mediaElement.element
+    ) {
+      return this._config[deviceKind].mediaElement.element;
+    }
   }
 
   async changeDevice(deviceKind, deviceId) {
@@ -139,9 +160,9 @@ export default class extends lwpRenderer {
         this._importInputDevices(devices);
 
         Object.keys(this._availableDevices).forEach((deviceKind) => {
-          let activeDevice = this._availableDevices[deviceKind].find(
+          let selectedDevice = this._availableDevices[deviceKind].find(
             (availableDevice) => {
-              return availableDevice.active;
+              return availableDevice.selected;
             }
           );
           let preferedDevice = this._availableDevices[deviceKind].find(
@@ -150,18 +171,18 @@ export default class extends lwpRenderer {
             }
           );
           let switchToPrefered =
-            activeDevice &&
+            selectedDevice &&
             preferedDevice &&
-            activeDevice.preference < preferedDevice.preference;
-          let activeDeviceDisconnected =
-            activeDevice && !activeDevice.connected;
+            selectedDevice.preference < preferedDevice.preference;
+          let selectedDeviceDisconnected =
+            selectedDevice && !selectedDevice.connected;
 
-          if (switchToPrefered || activeDeviceDisconnected) {
-            activeDevice.active = false;
-            alteredTrackKinds.push(activeDevice.trackKind);
+          if (switchToPrefered || selectedDeviceDisconnected) {
+            selectedDevice.selected = false;
+            alteredTrackKinds.push(selectedDevice.trackKind);
 
             if (preferedDevice) {
-              preferedDevice.active = true;
+              preferedDevice.selected = true;
             }
           }
         });
@@ -174,19 +195,19 @@ export default class extends lwpRenderer {
           mediaStream.getTracks().forEach((track) => {
             let trackParameters = this._trackParameters(mediaStream, track);
             let deviceKind = this._trackKindtoDeviceKind(track.kind);
-            let activeDevice = this._availableDevices[deviceKind].find(
+            let selectedDevice = this._availableDevices[deviceKind].find(
               (availableDevice) => {
-                return availableDevice.active;
+                return availableDevice.selected;
               }
             );
             if (!track.enabled) {
               startMuted.push(track.kind);
             }
 
-            if (activeDevice) {
+            if (selectedDevice) {
               let differentId =
-                activeDevice.id != trackParameters.settings.deviceId;
-              let differentLabel = activeDevice.label != track.label;
+                selectedDevice.id != trackParameters.settings.deviceId;
+              let differentLabel = selectedDevice.label != track.label;
               if (differentId || differentLabel) {
                 alteredTrackKinds.push(track.kind);
                 this._removeTrack(mediaStream, track);
@@ -244,8 +265,12 @@ export default class extends lwpRenderer {
         startMuted: false,
         preferedDeviceIds: [],
         mediaElement: {
+          create: false,
           elementId: null,
           element: null,
+          initParameters: {
+            muted: true,
+          },
         },
       },
       audioinput: {
@@ -255,8 +280,12 @@ export default class extends lwpRenderer {
         constraints: {},
         preferedDeviceIds: [],
         mediaElement: {
+          create: false,
           elementId: null,
           element: null,
+          initParameters: {
+            muted: true,
+          },
         },
       },
       videoinput: {
@@ -266,14 +295,17 @@ export default class extends lwpRenderer {
         constraints: {},
         preferedDeviceIds: [],
         mediaElement: {
+          create: false,
           elementId: null,
           element: null,
+          initParameters: {
+            muted: true,
+          },
         },
       },
       renderTargets: [],
       detectDeviceChanges: true,
-      startPreview: false,
-      startStreams: false,
+      manageMediaElements: false,
     };
     this._config = merge(defaults, config);
 
@@ -282,6 +314,8 @@ export default class extends lwpRenderer {
     this._changeStreamMutex = new Mutex();
 
     this._inputActive = false;
+
+    this._startedStreams = [];
 
     this._availableDevices = {};
 
@@ -295,22 +329,36 @@ export default class extends lwpRenderer {
         );
       }
 
-      if (!this._config[deviceKind].mediaElement.element) {
+      if (
+        !this._config[deviceKind].mediaElement.element &&
+        this._config[deviceKind].mediaElement.create
+      ) {
         this._config[deviceKind].mediaElement.element = document.createElement(
           this._deviceKindtoTrackKind(deviceKind)
         );
       }
+      if (this._config.manageMediaElements) {
+        Object.keys(
+          this._config[deviceKind].mediaElement.initParameters
+        ).forEach((parameterName) => {
+          this._config[deviceKind].mediaElement.element[
+            parameterName
+          ] = this._config[deviceKind].mediaElement.initParameters[
+            parameterName
+          ];
+        });
+      }
 
-      this._config[deviceKind].mediaElement.element.muted = true;
-
-      audioEvents().forEach((eventName) => {
-        this._config[deviceKind].mediaElement.element.addEventListener(
-          eventName,
-          (event) => {
-            console.log(deviceKind, eventName, event);
-          }
-        );
-      });
+      if (this._config[deviceKind].mediaElement.element) {
+        mediaElementEvents().forEach((eventName) => {
+          this._config[deviceKind].mediaElement.element.addEventListener(
+            eventName,
+            (event) => {
+              this._emit(deviceKind + "." + eventName, this, event);
+            }
+          );
+        });
+      }
 
       // NOTE: it makes more sense if configured with highest priority to
       //   lowest, but we use the index number to represent that so flip it
@@ -362,16 +410,16 @@ export default class extends lwpRenderer {
         });
 
         Object.keys(this._availableDevices).forEach((deviceKind) => {
-          let activeDevice = this._availableDevices[deviceKind].find(
+          let selectedDevice = this._availableDevices[deviceKind].find(
             (availableDevice) => {
-              return availableDevice.active;
+              return availableDevice.selected;
             }
           );
 
-          if (!activeDevice) {
+          if (!selectedDevice) {
             let availableDevice = this._availableDevices[deviceKind][0];
             if (availableDevice) {
-              availableDevice.active = true;
+              availableDevice.selected = true;
             }
           }
         });
@@ -383,25 +431,8 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
-    let callList = this._libwebphone.getCallList();
-
-    if (callList) {
-      this._libwebphone.on(
-        "callList.calls.switched",
-        (lwp, callList, newCall) => {
-          if (!newCall) {
-            this.stopStreams();
-          }
-        }
-      );
-    } else {
-      this._libwebphone.on("call.terminated", () => {
-        this.stopStreams();
-      });
-    }
-
-    this._libwebphone.on("audioMixer.audio.context.started", () => {
-      this.startOutputAudio();
+    this._libwebphone.on("call.terminated", (lwp, call) => {
+      this.stopStreams(call.getId());
     });
 
     if (this._config.detectDeviceChanges) {
@@ -409,6 +440,13 @@ export default class extends lwpRenderer {
         this.refreshAvailableDevices();
       };
     }
+
+    this._libwebphone.on("audioContext.preview.loopback.started", () => {
+      this.startStreams("loopbackPreview");
+    });
+    this._libwebphone.on("audioContext.preview.loopback.stopped", () => {
+      this.stopStreams("loopbackPreview");
+    });
 
     this._libwebphone.on("mediaDevices.streams.started", () => {
       this.updateRenders();
@@ -500,7 +538,7 @@ export default class extends lwpRenderer {
                 <select id="{{by_id.audiooutput.elementId}}">
                   {{#data.audiooutput.devices}}
                     {{#connected}}
-                      <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                      <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
                     {{/connected}}
                   {{/data.audiooutput.devices}}
                 </select>
@@ -515,7 +553,7 @@ export default class extends lwpRenderer {
                 <select id="{{by_id.audioinput.elementId}}">
                   {{#data.audioinput.devices}}
                     {{#connected}}
-                      <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                      <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
                     {{/connected}}    
                   {{/data.audioinput.devices}}
                 </select> 
@@ -530,7 +568,7 @@ export default class extends lwpRenderer {
                 <select id="{{by_id.videoinput.elementId}}">
                   {{#data.videoinput.devices}}
                       {{#connected}}
-                        <option value="{{id}}" {{#active}}selected{{/active}}>{{name}}</option>
+                        <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
                       {{/connected}}
                   {{/data.videoinput.devices}}
                 </select>
@@ -554,7 +592,6 @@ export default class extends lwpRenderer {
 
   _renderData(data = {}) {
     data.loaded = this._loaded;
-    data.active = this._inputActive;
 
     Object.keys(this._availableDevices).forEach((deviceKind) => {
       let devices = this._availableDevices[deviceKind].slice(0);
@@ -573,21 +610,37 @@ export default class extends lwpRenderer {
   /** Helper functions */
 
   async _changeOutputDevice(preferedDevice) {
-    return this._config.audiooutput.mediaElement.element
-      .setSinkId(preferedDevice.id)
-      .then(() => {
-        this._availableDevices[preferedDevice.deviceKind].forEach(
-          (availableDevice) => {
-            if (availableDevice.id == preferedDevice.id) {
-              availableDevice.active = true;
-            } else {
-              availableDevice.active = false;
+    if (this._config.manageMediaElements) {
+      return this._config.audiooutput.mediaElement.element
+        .setSinkId(preferedDevice.id)
+        .then(() => {
+          this._availableDevices[preferedDevice.deviceKind].forEach(
+            (availableDevice) => {
+              if (availableDevice.id == preferedDevice.id) {
+                availableDevice.selected = true;
+              } else {
+                availableDevice.selected = false;
+              }
             }
-          }
-        );
+          );
 
-        this._emit("audio.output.changed", this, preferedDevice);
-      });
+          this._emit("audio.output.changed", this, preferedDevice);
+        });
+    } else {
+      this._availableDevices[preferedDevice.deviceKind].forEach(
+        (availableDevice) => {
+          if (availableDevice.id == preferedDevice.id) {
+            availableDevice.selected = true;
+          } else {
+            availableDevice.selected = false;
+          }
+        }
+      );
+
+      this._emit("audio.output.changed", this, preferedDevice);
+
+      return Promise.resolve();
+    }
   }
 
   _muteInput(deviceKind = null) {
@@ -648,20 +701,6 @@ export default class extends lwpRenderer {
     });
   }
 
-  _stopAllInputs(deviceKind = null) {
-    return this._mediaStreamPromise.then((mediaStream) => {
-      let trackKind = this._deviceKindtoTrackKind(deviceKind);
-
-      mediaStream.getTracks().forEach((track) => {
-        if (!trackKind || track.kind == trackKind) {
-          this._removeTrack(mediaStream, track, false);
-        }
-      });
-
-      return mediaStream;
-    });
-  }
-
   _changeInputDevice(preferedDevice) {
     return this._mediaStreamPromise.then((mediaStream) => {
       let trackKind = preferedDevice.trackKind;
@@ -688,8 +727,8 @@ export default class extends lwpRenderer {
             return track.kind == trackKind && track.readyState == "live";
           });
 
-          if (!this._inputActive) {
-            this._stopAllInputs();
+          if (this._startedStreams.length == 0) {
+            this.stopAllStreams();
           }
 
           if (newTrack) {
@@ -702,24 +741,12 @@ export default class extends lwpRenderer {
           }
         });
       } else {
-        let audioMixer = this._libwebphone.getAudioMixer();
-        if (audioMixer) {
-          /*
-                  let audioTrack = mediaStream.getTracks().find((track) => {
-          return track.kind == "audio" && track.readyState == "live";
-        });
-        if (this._inputAudio.sourceStream) {
-          this._inputAudio.sourceStream.disconnect();
-          this._inputAudio.sourceStream = null;
-        } */
-        }
-
         this._availableDevices[preferedDevice.deviceKind].forEach(
           (availableDevice) => {
             if (availableDevice.id == "none") {
-              availableDevice.active = true;
+              availableDevice.selected = true;
             } else {
-              availableDevice.active = false;
+              availableDevice.selected = false;
             }
           }
         );
@@ -773,28 +800,30 @@ export default class extends lwpRenderer {
   }
 
   _updateMediaElements(mediaStream) {
-    this._trackKinds().forEach((trackKind) => {
-      let deviceKind = this._trackKindtoDeviceKind(trackKind);
-      let element = this._config[deviceKind].mediaElement.element;
-      let track = mediaStream.getTracks().find((track) => {
-        return track.kind == trackKind;
+    if (this._config.manageMediaElements) {
+      this._trackKinds().forEach((trackKind) => {
+        let deviceKind = this._trackKindtoDeviceKind(trackKind);
+        let element = this._config[deviceKind].mediaElement.element;
+        let track = mediaStream.getTracks().find((track) => {
+          return track.kind == trackKind;
+        });
+
+        if (track) {
+          if (!element.srcObject || element.srcObject.id != mediaStream.id) {
+            element.srcObject = mediaStream;
+          }
+
+          if (element.paused) {
+            element.play();
+          }
+        } else {
+          if (!element.paused) {
+            element.pause();
+          }
+          element.srcObject = null;
+        }
       });
-
-      if (track) {
-        if (!element.srcObject || element.srcObject.id != mediaStream.id) {
-          element.srcObject = mediaStream;
-        }
-
-        if (element.paused) {
-          audioElement.play();
-        }
-      } else {
-        if (!element.paused) {
-          element.pause();
-        }
-        element.srcObject = null;
-      }
-    });
+    }
   }
 
   _createConstraints(...preferedDevices) {
@@ -804,12 +833,12 @@ export default class extends lwpRenderer {
     };
     let preferedAudioDevice = this._availableDevices["audioinput"].find(
       (availableAudioDevice) => {
-        return availableAudioDevice.active && availableAudioDevice.connected;
+        return availableAudioDevice.selected && availableAudioDevice.connected;
       }
     );
     let preferedVideoDevice = this._availableDevices["videoinput"].find(
       (availableVideoDevice) => {
-        return availableVideoDevice.active && availableVideoDevice.connected;
+        return availableVideoDevice.selected && availableVideoDevice.connected;
       }
     );
 
@@ -887,9 +916,9 @@ export default class extends lwpRenderer {
     this._availableDevices[trackParameters.deviceKind].forEach(
       (availableDevice) => {
         if (availableDevice.id == trackParameters.settings.deviceId) {
-          Object.assign(availableDevice, trackParameters, { active: true });
+          Object.assign(availableDevice, trackParameters, { selected: true });
         } else {
-          availableDevice.active = false;
+          availableDevice.selected = false;
         }
       }
     );
@@ -903,7 +932,7 @@ export default class extends lwpRenderer {
     }
   }
 
-  _removeTrack(mediaStream, track, updateActive = true) {
+  _removeTrack(mediaStream, track, updateSelected = true) {
     let trackParameters = this._trackParameters(mediaStream, track);
 
     track.enabled = false;
@@ -911,15 +940,17 @@ export default class extends lwpRenderer {
 
     mediaStream.removeTrack(track);
 
-    if (updateActive) {
+    if (updateSelected) {
       this._availableDevices[trackParameters.deviceKind].forEach(
         (availableDevice) => {
           if (availableDevice.id == trackParameters.settings.deviceId) {
-            Object.assign(availableDevice, trackParameters, { active: false });
+            Object.assign(availableDevice, trackParameters, {
+              selected: false,
+            });
           } else if (availableDevice.id == "none") {
-            availableDevice.active = true;
+            availableDevice.selected = true;
           } else {
-            availableDevice.active = false;
+            availableDevice.selected = false;
           }
         }
       );
@@ -939,7 +970,7 @@ export default class extends lwpRenderer {
 
     return {
       trackKind: track.kind,
-      active: track.readyState == "live",
+      selected: track.readyState == "live",
       deviceKind: this._trackKindtoDeviceKind(track.kind),
       settings: track.getSettings(),
       constraints: track.getConstraints(),

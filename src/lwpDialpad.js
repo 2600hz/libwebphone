@@ -266,7 +266,7 @@ export default class extends lwpRenderer {
       this.clear();
     });
 
-    this._libwebphone.on("callList.calls.switched", () => {
+    this._libwebphone.on("callList.calls.changed", () => {
       this.updateRenders();
     });
 

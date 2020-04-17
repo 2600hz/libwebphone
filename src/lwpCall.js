@@ -5,6 +5,7 @@ import { uuid } from "./lwpUtils";
 export default class {
   constructor(libwebphone, session = null) {
     this._libwebphone = libwebphone;
+    this._id = session ? session.data.lwpStreamId || uuid() : uuid();
     this._emit = this._libwebphone._callEvent;
     this._session = session;
     this._initProperties();
@@ -227,7 +228,7 @@ export default class {
       let mediaDevices = this._libwebphone.getMediaDevices();
 
       if (mediaDevices) {
-        mediaDevices.startStreams().then((streams) => {
+        mediaDevices.startStreams(this.getId()).then((streams) => {
           let options = {
             mediaStream: streams,
           };
@@ -323,7 +324,6 @@ export default class {
   /** Init functions */
 
   _initProperties() {
-    this._id = uuid();
     this._primary = false;
     this._inTransfer = false;
     this._streams = {
@@ -361,7 +361,7 @@ export default class {
     });
 
     if (this.isRinging()) {
-      this._emit("ringing.start", this);
+      this._emit("ringing.started", this);
     }
   }
 
@@ -401,7 +401,7 @@ export default class {
         this._emit("progress", this, ...event);
       });
       this._getSession().on("confirmed", (...event) => {
-        this._emit("ringing.stop", this);
+        this._emit("ringing.stopped", this);
         this._emit("established", this, ...event);
       });
       this._getSession().on("newDTMF", (...event) => {
@@ -581,9 +581,6 @@ export default class {
   }
 
   _connectStreams() {
-    let audioMixer = this._libwebphone.getAudioMixer();
-    let videoCanvas = this._libwebphone.getVideoCanvas();
-
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
@@ -594,22 +591,10 @@ export default class {
       });
     });
 
-    if (audioMixer) {
-      /*
-      this._streams.remote.sourceStream = audioMixer._createMediaStreamSource(
-        this._streams.remote.mediaStream
-      );
-      audioMixer._setRemoteSourceStream(this._streams.remote.sourceStream);
-      */
-    } else {
-      this._streams.remote.elements.audio.muted = false;
-    }
+    this._streams.remote.elements.audio.muted = false;
   }
 
   _disconnectStreams() {
-    let audioMixer = this._libwebphone.getAudioMixer();
-    let videoCanvas = this._libwebphone.getVideoCanvas();
-
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
@@ -620,27 +605,13 @@ export default class {
       });
     });
 
-    if (!audioMixer) {
-      this._streams.remote.elements.audio.muted = true;
-    }
-
-    if (audioMixer) {
-      audioMixer._setRemoteSourceStream();
-    } else {
-      this._streams.remote.elements.audio.muted = true;
-    }
-
-    if (videoCanvas) {
-      videoCanvas._setLocalVideoSourceStream();
-      videoCanvas._setRemoteVideoSourceStream();
-    }
+    this._streams.remote.elements.audio.muted = true;
   }
 
   _destroyStreams() {
-    let audioMixer = this._libwebphone.getAudioMixer();
     let remoteStream = this._streams.remote.mediaStream;
 
-    this._emit("ringing.stop", this);
+    this._emit("ringing.stopped", this);
 
     if (remoteStream) {
       remoteStream.getTracks().forEach((track) => {

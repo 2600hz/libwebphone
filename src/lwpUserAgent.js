@@ -1,7 +1,7 @@
 "use strict";
 
 import * as JsSIP from "jssip";
-import { merge } from "./lwpUtils";
+import { merge, uuid } from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
 
@@ -219,7 +219,7 @@ export default class extends lwpRenderer {
   }
 
   call(target = null) {
-    let options = {};
+    let options = { data: { lwpStreamId: uuid() } };
     let mediaDevices = this._libwebphone.getMediaDevices();
     let callList = this._libwebphone.getCallList();
 
@@ -235,7 +235,7 @@ export default class extends lwpRenderer {
 
     if (mediaDevices) {
       mediaDevices
-        .startStreams()
+        .startStreams(options.data.lwpStreamId)
         .then((streams) => {
           options = merge(options, {
             mediaStream: streams,
@@ -535,7 +535,7 @@ export default class extends lwpRenderer {
         throw new Error("Webphone client not ready yet!");
       }
 
-      this._userAgent.call(target, options);
+      let session = this._userAgent.call(target, options);
 
       this._emit("call.started", this, target);
     } catch (error) {
