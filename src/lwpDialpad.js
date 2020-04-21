@@ -16,11 +16,15 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  dial(digit, tones = true) {
+  dial(char, tones = true) {
     let call = this._getCall();
 
+    if (typeof char !== "string" && !char instanceof String) {
+      char = char.toString();
+    }
+
     if (tones === true) {
-      tones = this._charToTone(digit);
+      tones = this._charToTone(char);
     }
 
     if (tones) {
@@ -28,43 +32,129 @@ export default class extends lwpRenderer {
     }
 
     if (call && !call.isInTransfer()) {
-      call.sendDTMF(digit);
+      call.sendDTMF(char);
     } else {
-      this._digits.push(digit);
+      this._target.push(char);
     }
 
-    this._emit("digits.updated", this, this.getTarget(), digit);
+    this._emit("target.updated", this, this.getTarget(), char);
   }
 
   backspace() {
-    this._digits.pop();
+    this._target.pop();
 
-    this._emit("digits.backspace", this, this.getTarget());
+    this._emit("target.backspace", this, this.getTarget());
   }
 
   clear() {
-    this._digits = [];
+    this._target = [];
 
-    this._emit("digits.clear", this, this.getTarget());
+    this._emit("target.clear", this, this.getTarget());
+  }
+
+  enableFilter() {
+    if (this._config.dialed.filter.enabled) {
+      return;
+    }
+
+    this._config.dialed.filter.enabled = true;
+    this._emit("filter.enabled", this);
+  }
+
+  disableFilter() {
+    if (!this._config.dialed.filter.enabled) {
+      return;
+    }
+
+    this._config.dialed.filter.enabled = false;
+    this._emit("filter.disabled", this);
+  }
+
+  toggleFilter() {
+    if (this._config.dialed.filter.enabled) {
+      this.disableFilter();
+    } else {
+      this.enableFilter();
+    }
+  }
+
+  enableConvertion() {
+    if (this._config.dialed.convert.enabled) {
+      return;
+    }
+
+    this._config.dialed.convert.enabled = true;
+    this._emit("convert.enabled", this);
+  }
+
+  disableConvertion() {
+    if (!this._config.dialed.convert.enabled) {
+      return;
+    }
+
+    this._config.dialed.convert.enabled = false;
+    this._emit("convert.disabled", this);
+  }
+
+  toggleConvertion() {
+    if (this._config.dialed.convert.enabled) {
+      this.disableConvertion();
+    } else {
+      this.enableConvertion();
+    }
   }
 
   getTarget(clear = false, join = true) {
-    let digits = this._digits;
+    let target = this._target;
+    let options = this._config.dialed;
+
+    if (options.convert.enabled) {
+      target = target.map((char) => {
+        char = char.toLowerCase();
+        switch (true) {
+          case /[abc]/.test(char):
+            return "1";
+          case /[def]/.test(char):
+            return "2";
+          case /[ghi]/.test(char):
+            return "4";
+          case /[jkl]/.test(char):
+            return "5";
+          case /[mno]/.test(char):
+            return "6";
+          case /[pqrs]/.test(char):
+            return "7";
+          case /[tuv]/.test(char):
+            return "8";
+          case /[wxyz]/.test(char):
+            return "9";
+          default:
+            return char;
+        }
+      });
+    }
+
+    if (options.filter.enabled) {
+      target = target.filter((char) => {
+        return char >= "0" && char <= "9";
+      });
+    }
 
     if (clear) {
       this.clear();
     }
 
     if (join) {
-      digits = digits.join("");
+      target = target.join("");
     }
-    return digits;
+
+    return target;
   }
 
-  hasDigits() {
-    let digits = this.getTarget(false, false);
+  hasTarget() {
+    let target = this.getTarget(false, false);
 
-    if (digits.length > 0) {
+    if (target.length > 0) {
       return true;
     }
 
@@ -163,7 +253,7 @@ export default class extends lwpRenderer {
     let call = this._getCall();
 
     if (!call) {
-      if (!this.hasDigits()) {
+      if (!this.hasTarget()) {
         return "redial";
       }
       return "call";
@@ -206,6 +296,10 @@ export default class extends lwpRenderer {
         backspace: "<-",
         call: "Call",
         transfer: "Transfer",
+        enableconvert: "A -> #",
+        disableconvert: "A -> A",
+        enablefilter: "# Only",
+        disablefilter: "Any",
       },
     };
     let resourceBundles = merge(defaults, config.resourceBundles || {});
@@ -222,6 +316,14 @@ export default class extends lwpRenderer {
         },
         clear: {
           show: true,
+        },
+        filter: {
+          show: true,
+          enabled: false,
+        },
+        convert: {
+          show: true,
+          enabled: false,
         },
       },
       controls: {
@@ -252,7 +354,7 @@ export default class extends lwpRenderer {
       },
     };
     this._config = merge(defaults, config);
-    this._digits = [];
+    this._target = [];
   }
 
   _initEventBindings() {
@@ -270,13 +372,25 @@ export default class extends lwpRenderer {
       this.updateRenders();
     });
 
-    this._libwebphone.on("dialpad.digits.updated", () => {
+    this._libwebphone.on("dialpad.target.updated", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("dialpad.digits.backspace", () => {
+    this._libwebphone.on("dialpad.target.backspace", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("dialpad.digits.clear", () => {
+    this._libwebphone.on("dialpad.target.clear", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.convert.enabled", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.convert.disabled", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.filter.enabled", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("dialpad.filter.disabled", () => {
       this.updateRenders();
     });
   }
@@ -309,6 +423,10 @@ export default class extends lwpRenderer {
         backspace: "libwebphone:dialpad.backspace",
         call: "libwebphone:dialpad.call",
         transfer: "libwebphone:dialpad.transfer",
+        enableconvert: "libwebphone:dialpad.enableconvert",
+        disableconvert: "libwebphone:dialpad.disableconvert",
+        enablefilter: "libwebphone:dialpad.enablefilter",
+        disablefilter: "libwebphone:dialpad.disablefilter",
       },
       data: merge(this._renderData(), this._config),
       by_id: {
@@ -440,6 +558,20 @@ export default class extends lwpRenderer {
             },
           },
         },
+        convert: {
+          events: {
+            onclick: (event) => {
+              this.toggleConvertion();
+            },
+          },
+        },
+        filter: {
+          events: {
+            onclick: (event) => {
+              this.toggleFilter();
+            },
+          },
+        },
         backspace: {
           events: {
             onclick: (event) => {
@@ -474,15 +606,30 @@ export default class extends lwpRenderer {
     <div>
       {{#data.dialed.show}}
         <div>
-          <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.digits}}" />
+          <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.target}}" />
 
           {{#data.dialed.delete.show}}
-            <button id="{{by_id.backspace.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.backspace}}</button>
+            <button id="{{by_id.backspace.elementId}}" {{^data.target}}disabled{{/data.target}}>{{i18n.backspace}}</button>
           {{/data.dialed.delete.show}}
 
           {{#data.dialed.clear.show}}
-            <button id="{{by_id.clear.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.clear}}</button>
+            <button id="{{by_id.clear.elementId}}" {{^data.target}}disabled{{/data.target}}>{{i18n.clear}}</button>
           {{/data.dialed.clear.show}}
+
+          {{#data.dialed.convert.show}}
+            <button id="{{by_id.convert.elementId}}">
+              {{#data.convert}}{{i18n.disableconvert}}{{/data.convert}}
+              {{^data.convert}}{{i18n.enableconvert}}{{/data.convert}}
+            </button>
+          {{/data.dialed.convert.show}}
+
+          {{#data.dialed.filter.show}}
+            <button id="{{by_id.filter.elementId}}">
+              {{#data.filter}}{{i18n.disablefilter}}{{/data.filter}}
+              {{^data.filter}}{{i18n.enablefilter}}{{/data.filter}}
+            </button>
+          {{/data.dialed.filter.show}}
+
         </div>
       {{/data.dialed.show}}
 
@@ -517,7 +664,7 @@ export default class extends lwpRenderer {
         {{#data.controls.call.show}}
         {{^data.call}}
           <div>
-            <button id="{{by_id.call.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.call}}</button>
+            <button id="{{by_id.call.elementId}}" {{^data.target}}disabled{{/data.target}}>{{i18n.call}}</button>
           </div>
         {{/data.call}}
         {{/data.controls.call.show}}
@@ -525,7 +672,7 @@ export default class extends lwpRenderer {
         {{#data.controls.transfer.show}}
         {{#data.call.inTransfer}}
           <div>
-            <button id="{{by_id.transfer.elementId}}" {{^data.digits}}disabled{{/data.digits}}>{{i18n.transfer}}</button>
+            <button id="{{by_id.transfer.elementId}}" {{^data.target}}disabled{{/data.target}}>{{i18n.transfer}}</button>
           </div>
         {{/data.call.inTransfer}}
         {{/data.controls.transfer.show}}
@@ -542,7 +689,11 @@ export default class extends lwpRenderer {
       data.call = call.summary();
     }
 
-    data.digits = this.getTarget();
+    data.target = this.getTarget();
+
+    data.convert = this._config.dialed.convert.enabled;
+
+    data.filter = this._config.dialed.filter.enabled;
 
     return data;
   }
@@ -599,10 +750,11 @@ export default class extends lwpRenderer {
     if (call && !call.isInTransfer()) {
       call.sendDTMF(event.data);
     } else {
-      this._digits = element.value.split("");
+      this._target = element.value.split("");
     }
 
     this.updateRenders((render) => {
+      render.data = this._renderData(render.data);
       if (element.id == render.by_id.dialed.elementId) {
         let position = element.selectionStart;
         render.by_id.dialed.element.focus();
@@ -610,7 +762,7 @@ export default class extends lwpRenderer {
       }
     });
 
-    this._emit("digits.updated", this, this.getTarget(), event.data);
+    this._emit("target.updated", this, this.getTarget(), event.data);
   }
 
   _getCall() {

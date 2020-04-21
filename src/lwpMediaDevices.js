@@ -23,12 +23,7 @@ export default class extends lwpRenderer {
   startStreams(requestId = null) {
     if (this._inputActive) {
       return this._mediaStreamPromise.then((mediaStream) => {
-        if (!requestId) {
-          this._startedStreams.push(null);
-        } else if (!this._startedStreams.includes(requestId)) {
-          this._startedStreams.push(requestId);
-        }
-        return mediaStream;
+        return this._createCallStream(mediaStream, requestId);
       });
     }
 
@@ -42,16 +37,43 @@ export default class extends lwpRenderer {
     return this._startInputStreams(null, startMuted).then((mediaStream) => {
       this._inputActive = true;
 
-      if (!requestId) {
-        this._startedStreams.push(null);
-      } else if (!this._startedStreams.includes(requestId)) {
-        this._startedStreams.push(requestId);
-      }
-
       this._emit("streams.started", this, mediaStream);
 
-      return mediaStream;
+      return this._createCallStream(mediaStream, requestId);
     });
+  }
+
+  _createCallStream(mediaStream, requestId) {
+    let newMediaStream = new MediaStream();
+    let audioContext = this._libwebphone.getAudioContext();
+
+    if (!requestId) {
+      this._startedStreams.push(null);
+    } else if (!this._startedStreams.includes(requestId)) {
+      this._startedStreams.push(requestId);
+    }
+
+    if (audioContext) {
+      audioContext
+        ._getMediaStream("local")
+        .getTracks()
+        .forEach((track) => {
+          newMediaStream.addTrack(track.clone());
+        });
+    }
+
+    mediaStream.getTracks().forEach((track) => {
+      let currentTrack = newMediaStream.getTracks().find((current) => {
+        return current.kind == track.kind;
+      });
+      if (!currentTrack) {
+        newMediaStream.addTrack(track.clone());
+      } else {
+        console.log("skip! ", track);
+      }
+    });
+
+    return newMediaStream;
   }
 
   stopStreams(requestId = null) {
@@ -118,6 +140,12 @@ export default class extends lwpRenderer {
     ) {
       return this._config[deviceKind].mediaElement.element;
     }
+  }
+
+  getPreferedDevice(deviceKind) {
+    return this._availableDevices[deviceKind].find((device) => {
+      return device.selected;
+    });
   }
 
   async changeDevice(deviceKind, deviceId) {
@@ -610,7 +638,10 @@ export default class extends lwpRenderer {
   /** Helper functions */
 
   async _changeOutputDevice(preferedDevice) {
-    if (this._config.manageMediaElements) {
+    if (
+      this._config.manageMediaElements &&
+      "sinkId" in HTMLMediaElement.prototype
+    ) {
       return this._config.audiooutput.mediaElement.element
         .setSinkId(preferedDevice.id)
         .then(() => {
@@ -800,30 +831,41 @@ export default class extends lwpRenderer {
   }
 
   _updateMediaElements(mediaStream) {
-    if (this._config.manageMediaElements) {
-      this._trackKinds().forEach((trackKind) => {
-        let deviceKind = this._trackKindtoDeviceKind(trackKind);
-        let element = this._config[deviceKind].mediaElement.element;
-        let track = mediaStream.getTracks().find((track) => {
-          return track.kind == trackKind;
-        });
+    let audioContext = this._libwebphone.getAudioContext();
 
-        if (track) {
-          if (!element.srcObject || element.srcObject.id != mediaStream.id) {
-            element.srcObject = mediaStream;
-          }
+    this._trackKinds().forEach((trackKind) => {
+      let deviceKind = this._trackKindtoDeviceKind(trackKind);
+      let element = this._config[deviceKind].mediaElement.element;
+      let track = mediaStream.getTracks().find((track) => {
+        return track.kind == trackKind;
+      });
 
-          if (element.paused) {
-            element.play();
-          }
-        } else {
-          if (!element.paused) {
-            element.pause();
-          }
+      if (track) {
+        if (
+          element &&
+          (!element.srcObject || element.srcObject.id != mediaStream.id)
+        ) {
+          element.srcObject = mediaStream;
+        }
+
+        if (audioContext && trackKind == "audio") {
+          let sourceStream = audioContext._createMediaStreamSource(mediaStream);
+          audioContext._setLocalSourceStream(sourceStream);
+        }
+
+        if (this._config.manageMediaElements && element && element.paused) {
+          element.play().catch(() => {});
+        }
+      } else {
+        if (this._config.manageMediaElements && element && !element.paused) {
+          element.pause();
+        }
+
+        if (element) {
           element.srcObject = null;
         }
-      });
-    }
+      }
+    });
   }
 
   _createConstraints(...preferedDevices) {

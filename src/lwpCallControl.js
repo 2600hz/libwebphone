@@ -80,22 +80,21 @@ export default class extends lwpRenderer {
   }
 
   updateRenders(call = null) {
-    if (!call) {
-      let callList = this._libwebphone.getCallList();
+    let callList = this._libwebphone.getCallList();
+    let callSummary = null;
 
-      if (callList) {
-        call = callList.getCall();
-      }
+    if (!call && callList) {
+      this._call = callList.getCall();
+    } else {
+      this._call = call;
     }
 
-    this._call = call;
-
-    if (call) {
-      call = call.summary();
+    if (this._call) {
+      callSummary = this._call.summary();
     }
 
     this.render((render) => {
-      render.data = this._renderData(render.data, call);
+      render.data = this._renderData(render.data, callSummary);
       return render;
     });
   }
@@ -130,7 +129,7 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
-    this._libwebphone.on("call.primary.promoted", (lwp, call) => {
+    this._libwebphone.on("call.promoted", (lwp, call) => {
       this.updateRenders(call);
     });
 
@@ -282,15 +281,15 @@ export default class extends lwpRenderer {
   _renderDefaultTemplate() {
     return `
     <div>
-      {{^data.call}}
+      {{^data.call.hasSession}}
       {{#data.redial}}
         <button id="{{by_id.redial.elementId}}">
           {{i18n.redial}} ({{data.redial}})
         </button>
       {{/data.redial}}
-      {{/data.call}}
+      {{/data.call.hasSession}}
 
-      {{#data.call}}
+      {{#data.call.hasSession}}
         {{#data.call.progress}}
           <button id="{{by_id.cancel.elementId}}">
             {{i18n.cancel}}
@@ -344,7 +343,7 @@ export default class extends lwpRenderer {
           </button>
         {{/data.call.progress}}
         {{/data.call.terminating}}
-      {{/data.call}}
+      {{/data.call.hasSession}}
     </div>
     `;
   }

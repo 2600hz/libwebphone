@@ -1,6 +1,6 @@
 "use strict";
 
-import { uuid } from "./lwpUtils";
+import { uuid, mediaElementEvents } from "./lwpUtils";
 
 export default class {
   constructor(libwebphone, session = null) {
@@ -139,7 +139,7 @@ export default class {
 
   hold() {
     if (this.hasSession()) {
-      this._getSession().hold();
+      //this._getSession().hold();
     }
   }
 
@@ -164,15 +164,15 @@ export default class {
     }
   }
 
-  mute() {
+  mute(options = { audio: true, video: true }) {
     if (this.hasSession()) {
-      this._getSession().mute();
+      this._getSession().mute(options);
     }
   }
 
-  unmute() {
+  unmute(options = { audio: true, video: true }) {
     if (this.hasSession()) {
-      this._getSession().unmute();
+      this._getSession().unmute(options);
     }
   }
 
@@ -253,6 +253,7 @@ export default class {
   renegotiate() {
     if (this.hasSession() && !this.isOnHold()) {
       this._getSession().renegotiate();
+      this._updateStreams();
       this._emit("renegotiated", this);
     }
   }
@@ -287,17 +288,38 @@ export default class {
 
     if (sender) {
       sender.replaceTrack(newTrack).then(() => {
-        if (!this.isOnHold()) {
-          this.renegotiate();
-          this._updateStreams();
-        }
+        this.renegotiate();
       });
     } else {
       peerConnection.addTrack(newTrack);
-      if (!this.isOnHold()) {
-        this.renegotiate();
-        this._updateStreams();
+      this.renegotiate();
+    }
+  }
+
+  removeSenderTrack(kind) {
+    let peerConnection = this.getPeerConnection();
+    if (!peerConnection) {
+      return;
+    }
+
+    if (
+      peerConnection.signalingState == "closed" ||
+      peerConnection.connectionState == "closed"
+    ) {
+      return;
+    }
+
+    let senders = peerConnection.getSenders();
+    let sender = senders.find((sender) => {
+      let track = sender.track;
+      if (track) {
+        return track.kind == kind;
       }
+    });
+
+    if (sender) {
+      peerConnection.removeTrack(sender);
+      this.renegotiate();
     }
   }
 
@@ -325,7 +347,9 @@ export default class {
 
   _initProperties() {
     this._primary = false;
+
     this._inTransfer = false;
+
     this._streams = {
       remote: {
         mediaStream: new MediaStream(),
@@ -352,11 +376,28 @@ export default class {
       },
     };
 
+    let mediaDevices = this._libwebphone.getMediaDevices();
+    if ("sinkId" in HTMLMediaElement.prototype && mediaDevices) {
+      let preferedDevice = webphone
+        .getMediaDevices()
+        .getPreferedDevice("audiooutput");
+      this._streams.remote.elements.audio.setSinkId(preferedDevice.id);
+    }
+
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        element.muted = true;
-        element.pause();
+        let audioContext = this._libwebphone.getAudioContext();
+
+        mediaElementEvents().forEach((eventName) => {
+          element.addEventListener(eventName, (event) => {
+            this._emit(type + "." + kind + "." + eventName, this, event);
+          });
+        });
+
+        // NOTE: don't mute the remote audio by default and only if
+        //   there is an audio context....
+        element.muted = !(type == "remote" && kind == "audio" && !audioContext);
       });
     });
 
@@ -369,19 +410,33 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.video.input.changed",
       (lwp, mediaDevices, newTrack, previousTrack) => {
-        this.replaceSenderTrack(newTrack.track);
+        if (this.hasSession()) {
+          if (newTrack) {
+            this.replaceSenderTrack(newTrack.track);
+          } else {
+            this.removeSenderTrack("video");
+          }
+        }
       }
     );
     this._libwebphone.on(
       "mediaDevices.audio.input.changed",
       (lwp, mediaDevices, newTrack, previousTrack) => {
-        this.replaceSenderTrack(newTrack.track);
+        if (this.hasSession()) {
+          if (newTrack) {
+            this.replaceSenderTrack(newTrack.track);
+          } else {
+            this.removeSenderTrack("audio");
+          }
+        }
       }
     );
     this._libwebphone.on(
       "mediaDevices.audio.output.changed",
       (lwp, mediaDevices, preferedDevice) => {
-        this._streams.remote.elements.audio.setSinkId(preferedDevice.id);
+        if (preferedDevice.id) {
+          this._streams.remote.elements.audio.setSinkId(preferedDevice.id);
+        }
       }
     );
     if (this.hasPeerConnection()) {
@@ -450,7 +505,7 @@ export default class {
     this._emit("terminated", this);
 
     if (this.isPrimary()) {
-      this._disconnectStreams();
+      this._clearPrimary(false);
     }
 
     this._destroyStreams();
@@ -467,15 +522,15 @@ export default class {
       return;
     }
 
-    this._updateStreams();
     this._connectStreams();
 
     if (resume && this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
 
-    this._primary = true;
     this._emit("promoted", this);
+
+    this._primary = true;
   }
 
   _clearPrimary(pause = true) {
@@ -483,23 +538,26 @@ export default class {
       return;
     }
 
-    this._disconnectStreams();
-
     if (this.isInTransfer()) {
       this._inTransfer = false;
 
       this._emit("transfer.failed", this);
     }
 
+    this._primary = false;
+
     if (pause && this.isEstablished() && !this.isOnHold()) {
       this.hold();
     }
 
-    this._primary = false;
+    this._disconnectStreams();
+
     this._emit("demoted", this);
   }
 
   _updateStreams() {
+    let audioContext = this._libwebphone.getAudioContext();
+
     Object.keys(this._streams).forEach((type) => {
       let peerConnection = this.getPeerConnection();
       let mediaStream = this._streams[type].mediaStream;
@@ -533,25 +591,25 @@ export default class {
         if (track) {
           this._streams[type].kinds[kind] = true;
           if (!element.srcObject || element.srcObject.id != mediaStream.id) {
-            if (!element.paused) {
-              element.playHint = true;
-            }
-            element.pause();
             element.srcObject = mediaStream;
-            if (element.playHint) {
-              element.play().catch((error) => console.log(error));
-            }
           }
         } else {
           this._streams[type].kinds[kind] = false;
-          element.pause();
           element.srcObject = null;
         }
       });
     });
 
-    if (this.isPrimary()) {
-      this._connectStreams();
+    if (this._streams.remote.kinds.audio) {
+      if (!this._streams.remote.sourceStream) {
+        this._streams.remote.sourceStream = audioContext._createMediaStreamSource(
+          this._streams.remote.mediaStream
+        );
+      }
+
+      if (this.isPrimary()) {
+        audioContext._setRemoteSourceStream(this._streams.remote.sourceStream);
+      }
     }
   }
 
@@ -581,31 +639,73 @@ export default class {
   }
 
   _connectStreams() {
+    let audioContext = this._libwebphone.getAudioContext();
+
+    if (audioContext) {
+      audioContext._setRemoteSourceStream(this._streams.remote.sourceStream);
+    }
+
+    if (!this.hasSession()) {
+      return;
+    }
+
+    let peerConnection = this.getPeerConnection();
+    if (peerConnection) {
+      let mediaStreams = peerConnection.getLocalStreams();
+      mediaStreams.forEach((mediaStream) => {
+        mediaStream.getTracks().forEach((track) => {
+          track.enabled = true;
+        });
+      });
+    }
+
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        element.playHint = true;
-        if (element.srcObject) {
-          element.play();
-        }
+        element.play().catch(() => {
+          /*
+           * We are catching any play interuptions
+           * because we get a "placeholder" remote video
+           * track in the mediaStream for ALL calls but
+           * it never gets data so the play never starts
+           * and if we then pause there is a nasty looking
+           * but ignorable error...
+           * https://developers.google.com/web/updates/2017/06/play-request-was-interrupted
+           */
+        });
       });
     });
-
-    this._streams.remote.elements.audio.muted = false;
   }
 
   _disconnectStreams() {
+    let audioContext = this._libwebphone.getAudioContext();
+
+    if (audioContext) {
+      audioContext._setRemoteSourceStream();
+    }
+
+    if (!this.hasSession()) {
+      return;
+    }
+
+    let peerConnection = this.getPeerConnection();
+    if (peerConnection) {
+      let mediaStreams = peerConnection.getLocalStreams();
+      mediaStreams.forEach((mediaStream) => {
+        mediaStream.getTracks().forEach((track) => {
+          track.enabled = false;
+        });
+      });
+    }
+
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        element.playHint = false;
         if (!element.paused) {
           element.pause();
         }
       });
     });
-
-    this._streams.remote.elements.audio.muted = true;
   }
 
   _destroyStreams() {

@@ -23,6 +23,7 @@ export function randomElementId() {
 }
 
 export function mediaElementEvents() {
+  return [];
   return [
     "abort",
     "canplay",

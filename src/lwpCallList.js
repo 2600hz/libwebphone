@@ -34,23 +34,22 @@ export default class extends lwpRenderer {
   addCall(newCall) {
     let previousCall = this.getCall();
 
-    this._calls.map((call) => {
-      if (call.isPrimary) {
-        call._clearPrimary();
-      }
-    });
+    if (previousCall && !previousCall.isOnHold()) {
+      this._calls.push(newCall);
+      this._emit("calls.added", this, newCall);
+    } else {
+      this._calls.map((call) => {
+        if (call.isPrimary) {
+          call._clearPrimary();
+        }
+      });
 
-    /** TODO: save a timestamp to the primary call,
-     * during remoteCall attempt to switch to the call
-     * wiht a session that has the largest timestamp
-     * if the removed call was a primary
-     */
+      this._calls.push(newCall);
+      this._emit("calls.added", this, newCall);
 
-    this._calls.push(newCall);
-    this._emit("calls.added", this, newCall);
-
-    newCall._setPrimary();
-    this._emit("calls.changed", this, newCall, previousCall);
+      newCall._setPrimary();
+      this._emit("calls.changed", this, newCall, previousCall);
+    }
   }
 
   switchCall(callid) {
@@ -62,12 +61,6 @@ export default class extends lwpRenderer {
         call._clearPrimary();
       }
     });
-
-    /** TODO: save a timestamp to the primary call,
-     * during remoteCall attempt to switch to the call
-     * wiht a session that has the largest timestamp
-     * if the removed call was a primary
-     */
 
     if (primaryCall) {
       primaryCall._setPrimary();
@@ -102,7 +95,7 @@ export default class extends lwpRenderer {
         }
       }
 
-      terminatedCall._clearPrimary();
+      terminatedCall._clearPrimary(false);
     }
   }
 

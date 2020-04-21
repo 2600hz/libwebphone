@@ -50,7 +50,7 @@ export default class extends lwpRenderer {
       return;
     }
 
-    this._previewAudio.oscillatorGainNode.gain.value = this.minVolume;
+    this._previewAudio.oscillatorGainNode.gain.value = this._config.volumeMin;
     this._emit("preview.tone.stopped", this);
   }
 
@@ -88,7 +88,7 @@ export default class extends lwpRenderer {
       mediaDevices.stopStreams("loopbackPreview");
     }
 
-    this._previewAudio.loopbackGainNode.gain.value = this.minVolume;
+    this._previewAudio.loopbackGainNode.gain.value = this._config.volumeMin;
     this._emit("preview.loopback.stopped", this);
   }
 
@@ -211,6 +211,16 @@ export default class extends lwpRenderer {
     this._ringerMute();
   }
 
+  getMediaElement(channel) {
+    if (
+      this._config.manageMediaElements &&
+      this._config.output[channel] &&
+      this._config.output[channel].mediaElement.element
+    ) {
+      return this._config.output[channel].mediaElement.element;
+    }
+  }
+
   updateRenders() {
     this.render((render) => {
       render.data = this._renderData(render.data);
@@ -329,11 +339,10 @@ export default class extends lwpRenderer {
       },
       renderTargets: [],
       manageMediaElements: true,
+      volumeMax: 100,
+      volumeMin: 0,
     };
     this._config = merge(defaults, config);
-
-    this.maxVolume = 10000;
-    this.minVolume = 0;
 
     this._ringingTimer = null;
 
@@ -459,7 +468,7 @@ export default class extends lwpRenderer {
     this._previewAudio.volumeGainNode.gain.value = this._config.output.preview.default;
 
     this._previewAudio.oscillatorGainNode = this._audioContext.createGain();
-    this._previewAudio.oscillatorGainNode.gain.value = this.minVolume;
+    this._previewAudio.oscillatorGainNode.gain.value = this._config.volumeMin;
     this._previewAudio.oscillatorGainNode.connect(
       this._previewAudio.volumeGainNode
     );
@@ -472,7 +481,7 @@ export default class extends lwpRenderer {
     );
 
     this._previewAudio.loopbackGainNode = this._audioContext.createGain();
-    this._previewAudio.loopbackGainNode.gain.value = this.minVolume;
+    this._previewAudio.loopbackGainNode.gain.value = this._config.volumeMin;
     this._previewAudio.loopbackGainNode.connect(
       this._previewAudio.volumeGainNode
     );
@@ -539,11 +548,11 @@ export default class extends lwpRenderer {
     this._ringAudio.volumeGainNode.gain.value = this._config.output.ringer.default;
 
     this._ringAudio.carrierGain = this._audioContext.createGain();
-    this._ringAudio.carrierGain.gain.value = this.minVolume;
+    this._ringAudio.carrierGain.gain.value = this._config.volumeMin;
     this._ringAudio.carrierGain.connect(this._ringAudio.volumeGainNode);
 
     this._ringAudio.modulatorGain = this._audioContext.createGain();
-    this._ringAudio.modulatorGain.gain.value = this.minVolume;
+    this._ringAudio.modulatorGain.gain.value = this._config.volumeMin;
     this._ringAudio.modulatorGain.connect(this._ringAudio.carrierGain.gain);
 
     this._ringAudio.carrierNode = this._audioContext.createOscillator();
@@ -580,6 +589,25 @@ export default class extends lwpRenderer {
 
     this._libwebphone.on("dialpad.tones.play", (lwp, dialpad, tones) => {
       this.playTones.apply(this, tones);
+    });
+
+    this._libwebphone.on("audioContext.master.output.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.ringer.output.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.tones.output.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.remote.output.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.preview.output.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.local.output.volume", () => {
+      this.updateRenders();
     });
 
     this._libwebphone.on(
@@ -648,7 +676,10 @@ export default class extends lwpRenderer {
           events: {
             onchange: (event) => {
               let element = event.srcElement;
-              this.changeOutputVolume("master", element.value / this.maxVolume);
+              this.changeOutputVolume(
+                "master",
+                element.value / this._config.volumeMax
+              );
             },
           },
         },
@@ -656,7 +687,10 @@ export default class extends lwpRenderer {
           events: {
             onchange: (event) => {
               let element = event.srcElement;
-              this.changeOutputVolume("ringer", element.value / this.maxVolume);
+              this.changeOutputVolume(
+                "ringer",
+                element.value / this._config.volumeMax
+              );
             },
           },
         },
@@ -664,7 +698,10 @@ export default class extends lwpRenderer {
           events: {
             onchange: (event) => {
               let element = event.srcElement;
-              this.changeOutputVolume("tones", element.value / this.maxVolume);
+              this.changeOutputVolume(
+                "tones",
+                element.value / this._config.volumeMax
+              );
             },
           },
         },
@@ -672,7 +709,10 @@ export default class extends lwpRenderer {
           events: {
             onchange: (event) => {
               let element = event.srcElement;
-              this.changeOutputVolume("remote", element.value / this.maxVolume);
+              this.changeOutputVolume(
+                "remote",
+                element.value / this._config.volumeMax
+              );
             },
           },
         },
@@ -682,7 +722,7 @@ export default class extends lwpRenderer {
               let element = event.srcElement;
               this.changeOutputVolume(
                 "preview",
-                element.value / this.maxVolume
+                element.value / this._config.volumeMax
               );
             },
           },
@@ -691,7 +731,10 @@ export default class extends lwpRenderer {
           events: {
             onchange: (event) => {
               let element = event.srcElement;
-              this.changeInputVolume("local", element.value / this.maxVolume);
+              this.changeInputVolume(
+                "local",
+                element.value / this._config.volumeMax
+              );
             },
           },
         },
@@ -769,25 +812,25 @@ export default class extends lwpRenderer {
     }
   ) {
     data.input.local.value =
-      this._localAudio.volumeGainNode.gain.value * this.maxVolume;
+      this._localAudio.volumeGainNode.gain.value * this._config.volumeMax;
 
     data.output.master.value =
-      this._outputAudio.volumeGainNode.gain.value * this.maxVolume;
+      this._outputAudio.volumeGainNode.gain.value * this._config.volumeMax;
 
     data.output.ringer.value =
-      this._ringAudio.volumeGainNode.gain.value * this.maxVolume;
+      this._ringAudio.volumeGainNode.gain.value * this._config.volumeMax;
 
     data.output.tones.value =
-      this._tonesAudio.volumeGainNode.gain.value * this.maxVolume;
+      this._tonesAudio.volumeGainNode.gain.value * this._config.volumeMax;
 
     data.output.remote.value =
-      this._remoteAudio.volumeGainNode.gain.value * this.maxVolume;
+      this._remoteAudio.volumeGainNode.gain.value * this._config.volumeMax;
 
     data.output.preview.value =
-      this._previewAudio.volumeGainNode.gain.value * this.maxVolume;
+      this._previewAudio.volumeGainNode.gain.value * this._config.volumeMax;
 
-    data.volume.max = this.maxVolume;
-    data.volume.min = this.minVolume;
+    data.volume.max = this._config.volumeMax;
+    data.volume.min = this._config.volumeMin;
 
     return data;
   }
@@ -812,8 +855,8 @@ export default class extends lwpRenderer {
         clearTimeout(this._ringingTimer);
         this._ringingTimer = null;
       }
-      this._ringAudio.carrierGain.gain.value = this.minVolume;
-      this._ringAudio.modulatorGain.gain.value = this.minVolume;
+      this._ringAudio.carrierGain.gain.value = this._config.volumeMin;
+      this._ringAudio.modulatorGain.gain.value = this._config.volumeMin;
     }
   }
 

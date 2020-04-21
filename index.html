@@ -347,9 +347,13 @@
           renderTargets: [
             "dialpad",
             {
-              root: { elementId: "dialpad_custom" },
+              root: { elementId: "dialpad_custom_tweaked" },
               data: {
-                dialed: { show: true },
+                dialed: {
+                  show: true,
+                  filter: { show: false },
+                  convert: { show: false },
+                },
                 dialpad: { show: false },
                 controls: { show: true },
               },
@@ -367,10 +371,10 @@
             startMuted: false,
           },
           renderTargets: [
-            "media_device_preview",
+            "media_device",
             {
               root: {
-                elementId: "media_device_selector",
+                elementId: "media_device_tweaked",
               },
               data: {
                 audiooutput: { show: false },
@@ -380,7 +384,16 @@
           ],
         },
         audioContext: {
-          renderTargets: ["audio_mixer"],
+          renderTargets: [
+            "audio_context",
+            {
+              root: { elementId: "audio_context_tweaked" },
+              data: {
+                input: { local: { show: false } },
+                output: { preview: { show: false } },
+              },
+            },
+          ],
         },
         userAgent: {
           renderTargets: ["user_agent"],
@@ -390,8 +403,8 @@
             recovery_min_interval: 2,
           },
           authentication: {
-            username: "user_ctNx9XCWq7",
-            password: "N3kk4b75XHP6",
+            username: "",
+            password: "",
             realm: "4a6863.sip.sandbox.2600hz.com",
           },
           user_agent: {
@@ -440,90 +453,6 @@
   </head>
   <body>
     <div class="container-fluid">
-      <!-- Developer Controls-->
-
-      <div class="row" style="border: solid;">
-        <div class="col" style="border-right: dashed;">
-          Audio Input:
-          <span id="audio_mute_status">UNMUTED</span>
-          <script type="text/javascript">
-            webphone.on(
-              "mediaDevices.audio.input.muted",
-              () =>
-                (document.querySelector("#audio_mute_status").innerHTML =
-                  "MUTED  ")
-            );
-            webphone.on(
-              "mediaDevices.audio.input.unmuted",
-              () =>
-                (document.querySelector("#audio_mute_status").innerHTML =
-                  "UNMUTED")
-            );
-          </script>
-          <div>
-            <button onclick="webphone.getMediaDevices().mute('audioinput');">
-              Mute Audio
-            </button>
-            <button onclick="webphone.getMediaDevices().unmute('audioinput');">
-              Unmute Audio
-            </button>
-            <button
-              onclick="webphone.getMediaDevices().toggleMute('audioinput');"
-            >
-              Toggle Audio Mute
-            </button>
-          </div>
-        </div>
-        <div class="col" style="border-right: dashed;">
-          Video Input:
-          <span id="video_mute_status">UNMUTED</span>
-          <script type="text/javascript">
-            webphone.on(
-              "mediaDevices.video.input.muted",
-              () =>
-                (document.querySelector("#video_mute_status").innerHTML =
-                  "MUTED  ")
-            );
-            webphone.on(
-              "mediaDevices.video.input.unmuted",
-              () =>
-                (document.querySelector("#video_mute_status").innerHTML =
-                  "UNMUTED")
-            );
-          </script>
-          <div>
-            <button onclick="webphone.getMediaDevices().mute('videoinput');">
-              Mute Video
-            </button>
-            <button onclick="webphone.getMediaDevices().unmute('videoinput');">
-              Unmute Video
-            </button>
-            <button
-              onclick="webphone.getMediaDevices().toggleMute('videoinput');"
-            >
-              Toggle Video Mute
-            </button>
-          </div>
-        </div>
-        <div class="col" style="border-right: dashed;">
-          <span>State Control</span>
-          <div>
-            <button onclick="webphone.getMediaDevices().startPreviews();">
-              Start Preview
-            </button>
-            <button onclick="webphone.getMediaDevices().stopPreviews();">
-              Stop Preview
-            </button>
-            <button onclick="webphone.getMediaDevices().startStreams();">
-              Start Call Streams
-            </button>
-            <button onclick="webphone.getMediaDevices().stopStreams();">
-              Stop Call Streams
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- User Agent-->
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
@@ -575,7 +504,9 @@
               },
             };
 
-            webphone.getUserAgent().renderAddTarget(customTemplateConfig);
+            if (webphone.getUserAgent()) {
+              webphone.getUserAgent().renderAddTarget(customTemplateConfig);
+            }
           </script>
         </div>
       </div>
@@ -583,10 +514,10 @@
       <!-- Media Devices-->
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
-          <div id="media_device_preview"></div>
+          <div id="media_device"></div>
         </div>
         <div class="col" style="border-right: dashed;">
-          <div id="media_device_selector"></div>
+          <div id="media_device_tweaked"></div>
         </div>
         <div class="col">
           <div id="media_device_custom"></div>
@@ -695,10 +626,49 @@
       <!-- Audio Mixer -->
       <div class="row" style="border: solid;">
         <div class="col" style="border-right: dashed;">
-          <div id="audio_mixer"></div>
+          <div id="audio_context"></div>
         </div>
-        <div class="col" style="border-right: dashed;"></div>
-        <div class="col"></div>
+        <div class="col" style="border-right: dashed;">
+          <div id="audio_context_tweaked"></div>
+        </div>
+        <div class="col">
+          <div id="audio_context_custom"></div>
+          <script type="text/javascript">
+            var template = `
+              <div>
+                <label for="{{by_id.mastervolume.elementId}}">
+                  {{i18n.mastervolume}}
+                </label>
+                <input type="number" id="{{by_id.mastervolume.elementId}}" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.output.master.value}}">
+              </div>
+            `;
+            var customConfig = {
+              template: template,
+              root: {
+                elementId: "audio_context_custom",
+              },
+              by_id: {
+                mastervolume: {
+                  events: {
+                    onchange: (event) => {
+                      let element = event.srcElement;
+                      let audioContext = webphone.getAudioContext();
+                      if (audioContext) {
+                        audioContext.changeOutputVolume(
+                          "master",
+                          element.value / audioContext._config.volumeMax
+                        );
+                      }
+                    },
+                  },
+                },
+              },
+            };
+            if (webphone.getAudioContext()) {
+              webphone.getAudioContext().renderAddTarget(customConfig);
+            }
+          </script>
+        </div>
       </div>
 
       <!-- Dialpad -->
@@ -707,7 +677,7 @@
           <div id="dialpad"></div>
         </div>
         <div class="col" style="border-right: dashed;">
-          <div id="dialpad_custom"></div>
+          <div id="dialpad_custom_tweaked"></div>
         </div>
         <div class="col">
           <!-- Example dialpad from https://www.jqueryscript.net/other/Creating-A-Responsive-Phone-Dial-Pad-with-jQuery-CSS3-dialpad.html-->
@@ -817,7 +787,7 @@
               }
             };
             webphone.on("call.primary.update", callback);
-            webphone.on("dialpad.digits.updated", callback);
+            webphone.on("dialpad.target.updated", callback);
             callback();
           </script>
         </div>
@@ -843,8 +813,6 @@
       <div class="row" style="border: solid;">
         <div class="col">
           <div id="video_screen"></div>
-          <video id="remote_video_debug" autoplay muted></video>
-          <video id="local_video_debug" autoplay muted></video>
         </div>
       </div>
     </div>
