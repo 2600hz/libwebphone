@@ -139,7 +139,7 @@ export default class {
 
   hold() {
     if (this.hasSession()) {
-      //this._getSession().hold();
+      this._getSession().hold();
     }
   }
 

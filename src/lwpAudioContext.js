@@ -256,7 +256,7 @@ export default class extends lwpRenderer {
       output: {
         master: {
           show: true,
-          default: 0.5,
+          default: 1.0,
           mediaElement: {
             create: true,
             elementId: null,
@@ -268,7 +268,7 @@ export default class extends lwpRenderer {
         },
         ringer: {
           show: true,
-          default: 0.5,
+          default: 1.0,
           connectToMaster: true,
           mediaElement: {
             create: false,

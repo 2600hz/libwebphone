@@ -68,8 +68,6 @@ export default class extends lwpRenderer {
       });
       if (!currentTrack) {
         newMediaStream.addTrack(track.clone());
-      } else {
-        console.log("skip! ", track);
       }
     });
 
