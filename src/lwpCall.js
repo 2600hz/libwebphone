@@ -1,6 +1,6 @@
 "use strict";
 
-import { uuid, mediaElementEvents } from "./lwpUtils";
+import { uuid, mediaElementEvents, _trackParameters } from "./lwpUtils";
 
 export default class {
   constructor(libwebphone, session = null) {
@@ -353,7 +353,6 @@ export default class {
     this._streams = {
       remote: {
         mediaStream: new MediaStream(),
-        sourceStream: null,
         kinds: {
           audio: false,
           video: false,
@@ -376,18 +375,9 @@ export default class {
       },
     };
 
-    let mediaDevices = this._libwebphone.getMediaDevices();
-    if ("sinkId" in HTMLMediaElement.prototype && mediaDevices) {
-      let preferedDevice = webphone
-        .getMediaDevices()
-        .getPreferedDevice("audiooutput");
-      this._streams.remote.elements.audio.setSinkId(preferedDevice.id);
-    }
-
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        let audioContext = this._libwebphone.getAudioContext();
 
         mediaElementEvents().forEach((eventName) => {
           element.addEventListener(eventName, (event) => {
@@ -395,9 +385,8 @@ export default class {
           });
         });
 
-        // NOTE: don't mute the remote audio by default and only if
-        //   there is an audio context....
-        element.muted = !(type == "remote" && kind == "audio" && !audioContext);
+        // NOTE: don't mute the remote audio by default
+        element.muted = !(type == "remote" && kind == "audio");
       });
     });
 
@@ -408,20 +397,8 @@ export default class {
 
   _initEventBindings() {
     this._libwebphone.on(
-      "mediaDevices.video.input.changed",
-      (lwp, mediaDevices, newTrack, previousTrack) => {
-        if (this.hasSession()) {
-          if (newTrack) {
-            this.replaceSenderTrack(newTrack.track);
-          } else {
-            this.removeSenderTrack("video");
-          }
-        }
-      }
-    );
-    this._libwebphone.on(
       "mediaDevices.audio.input.changed",
-      (lwp, mediaDevices, newTrack, previousTrack) => {
+      (lwp, mediaDevices, newTrack) => {
         if (this.hasSession()) {
           if (newTrack) {
             this.replaceSenderTrack(newTrack.track);
@@ -432,13 +409,18 @@ export default class {
       }
     );
     this._libwebphone.on(
-      "mediaDevices.audio.output.changed",
-      (lwp, mediaDevices, preferedDevice) => {
-        if (preferedDevice.id) {
-          this._streams.remote.elements.audio.setSinkId(preferedDevice.id);
+      "mediaDevices.video.input.changed",
+      (lwp, mediaDevices, newTrack) => {
+        if (this.hasSession()) {
+          if (newTrack) {
+            this.replaceSenderTrack(newTrack.track);
+          } else {
+            this.removeSenderTrack("video");
+          }
         }
       }
     );
+
     if (this.hasPeerConnection()) {
       let peerConnection = this.getPeerConnection();
       this._emit("peerconnection", this, peerConnection);
@@ -522,8 +504,6 @@ export default class {
       return;
     }
 
-    this._connectStreams();
-
     if (resume && this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
@@ -531,6 +511,8 @@ export default class {
     this._emit("promoted", this);
 
     this._primary = true;
+
+    this._connectStreams();
   }
 
   _clearPrimary(pause = true) {
@@ -556,8 +538,6 @@ export default class {
   }
 
   _updateStreams() {
-    let audioContext = this._libwebphone.getAudioContext();
-
     Object.keys(this._streams).forEach((type) => {
       let peerConnection = this.getPeerConnection();
       let mediaStream = this._streams[type].mediaStream;
@@ -579,7 +559,7 @@ export default class {
             });
             break;
         }
-        this._syncTracks(mediaStream, peerTracks);
+        this._syncTracks(mediaStream, peerTracks, type);
       }
 
       Object.keys(this._streams[type].elements).forEach((kind) => {
@@ -599,21 +579,9 @@ export default class {
         }
       });
     });
-
-    if (this._streams.remote.kinds.audio) {
-      if (!this._streams.remote.sourceStream) {
-        this._streams.remote.sourceStream = audioContext._createMediaStreamSource(
-          this._streams.remote.mediaStream
-        );
-      }
-
-      if (this.isPrimary()) {
-        audioContext._setRemoteSourceStream(this._streams.remote.sourceStream);
-      }
-    }
   }
 
-  _syncTracks(mediaStream, peerTracks) {
+  _syncTracks(mediaStream, peerTracks, type) {
     let peerIds = peerTracks.map((track) => {
       return track.id;
     });
@@ -629,21 +597,30 @@ export default class {
     mediaStream.getTracks().forEach((track) => {
       if (removeIds.includes(track.id)) {
         mediaStream.removeTrack(track);
+        this._emit(
+          type + "." + track.kind + ".removed",
+          this,
+          _trackParameters(mediaStream, track)
+        );
       }
     });
     peerTracks.forEach((track) => {
       if (addIds.includes(track.id)) {
         mediaStream.addTrack(track);
+        this._emit(
+          type + "." + track.kind + ".added",
+          this,
+          _trackParameters(mediaStream, track)
+        );
       }
     });
   }
 
   _connectStreams() {
-    let audioContext = this._libwebphone.getAudioContext();
-
-    if (audioContext) {
-      audioContext._setRemoteSourceStream(this._streams.remote.sourceStream);
-    }
+    Object.keys(this._streams).forEach((type) => {
+      let mediaStream = this._streams[type].mediaStream;
+      this._emit(type + ".mediaStream.connect", this, mediaStream);
+    });
 
     if (!this.hasSession()) {
       return;
@@ -651,11 +628,10 @@ export default class {
 
     let peerConnection = this.getPeerConnection();
     if (peerConnection) {
-      let mediaStreams = peerConnection.getLocalStreams();
-      mediaStreams.forEach((mediaStream) => {
-        mediaStream.getTracks().forEach((track) => {
-          track.enabled = true;
-        });
+      peerConnection.getSenders().forEach((peer) => {
+        if (peer.track) {
+          peer.track.enabled = true;
+        }
       });
     }
 
@@ -678,11 +654,10 @@ export default class {
   }
 
   _disconnectStreams() {
-    let audioContext = this._libwebphone.getAudioContext();
-
-    if (audioContext) {
-      audioContext._setRemoteSourceStream();
-    }
+    Object.keys(this._streams).forEach((type) => {
+      let mediaStream = this._streams[type].mediaStream;
+      this._emit(type + ".mediaStream.disconnect", this, mediaStream);
+    });
 
     if (!this.hasSession()) {
       return;
@@ -690,11 +665,10 @@ export default class {
 
     let peerConnection = this.getPeerConnection();
     if (peerConnection) {
-      let mediaStreams = peerConnection.getLocalStreams();
-      mediaStreams.forEach((mediaStream) => {
-        mediaStream.getTracks().forEach((track) => {
-          track.enabled = false;
-        });
+      peerConnection.getSenders().forEach((peer) => {
+        if (peer.track) {
+          peer.track.enabled = false;
+        }
       });
     }
 

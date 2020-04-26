@@ -1,6 +1,12 @@
 "use strict";
 
-import { merge, mediaElementEvents } from "./lwpUtils";
+import {
+  merge,
+  mediaElementEvents,
+  _trackParameters,
+  _trackKindtoDeviceKind,
+  _trackKinds,
+} from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import { Mutex } from "async-mutex";
 import adapter from "webrtc-adapter";
@@ -27,14 +33,7 @@ export default class extends lwpRenderer {
       });
     }
 
-    let startMuted = [];
-    Object.keys(this._config).forEach((category) => {
-      if (this._config[category].startMuted) {
-        startMuted.push(this._deviceKindtoTrackKind(category));
-      }
-    });
-
-    return this._startInputStreams(null, startMuted).then((mediaStream) => {
+    return this._startInputStreams().then((mediaStream) => {
       this._inputActive = true;
 
       this._emit("streams.started", this, mediaStream);
@@ -214,21 +213,17 @@ export default class extends lwpRenderer {
         });
 
         return this._mediaStreamPromise.then((mediaStream) => {
-          let startMuted = [];
           let constraints = this._createConstraints();
           let alteredConstraints = {};
 
           mediaStream.getTracks().forEach((track) => {
-            let trackParameters = this._trackParameters(mediaStream, track);
-            let deviceKind = this._trackKindtoDeviceKind(track.kind);
+            let trackParameters = _trackParameters(mediaStream, track);
+            let deviceKind = _trackKindtoDeviceKind(track.kind);
             let selectedDevice = this._availableDevices[deviceKind].find(
               (availableDevice) => {
                 return availableDevice.selected;
               }
             );
-            if (!track.enabled) {
-              startMuted.push(track.kind);
-            }
 
             if (selectedDevice) {
               let differentId =
@@ -252,7 +247,7 @@ export default class extends lwpRenderer {
 
           release();
 
-          return this._startInputStreams(alteredConstraints, startMuted);
+          return this._startInputStreams(alteredConstraints);
         });
       })
       .then(() => {
@@ -287,8 +282,8 @@ export default class extends lwpRenderer {
   _initProperties(config) {
     let defaults = {
       audiooutput: {
-        show: "sinkId" in HTMLMediaElement.prototype,
-        startMuted: false,
+        enabled: "sinkId" in HTMLMediaElement.prototype,
+        show: true,
         preferedDeviceIds: [],
         mediaElement: {
           create: false,
@@ -302,7 +297,6 @@ export default class extends lwpRenderer {
       audioinput: {
         enabled: true,
         show: true,
-        startMuted: false,
         constraints: {},
         preferedDeviceIds: [],
         mediaElement: {
@@ -317,7 +311,6 @@ export default class extends lwpRenderer {
       videoinput: {
         enabled: true,
         show: true,
-        startMuted: true,
         constraints: {},
         preferedDeviceIds: [],
         mediaElement: {
@@ -391,6 +384,9 @@ export default class extends lwpRenderer {
       this._config[deviceKind].preferedDeviceIds.reverse();
 
       this._availableDevices[deviceKind] = [];
+
+      this._config[deviceKind].show =
+        this._config[deviceKind].enabled && this._config[deviceKind].show;
     });
 
     this._availableDevices.videoinput = [
@@ -418,7 +414,10 @@ export default class extends lwpRenderer {
         this._emit("getUserMedia.error", this, error);
         if (constraints.video && constraints.audio) {
           delete constraints.video;
-          return this._shimGetUserMedia(constraints);
+          return this._shimGetUserMedia(constraints).then((mediaStream) => {
+            this._updateMediaElements(mediaStream);
+            return mediaStream;
+          });
         }
       });
 
@@ -636,10 +635,7 @@ export default class extends lwpRenderer {
   /** Helper functions */
 
   async _changeOutputDevice(preferedDevice) {
-    if (
-      this._config.manageMediaElements &&
-      "sinkId" in HTMLMediaElement.prototype
-    ) {
+    if (this._config.manageMediaElements) {
       return this._config.audiooutput.mediaElement.element
         .setSinkId(preferedDevice.id)
         .then(() => {
@@ -653,7 +649,9 @@ export default class extends lwpRenderer {
             }
           );
 
-          this._emit("audio.output.changed", this, preferedDevice);
+          if (this._config.audiooutput.enabled) {
+            this._emit("audio.output.changed", this, preferedDevice);
+          }
         });
     } else {
       this._availableDevices[preferedDevice.deviceKind].forEach(
@@ -666,7 +664,9 @@ export default class extends lwpRenderer {
         }
       );
 
-      this._emit("audio.output.changed", this, preferedDevice);
+      if (this._config.audiooutput.enabled) {
+        this._emit("audio.output.changed", this, preferedDevice);
+      }
 
       return Promise.resolve();
     }
@@ -678,7 +678,7 @@ export default class extends lwpRenderer {
 
       mediaStream.getTracks().forEach((track) => {
         if (!trackKind || track.kind == trackKind) {
-          let trackParameters = this._trackParameters(mediaStream, track);
+          let trackParameters = _trackParameters(mediaStream, track);
 
           track.enabled = false;
 
@@ -696,7 +696,7 @@ export default class extends lwpRenderer {
 
       mediaStream.getTracks().forEach((track) => {
         if (!trackKind || track.kind == trackKind) {
-          let trackParameters = this._trackParameters(mediaStream, track);
+          let trackParameters = _trackParameters(mediaStream, track);
 
           track.enabled = true;
 
@@ -714,7 +714,7 @@ export default class extends lwpRenderer {
 
       mediaStream.getTracks().forEach((track) => {
         if (!trackKind || track.kind == trackKind) {
-          let trackParameters = this._trackParameters(mediaStream, track);
+          let trackParameters = _trackParameters(mediaStream, track);
 
           track.enabled = !track.enabled;
 
@@ -737,7 +737,7 @@ export default class extends lwpRenderer {
       let previousTrack = mediaStream.getTracks().find((track) => {
         return track.kind == preferedDevice.trackKind;
       });
-      let previousTrackParameters = this._trackParameters(
+      let previousTrackParameters = _trackParameters(
         mediaStream,
         previousTrack
       );
@@ -764,7 +764,7 @@ export default class extends lwpRenderer {
             this._emit(
               trackKind + ".input.changed",
               this,
-              this._trackParameters(mediaStream, newTrack),
+              _trackParameters(mediaStream, newTrack),
               previousTrackParameters
             );
           }
@@ -790,7 +790,7 @@ export default class extends lwpRenderer {
     });
   }
 
-  _startInputStreams(constraints = null, mutedInputs = []) {
+  _startInputStreams(constraints = null) {
     if (!constraints) {
       constraints = this._createConstraints();
     }
@@ -811,8 +811,6 @@ export default class extends lwpRenderer {
       return this._shimGetUserMedia(constraints)
         .then((otherMediaStream) => {
           otherMediaStream.getTracks().forEach((track) => {
-            let startMuted = mutedInputs.indexOf(track.kind) >= 0;
-            track.enabled = !startMuted;
             this._addTrack(mediaStream, track);
           });
 
@@ -829,10 +827,8 @@ export default class extends lwpRenderer {
   }
 
   _updateMediaElements(mediaStream) {
-    let audioContext = this._libwebphone.getAudioContext();
-
-    this._trackKinds().forEach((trackKind) => {
-      let deviceKind = this._trackKindtoDeviceKind(trackKind);
+    _trackKinds().forEach((trackKind) => {
+      let deviceKind = _trackKindtoDeviceKind(trackKind);
       let element = this._config[deviceKind].mediaElement.element;
       let track = mediaStream.getTracks().find((track) => {
         return track.kind == trackKind;
@@ -844,11 +840,6 @@ export default class extends lwpRenderer {
           (!element.srcObject || element.srcObject.id != mediaStream.id)
         ) {
           element.srcObject = mediaStream;
-        }
-
-        if (audioContext && trackKind == "audio") {
-          let sourceStream = audioContext._createMediaStreamSource(mediaStream);
-          audioContext._setLocalSourceStream(sourceStream);
         }
 
         if (this._config.manageMediaElements && element && element.paused) {
@@ -949,7 +940,7 @@ export default class extends lwpRenderer {
   /** MediaStream Helpers */
 
   _addTrack(mediaStream, track) {
-    let trackParameters = this._trackParameters(mediaStream, track);
+    let trackParameters = _trackParameters(mediaStream, track);
 
     mediaStream.addTrack(track);
 
@@ -973,7 +964,7 @@ export default class extends lwpRenderer {
   }
 
   _removeTrack(mediaStream, track, updateSelected = true) {
-    let trackParameters = this._trackParameters(mediaStream, track);
+    let trackParameters = _trackParameters(mediaStream, track);
 
     track.enabled = false;
     track.stop();
@@ -997,40 +988,6 @@ export default class extends lwpRenderer {
     }
 
     this._emit(track.kind + ".input.stopped", this, trackParameters);
-  }
-
-  _trackParameters(mediaStream, track) {
-    if (!mediaStream || !track) {
-      return;
-    }
-
-    if (typeof track.getCapabilities != "function") {
-      track.getCapabilities = () => {};
-    }
-
-    return {
-      trackKind: track.kind,
-      selected: track.readyState == "live",
-      deviceKind: this._trackKindtoDeviceKind(track.kind),
-      settings: track.getSettings(),
-      constraints: track.getConstraints(),
-      capabilities: track.getCapabilities(),
-      track: track,
-      mediaStream: mediaStream,
-    };
-  }
-
-  _trackKindtoDeviceKind(trackKind) {
-    switch (trackKind) {
-      case "audio":
-        return "audioinput";
-      case "video":
-        return "videoinput";
-    }
-  }
-
-  _trackKinds() {
-    return ["audio", "video"];
   }
 
   /** Device Helpers */

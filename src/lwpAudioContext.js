@@ -26,10 +26,53 @@ export default class extends lwpRenderer {
     if (!this._started) {
       this._started = true;
       this._audioContext.resume();
+      /*
+      this._outputAudio.context.resume();
+      this._localAudio.context.resume();
+      this._remoteAudio.context.resume();
+      this._previewAudio.context.resume();
+      this._tonesAudio.context.resume();
+      this._ringAudio.context.resume();
+      */
       this._previewAudio.oscillatorNode.start();
       this._ringAudio.carrierNode.start();
       this._ringAudio.modulatorNode.start();
+      if (this._config.manageMediaElements) {
+        if (
+          this._config.output.master.mediaElement.element &&
+          this._config.output.master.mediaElement.element.srcObject
+        ) {
+          this._config.output.master.mediaElement.element.play();
+        }
 
+        if (
+          this._config.output.remote.mediaElement.element &&
+          this._config.output.remote.mediaElement.element.srcObject
+        ) {
+          this._config.output.remote.mediaElement.element.play();
+        }
+
+        if (
+          this._config.output.preview.mediaElement.element &&
+          this._config.output.preview.mediaElement.element.srcObject
+        ) {
+          this._config.output.preview.mediaElement.element.play();
+        }
+
+        if (
+          this._config.output.tones.mediaElement.element &&
+          this._config.output.tones.mediaElement.element.srcObject
+        ) {
+          this._config.output.tones.mediaElement.element.play();
+        }
+
+        if (
+          this._config.output.ringer.mediaElement.element &&
+          this._config.output.ringer.mediaElement.element.srcObject
+        ) {
+          this._config.output.ringer.mediaElement.element.play();
+        }
+      }
       this._emit("started", this);
     }
   }
@@ -45,7 +88,7 @@ export default class extends lwpRenderer {
     this._emit("preview.tone.started", this);
   }
 
-  stoppedPreviewTone() {
+  stopPreviewTone() {
     if (!this.isPreviewToneActive()) {
       return;
     }
@@ -74,21 +117,23 @@ export default class extends lwpRenderer {
     this.startAudioContext();
 
     this._previewAudio.loopbackGainNode.gain.value = 1.0;
+    this._localAudio.volumeGainNode.connect(
+      this._previewAudio.loopbackDelayNode
+    );
+
     this._emit("preview.loopback.started", this);
   }
 
   stopPreviewLoopback() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
-
     if (!this.isPreviewLoopbackActive()) {
       return;
     }
 
-    if (mediaDevices) {
-      mediaDevices.stopStreams("loopbackPreview");
-    }
-
     this._previewAudio.loopbackGainNode.gain.value = this._config.volumeMin;
+    this._localAudio.volumeGainNode.disconnect(
+      this._previewAudio.loopbackDelayNode
+    );
+
     this._emit("preview.loopback.stopped", this);
   }
 
@@ -152,7 +197,7 @@ export default class extends lwpRenderer {
 
     let duration = this._config.tones.duration;
     let sampleRate = 8000;
-    let buffer = this._audioContext.createBuffer(
+    let buffer = this._tonesAudio.context.createBuffer(
       tones.length,
       sampleRate,
       sampleRate
@@ -165,7 +210,7 @@ export default class extends lwpRenderer {
       }
     }
 
-    let bufferSource = this._audioContext.createBufferSource();
+    let bufferSource = this._tonesAudio.context.createBufferSource();
     bufferSource.buffer = buffer;
     bufferSource.connect(this._tonesAudio.volumeGainNode);
     bufferSource.start();
@@ -269,45 +314,53 @@ export default class extends lwpRenderer {
         ringer: {
           show: true,
           default: 1.0,
-          connectToMaster: true,
+          connectToMaster: false,
           mediaElement: {
-            create: false,
+            create: true,
             elementId: null,
             element: null,
-            initParameters: {},
+            initParameters: {
+              muted: false,
+            },
           },
         },
         tones: {
           show: true,
           default: 0.25,
-          connectToMaster: true,
+          connectToMaster: false,
           mediaElement: {
-            create: false,
+            create: true,
             elementId: null,
             element: null,
-            initParameters: {},
+            initParameters: {
+              muted: false,
+            },
           },
         },
         remote: {
           show: true,
           default: 1.0,
-          connectToMaster: true,
+          connectToMaster: false,
           mediaElement: {
-            create: false,
+            create: true,
             elementId: null,
             element: null,
-            initParameters: {},
+            initParameters: {
+              muted: false,
+            },
           },
         },
         preview: {
           show: true,
           default: 1.0,
-          connectToMaster: true,
+          connectToMaster: false,
           mediaElement: {
-            create: false,
+            create: true,
             elementId: null,
             element: null,
-            initParameters: {},
+            initParameters: {
+              muted: false,
+            },
           },
         },
       },
@@ -344,10 +397,9 @@ export default class extends lwpRenderer {
     };
     this._config = merge(defaults, config);
 
-    this._ringingTimer = null;
+    this._audioContext = this._shimAudioContext();
 
-    this._audioContext = new (window.AudioContext ||
-      window.webkitAudioContext)();
+    this._ringingTimer = null;
 
     Object.keys(this._config.output).forEach((channel) => {
       if (
@@ -400,51 +452,63 @@ export default class extends lwpRenderer {
 
     this._outputAudio = {};
 
-    this._outputAudio.volumeGainNode = this._audioContext.createGain();
+    this._outputAudio.context = this._shimAudioContext(); //this._audioContext;
+
+    this._outputAudio.volumeGainNode = this._outputAudio.context.createGain();
     this._outputAudio.volumeGainNode.gain.value = this._config.output.master.default;
 
-    this._outputAudio.destinationStream = this._createMediaStreamDestination();
+    this._outputAudio.destinationStream = this._createMediaStreamDestination(
+      this._outputAudio.context
+    );
     this._outputAudio.volumeGainNode.connect(
       this._outputAudio.destinationStream
     );
+
+    if (this._config.output.master.mediaElement.element) {
+      this._config.output.master.mediaElement.element.srcObject = this._outputAudio.destinationStream.stream;
+    }
 
     if (mediaDevices && mediaDevices.getMediaElement("audiooutput")) {
       mediaDevices.getMediaElement(
         "audiooutput"
       ).srcObject = this._outputAudio.destinationStream.stream;
-    } else if (this._config.output.master.mediaElement.element) {
-      this._config.output.master.mediaElement.element.srcObject = this._outputAudio.destinationStream.stream;
-
-      if (this._config.manageMediaElements) {
-        this._config.output.master.mediaElement.element.play();
-      }
     }
   }
 
   _initLocalAudio() {
     this._localAudio = {};
 
+    this._localAudio.context = this._shimAudioContext(); //this._audioContext;
+
     this._localAudio.sourceStream = null;
 
-    this._localAudio.volumeGainNode = this._audioContext.createGain();
+    this._localAudio.volumeGainNode = this._localAudio.context.createGain();
     this._localAudio.volumeGainNode.gain.value = this._config.input.local.default;
 
-    this._localAudio.destinationStream = this._createMediaStreamDestination();
+    this._localAudio.destinationStream = this._createMediaStreamDestination(
+      this._localAudio.context
+    );
     this._localAudio.volumeGainNode.connect(this._localAudio.destinationStream);
   }
 
   _initRemoteAudio() {
     this._remoteAudio = {};
 
+    this._remoteAudio.context = this._shimAudioContext(); //this._audioContext;
+
     this._remoteAudio.sourceStream = null;
 
-    this._remoteAudio.volumeGainNode = this._audioContext.createGain();
+    this._remoteAudio.volumeGainNode = this._remoteAudio.context.createGain();
     this._remoteAudio.volumeGainNode.gain.value = this._config.output.remote.default;
 
-    this._remoteAudio.destinationStream = this._createMediaStreamDestination();
+    this._remoteAudio.destinationStream = this._createMediaStreamDestination(
+      this._remoteAudio.context
+    );
+    /*
     this._remoteAudio.volumeGainNode.connect(
       this._remoteAudio.destinationStream
     );
+    */
 
     if (this._config.output.remote.connectToMaster) {
       this._remoteAudio.volumeGainNode.connect(
@@ -454,50 +518,47 @@ export default class extends lwpRenderer {
 
     if (this._config.output.remote.mediaElement.element) {
       this._config.output.remote.mediaElement.element.srcObject = this._remoteAudio.destinationStream.stream;
-
-      if (this._config.manageMediaElements) {
-        this._config.output.remote.mediaElement.element.play();
-      }
     }
   }
 
   _initPreviewAudio() {
     this._previewAudio = {};
 
-    this._previewAudio.volumeGainNode = this._audioContext.createGain();
+    this._previewAudio.context = this._shimAudioContext(); //this._audioContext;
+
+    this._previewAudio.volumeGainNode = this._previewAudio.context.createGain();
     this._previewAudio.volumeGainNode.gain.value = this._config.output.preview.default;
 
-    this._previewAudio.oscillatorGainNode = this._audioContext.createGain();
+    this._previewAudio.oscillatorGainNode = this._previewAudio.context.createGain();
     this._previewAudio.oscillatorGainNode.gain.value = this._config.volumeMin;
     this._previewAudio.oscillatorGainNode.connect(
       this._previewAudio.volumeGainNode
     );
 
-    this._previewAudio.oscillatorNode = this._audioContext.createOscillator();
+    this._previewAudio.oscillatorNode = this._previewAudio.context.createOscillator();
     this._previewAudio.oscillatorNode.frequency.value = this._config.preview.tone.frequency;
     this._previewAudio.oscillatorNode.type = this._config.preview.tone.type;
     this._previewAudio.oscillatorNode.connect(
       this._previewAudio.oscillatorGainNode
     );
 
-    this._previewAudio.loopbackGainNode = this._audioContext.createGain();
+    this._previewAudio.loopbackGainNode = this._previewAudio.context.createGain();
     this._previewAudio.loopbackGainNode.gain.value = this._config.volumeMin;
     this._previewAudio.loopbackGainNode.connect(
       this._previewAudio.volumeGainNode
     );
 
-    this._previewAudio.loopbackDelayNode = this._audioContext.createDelay(
+    this._previewAudio.loopbackDelayNode = this._previewAudio.context.createDelay(
       this._config.preview.loopback.delay + 1.5
     );
     this._previewAudio.loopbackDelayNode.delayTime.value = this._config.preview.loopback.delay;
-    this._localAudio.volumeGainNode.connect(
-      this._previewAudio.loopbackDelayNode
-    );
     this._previewAudio.loopbackDelayNode.connect(
       this._previewAudio.loopbackGainNode
     );
 
-    this._previewAudio.destinationStream = this._createMediaStreamDestination();
+    this._previewAudio.destinationStream = this._createMediaStreamDestination(
+      this._previewAudio.context
+    );
     this._previewAudio.volumeGainNode.connect(
       this._previewAudio.destinationStream
     );
@@ -510,20 +571,20 @@ export default class extends lwpRenderer {
 
     if (this._config.output.preview.mediaElement.element) {
       this._config.output.preview.mediaElement.element.srcObject = this._previewAudio.destinationStream.stream;
-
-      if (this._config.manageMediaElements) {
-        this._config.output.preview.mediaElement.element.play();
-      }
     }
   }
 
   _initTonesAudio() {
     this._tonesAudio = {};
 
-    this._tonesAudio.volumeGainNode = this._audioContext.createGain();
+    this._tonesAudio.context = this._shimAudioContext(); //this._audioContext;
+
+    this._tonesAudio.volumeGainNode = this._tonesAudio.context.createGain();
     this._tonesAudio.volumeGainNode.gain.value = this._config.output.tones.default;
 
-    this._tonesAudio.destinationStream = this._createMediaStreamDestination();
+    this._tonesAudio.destinationStream = this._createMediaStreamDestination(
+      this._tonesAudio.context
+    );
     this._tonesAudio.volumeGainNode.connect(this._tonesAudio.destinationStream);
 
     if (this._config.output.tones.connectToMaster) {
@@ -532,38 +593,38 @@ export default class extends lwpRenderer {
 
     if (this._config.output.tones.mediaElement.element) {
       this._config.output.tones.mediaElement.element.srcObject = this._tonesAudio.destinationStream.stream;
-
-      if (this._config.manageMediaElements) {
-        this._config.output.tones.mediaElement.element.play();
-      }
     }
   }
 
   _initRingAudio() {
     this._ringAudio = {};
 
+    this._ringAudio.context = this._shimAudioContext(); //this._audioContext;
+
     this._ringAudio.calls = [];
 
-    this._ringAudio.volumeGainNode = this._audioContext.createGain();
+    this._ringAudio.volumeGainNode = this._ringAudio.context.createGain();
     this._ringAudio.volumeGainNode.gain.value = this._config.output.ringer.default;
 
-    this._ringAudio.carrierGain = this._audioContext.createGain();
+    this._ringAudio.carrierGain = this._ringAudio.context.createGain();
     this._ringAudio.carrierGain.gain.value = this._config.volumeMin;
     this._ringAudio.carrierGain.connect(this._ringAudio.volumeGainNode);
 
-    this._ringAudio.modulatorGain = this._audioContext.createGain();
+    this._ringAudio.modulatorGain = this._ringAudio.context.createGain();
     this._ringAudio.modulatorGain.gain.value = this._config.volumeMin;
     this._ringAudio.modulatorGain.connect(this._ringAudio.carrierGain.gain);
 
-    this._ringAudio.carrierNode = this._audioContext.createOscillator();
+    this._ringAudio.carrierNode = this._ringAudio.context.createOscillator();
     this._ringAudio.carrierNode.frequency.value = this._config.ringer.carrier.frequency;
     this._ringAudio.carrierNode.connect(this._ringAudio.carrierGain);
 
-    this._ringAudio.modulatorNode = this._audioContext.createOscillator();
+    this._ringAudio.modulatorNode = this._ringAudio.context.createOscillator();
     this._ringAudio.modulatorNode.frequency.value = this._config.ringer.modulator.frequency;
     this._ringAudio.modulatorNode.connect(this._ringAudio.modulatorGain);
 
-    this._ringAudio.destinationStream = this._createMediaStreamDestination();
+    this._ringAudio.destinationStream = this._createMediaStreamDestination(
+      this._ringAudio.context
+    );
     this._ringAudio.volumeGainNode.connect(this._ringAudio.destinationStream);
 
     if (this._config.output.ringer.connectToMaster) {
@@ -572,10 +633,6 @@ export default class extends lwpRenderer {
 
     if (this._config.output.ringer.mediaElement.element) {
       this._config.output.ringer.mediaElement.element.srcObject = this._ringAudio.destinationStream.stream;
-
-      if (this._config.manageMediaElements) {
-        this._config.output.ringer.mediaElement.element.play();
-      }
     }
   }
 
@@ -586,6 +643,20 @@ export default class extends lwpRenderer {
     this._libwebphone.on("call.ringing.stopped", (lwp, call) => {
       this.stopRinging(call.getId());
     });
+
+    this._libwebphone.on(
+      "call.primary.remote.audio.added",
+      (lwp, call, track) => {
+        this._createRemoteSourceStream(call, track.mediaStream);
+      }
+    );
+
+    this._libwebphone.on(
+      "call.primary.remote.mediaStream.connect",
+      (lwp, call, mediaStream) => {
+        this._createRemoteSourceStream(call, mediaStream);
+      }
+    );
 
     this._libwebphone.on("dialpad.tones.play", (lwp, dialpad, tones) => {
       this.playTones.apply(this, tones);
@@ -613,31 +684,20 @@ export default class extends lwpRenderer {
     this._libwebphone.on(
       "mediaDevices.streams.started",
       (lwp, mediaDevices, mediaStream) => {
-        let track = mediaStream.getTracks().find((track) => {
-          return track.kind == "audio";
-        });
-        if (track) {
-          this._setLocalSourceStream(
-            this._createMediaStreamSource(mediaStream)
-          );
-        }
+        this._createLocalSourceStream(mediaDevices, mediaStream);
       }
     );
-    this._libwebphone.on("mediaDevices.streams.stopped", () => {
-      this._setLocalSourceStream();
-    });
+
     this._libwebphone.on(
       "mediaDevices.audio.input.changed",
       (lwp, mediaDevices, track) => {
-        if (track) {
-          this._setLocalSourceStream(
-            this._createMediaStreamSource(track.mediaStream)
-          );
-        } else {
-          this._setLocalSourceStream();
-        }
+        this._createLocalSourceStream(mediaDevices, track.mediaStream);
       }
     );
+    this._libwebphone.on("mediaDevices.streams.stopped", () => {
+      this._connectLocalSourceStream();
+    });
+    /*
     this._libwebphone.on(
       "mediaDevices.audio.output.changed",
       (lwp, mediaDevices, preferedDevice) => {
@@ -648,8 +708,9 @@ export default class extends lwpRenderer {
             );
           }
         });
-      }
+      }      
     );
+    */
   }
 
   _initRenderTargets() {
@@ -862,7 +923,7 @@ export default class extends lwpRenderer {
 
   _ringerMute() {
     let timestamp =
-      this._audioContext.currentTime + this._config.ringer.onTime * 0.2;
+      this._ringAudio.context.currentTime + this._config.ringer.onTime * 0.2;
     this._ringAudio.modulatorGain.gain.cancelScheduledValues(0);
     this._ringAudio.modulatorGain.gain.exponentialRampToValueAtTime(
       0.00001,
@@ -878,7 +939,7 @@ export default class extends lwpRenderer {
 
   _ringerUnmute() {
     let timestamp =
-      this._audioContext.currentTime + this._config.ringer.offTime * 0.2;
+      this._ringAudio.context.currentTime + this._config.ringer.offTime * 0.2;
     this._ringAudio.carrierGain.gain.cancelScheduledValues(0);
     this._ringAudio.carrierGain.gain.exponentialRampToValueAtTime(
       1.0,
@@ -892,16 +953,16 @@ export default class extends lwpRenderer {
     );
   }
 
-  _createMediaStreamDestination() {
-    return this._audioContext.createMediaStreamDestination();
+  _createMediaStreamDestination(context) {
+    return context.createMediaStreamDestination();
   }
 
-  _createMediaStreamSource(mediaStream) {
-    return this._audioContext.createMediaStreamSource(mediaStream);
+  _createLocalMediaStreamSource(mediaStream) {
+    return this._localAudio.context.createMediaStreamSource(mediaStream);
   }
 
-  _createMediaElementSource(mediaElement) {
-    return this._audioContext.createMediaElementSource(mediaElement);
+  _createRemoteMediaStreamSource(mediaStream) {
+    return this._remoteAudio.context.createMediaStreamSource(mediaStream);
   }
 
   _getMediaStream(channel) {
@@ -921,7 +982,7 @@ export default class extends lwpRenderer {
     }
   }
 
-  _setLocalSourceStream(sourceStream = null) {
+  _connectLocalSourceStream(sourceStream = null) {
     let previousSourceStream = this._localAudio.sourceStream;
 
     if (previousSourceStream) {
@@ -931,7 +992,6 @@ export default class extends lwpRenderer {
 
     if (sourceStream) {
       this._localAudio.sourceStream = sourceStream;
-
       this._localAudio.sourceStream.connect(this._localAudio.volumeGainNode);
     }
 
@@ -943,7 +1003,21 @@ export default class extends lwpRenderer {
     );
   }
 
-  _setRemoteSourceStream(sourceStream = null) {
+  _createLocalSourceStream(source, mediaStream) {
+    let audioTrack = mediaStream.getTracks().find((track) => {
+      return track.kind == "audio";
+    });
+
+    if (!audioTrack) {
+      return this._connectLocalSourceStream();
+    }
+
+    this._connectLocalSourceStream(
+      this._createLocalMediaStreamSource(mediaStream)
+    );
+  }
+
+  _connectRemoteSourceStream(sourceStream = null) {
     let previousSourceStream = this._remoteAudio.sourceStream;
 
     if (previousSourceStream) {
@@ -953,7 +1027,10 @@ export default class extends lwpRenderer {
 
     if (sourceStream) {
       this._remoteAudio.sourceStream = sourceStream;
-      this._remoteAudio.sourceStream.connect(this._remoteAudio.volumeGainNode);
+      //this._remoteAudio.sourceStream.connect(this._remoteAudio.volumeGainNode);
+      this._remoteAudio.sourceStream.connect(
+        this._remoteAudio.destinationStream
+      );
     }
 
     this._emit(
@@ -962,5 +1039,23 @@ export default class extends lwpRenderer {
       sourceStream,
       previousSourceStream
     );
+  }
+
+  _createRemoteSourceStream(source, mediaStream) {
+    let audioTrack = mediaStream.getTracks().find((track) => {
+      return track.kind == "audio";
+    });
+
+    if (!audioTrack) {
+      return this._connectRemoteSourceStream();
+    }
+
+    this._connectRemoteSourceStream(
+      this._createRemoteMediaStreamSource(mediaStream)
+    );
+  }
+
+  _shimAudioContext() {
+    return new (window.AudioContext || window.webkitAudioContext)();
   }
 }

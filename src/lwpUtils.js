@@ -49,3 +49,37 @@ export function mediaElementEvents() {
     "waiting",
   ];
 }
+
+export function _trackParameters(mediaStream, track) {
+  if (!mediaStream || !track) {
+    return;
+  }
+
+  if (typeof track.getCapabilities != "function") {
+    track.getCapabilities = () => {};
+  }
+
+  return {
+    trackKind: track.kind,
+    selected: track.readyState == "live",
+    deviceKind: _trackKindtoDeviceKind(track.kind),
+    settings: track.getSettings(),
+    constraints: track.getConstraints(),
+    capabilities: track.getCapabilities(),
+    track: track,
+    mediaStream: mediaStream,
+  };
+}
+
+export function _trackKindtoDeviceKind(trackKind) {
+  switch (trackKind) {
+    case "audio":
+      return "audioinput";
+    case "video":
+      return "videoinput";
+  }
+}
+
+export function _trackKinds() {
+  return ["audio", "video"];
+}
