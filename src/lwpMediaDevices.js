@@ -44,31 +44,23 @@ export default class extends lwpRenderer {
 
   _createCallStream(mediaStream, requestId) {
     let newMediaStream = new MediaStream();
-    let audioContext = this._libwebphone.getAudioContext();
-
-    if (!requestId) {
-      this._startedStreams.push(null);
-    } else if (!this._startedStreams.includes(requestId)) {
-      this._startedStreams.push(requestId);
-    }
-
-    if (audioContext) {
-      audioContext
-        ._getMediaStream("local")
-        .getTracks()
-        .forEach((track) => {
-          newMediaStream.addTrack(track.clone());
-        });
-    }
 
     mediaStream.getTracks().forEach((track) => {
-      let currentTrack = newMediaStream.getTracks().find((current) => {
-        return current.kind == track.kind;
-      });
-      if (!currentTrack) {
-        newMediaStream.addTrack(track.clone());
-      }
+      newMediaStream.addTrack(track.clone());
     });
+
+    if (!requestId) {
+      this._startedStreams.push({ id: null, mediaStream: mediaStream });
+    } else if (
+      !this._startedStreams.find((request) => {
+        return request.id == requestId;
+      })
+    ) {
+      this._startedStreams.push({
+        id: requestId,
+        mediaStream: mediaStream,
+      });
+    }
 
     return newMediaStream;
   }
@@ -78,10 +70,18 @@ export default class extends lwpRenderer {
       requestId = null;
     }
 
-    let requestIndex = this._startedStreams.indexOf(requestId);
+    let requestIndex = this._startedStreams.findIndex((request) => {
+      return request.id == requestId;
+    });
 
     if (requestIndex != -1) {
-      this._startedStreams.splice(requestIndex, 1);
+      this._startedStreams.splice(requestIndex, 1).forEach((request) => {
+        if (request.mediaStream) {
+          request.mediaStream.getTracks().forEach((track) => {
+            track.stop();
+          });
+        }
+      });
     }
 
     if (this._startedStreams.length == 0) {

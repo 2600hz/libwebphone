@@ -499,7 +499,7 @@ export default class {
     return this._session;
   }
 
-  _setPrimary(resume = true) {
+  _setPrimary(resume = false) {
     if (this.isPrimary()) {
       return;
     }
@@ -515,7 +515,7 @@ export default class {
     this._connectStreams();
   }
 
-  _clearPrimary(pause = true) {
+  _clearPrimary(pause = false) {
     if (!this.isPrimary()) {
       return;
     }
@@ -683,14 +683,21 @@ export default class {
   }
 
   _destroyStreams() {
-    let remoteStream = this._streams.remote.mediaStream;
-
     this._emit("ringing.stopped", this);
 
-    if (remoteStream) {
-      remoteStream.getTracks().forEach((track) => {
-        track.stop();
+    let peerConnection = this.getPeerConnection();
+    if (peerConnection) {
+      peerConnection.getSenders().forEach((peer) => {
+        if (peer.track) {
+          peer.track.stop();
+        }
       });
     }
+
+    Object.keys(this._streams).forEach((type) => {
+      remoteSthis._streams[type].getTracks().forEach((track) => {
+        track.stop();
+      });
+    });
   }
 }
