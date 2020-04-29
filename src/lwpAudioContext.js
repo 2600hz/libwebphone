@@ -115,6 +115,24 @@ export default class extends lwpRenderer {
     this.stopPreviewLoopback();
   }
 
+  getVolume(channel, options = { scale: true, relativeToMaster: false }) {
+    let volume = 0;
+
+    if (this._config.channels[channel]) {
+      volume = this._config.channels[channel].volume;
+    }
+
+    if (options.relativeToMaster) {
+      volume *= this._config.channels.master.volume;
+    }
+
+    if (options.scale) {
+      volume *= this._config.volumeMax;
+    }
+
+    return volume;
+  }
+
   changeVolume(channel, volume, options = { scale: true }) {
     let gainNode = this._getOutputGainNode(channel);
 
@@ -134,7 +152,7 @@ export default class extends lwpRenderer {
 
     if (this._config.channels[channel]) {
       this._config.channels[channel].volume = volume;
-      this._emit(channel + ".channel.volume", this, volume);
+      this._emit("channel." + channel + ".volume", this, volume);
     }
 
     if (gainNode) {
@@ -217,6 +235,10 @@ export default class extends lwpRenderer {
     this._ringerMute();
   }
 
+  getDestinationStream() {
+    return this._outputAudio.destinationStream.stream;
+  }
+
   updateRenders() {
     this.render((render) => {
       render.data = this._renderData(render.data);
@@ -262,15 +284,18 @@ export default class extends lwpRenderer {
           },
           show: true,
           volume: 1.0,
+          connectToMaster: true,
         },
         tones: {
           duration: 0.15,
           show: true,
           volume: 0.25,
+          connectToMaster: true,
         },
         remote: {
           show: true,
           volume: 1.0,
+          connectToMaster: false,
         },
         preview: {
           loopback: {
@@ -283,6 +308,7 @@ export default class extends lwpRenderer {
           },
           show: true,
           volume: 1.0,
+          connectToMaster: true,
         },
       },
       globalKeyShortcuts: true,
@@ -331,33 +357,70 @@ export default class extends lwpRenderer {
 
     this._outputAudio.ringerGain = this._outputAudio.context.createGain();
     this._outputAudio.ringerGain.gain.value = this._config.channels.ringer.volume;
-    this._outputAudio.ringerGain.connect(this._outputAudio.masterGain);
+    if (this._config.channels.ringer.connectToMaster) {
+      this._outputAudio.ringerGain.connect(this._outputAudio.masterGain);
+    }
 
     this._outputAudio.tonesGain = this._outputAudio.context.createGain();
     this._outputAudio.tonesGain.gain.value = this._config.channels.tones.volume;
-    this._outputAudio.tonesGain.connect(this._outputAudio.masterGain);
+    if (this._config.channels.tones.connectToMaster) {
+      this._outputAudio.tonesGain.connect(this._outputAudio.masterGain);
+    }
 
     this._outputAudio.remoteGain = this._outputAudio.context.createGain();
     this._outputAudio.remoteGain.gain.value = this._config.channels.remote.volume;
-    this._outputAudio.remoteGain.connect(this._outputAudio.masterGain);
+    if (
+      this._config.channels.remote.connectToMaster &&
+      this._libwebphone._config.call.useAudioContext
+    ) {
+      /**
+       * Note about remote audio and a mediaStreamDestination + <audio>:
+       * In chrome connecting the AudioContext to an audio html element
+       * causes a few audio issues.  First if the sampleRate doesn't match
+       * it starts "detuning" the audio (mitigated by setting the AudioContext
+       * sampleRate on creation).  Second I can't seem to find a way
+       * that doesn't introduce weird timing slips (the remote stream as compared
+       * to playing in lwpCall audio elements drifts out of sync).  Finally, despite
+       * the gain nodes multiplying by 1 they seem to still clip audio that
+       * lwpCall audio elements don't. Afer much google-foo I believe that
+       * at its root its how the AudioContext threads interact with the threads
+       * responsible for the audio element.  However, there is no way to set
+       * the sinkId of an AudioContext.  Therefore, if we want to be able to
+       * change the output device we must pipe the AudioContext to an audio element,
+       * but maximum audio quality is achieved when directly connecting to the
+       * AudioContext.destination.  This implementation is a balance, non-critical
+       * audio will take the less ideal path to support output device selection
+       * and remote audio will be rendered in lwpCall (despite ideally handling
+       * it all in this audio graph).
+       *
+       * This has been a very helpful page to getting better understanding
+       * of the implementation details in the browsers:
+       * https://padenot.github.io/web-audio-perf
+       *
+       */
+      this._outputAudio.remoteGain.connect(this._outputAudio.masterGain);
+    }
 
     this._outputAudio.previewGain = this._outputAudio.context.createGain();
     this._outputAudio.previewGain.gain.value = this._config.channels.preview.volume;
-    this._outputAudio.previewGain.connect(this._outputAudio.masterGain);
+    if (this._config.channels.preview.connectToMaster) {
+      this._outputAudio.previewGain.connect(this._outputAudio.masterGain);
+    }
+
+    this._outputAudio.destinationStream = this._createMediaStreamDestination(
+      this._outputAudio.context
+    );
+    this._outputAudio.masterGain.connect(this._outputAudio.destinationStream);
 
     if (mediaDevices && mediaDevices.getMediaElement("audiooutput")) {
       let element = mediaDevices.getMediaElement("audiooutput");
-
-      this._outputAudio.destinationStream = this._createMediaStreamDestination(
-        this._outputAudio.context
-      );
-      this._outputAudio.masterGain.connect(this._outputAudio.destinationStream);
-
       element.srcObject = this._outputAudio.destinationStream.stream;
+      this._outputAudio.usingAudioElement = true;
     } else {
       this._outputAudio.masterGain.connect(
         this._outputAudio.context.destination
       );
+      this._outputAudio.usingAudioElement = false;
     }
   }
 
@@ -420,10 +483,6 @@ export default class extends lwpRenderer {
   }
 
   _initEventBindings() {
-    this._libwebphone.on("call.remote.audio.element", (lwp, call, element) => {
-      element.muted = true;
-    });
-
     this._libwebphone.on("call.ringing.started", (lwp, call) => {
       this.startRinging(call.getId());
     });
@@ -449,19 +508,19 @@ export default class extends lwpRenderer {
       this.playTones.apply(this, tones);
     });
 
-    this._libwebphone.on("audioContext.master.channel.volume", () => {
+    this._libwebphone.on("audioContext.channel.master.volume", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("audioContext.ringer.channel.volume", () => {
+    this._libwebphone.on("audioContext.channel.ringer.volume", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("audioContext.tones.channel.volume", () => {
+    this._libwebphone.on("audioContext.channel.tones.volume", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("audioContext.preview.channel.volume", () => {
+    this._libwebphone.on("audioContext.channel.preview.volume", () => {
       this.updateRenders();
     });
-    this._libwebphone.on("audioContext.remote.channel.volume", () => {
+    this._libwebphone.on("audioContext.channel.remote.volume", () => {
       this.updateRenders();
     });
 
@@ -712,7 +771,7 @@ export default class extends lwpRenderer {
     }
 
     this._emit(
-      "local.stream.changed",
+      "stream.local.changed",
       this,
       sourceStream,
       previousSourceStream
@@ -744,11 +803,11 @@ export default class extends lwpRenderer {
     if (sourceStream) {
       this.startAudioContext();
       this._remoteAudio.sourceStream = sourceStream;
-      this._remoteAudio.sourceStream.connect(this._getOutputGainNode("remote"));
+      //this._remoteAudio.sourceStream.connect(this._getOutputGainNode("remote"));
     }
 
     this._emit(
-      "remote.stream.changed",
+      "stream.remote.changed",
       this,
       sourceStream,
       previousSourceStream
@@ -785,9 +844,15 @@ export default class extends lwpRenderer {
   }
 
   _shimAudioContext() {
-    return new AudioContext({
-      latencyHint: "interactive",
-      sampleRate: 44100,
-    });
+    if (lwpUtils.isChrome()) {
+      return new AudioContext({
+        latencyHint: "interactive",
+        sampleRate: 44100,
+      });
+    } else {
+      return new AudioContext({
+        latencyHint: "interactive",
+      });
+    }
   }
 }

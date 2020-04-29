@@ -367,6 +367,9 @@
           renderTargets: ["call_control"],
         },
         mediaDevices: {
+          audioinput: {
+            preferedDeviceIds: ["bnkZoip5H5kiNXBLV+YNGalX9r0kvfNjJsZcOkHPeQQ="],
+          },
           videoinput: {
             enabled: false,
           },
@@ -403,9 +406,9 @@
             recovery_min_interval: 2,
           },
           authentication: {
-            username: "user_ctNx9XCWq7",
-            password: "N3kk4b75XHP6",
-            realm: "4a6863.sip.sandbox.2600hz.com",
+            username: "",
+            password: "",
+            realm: "",
           },
           user_agent: {
             //contact_uri: '',
@@ -414,11 +417,8 @@
             no_answer_timeout: 60,
             register: true,
             register_expires: 300,
-            user_agent: "libwebphone 2.x - dev",
+            user_agent: "libwebphone 2.x",
           },
-        },
-        videoCanvas: {
-          renderTargets: ["video_screen"],
         },
       }; //End ofConfig
 
@@ -461,16 +461,16 @@
         <div class="col" style="border-right: dashed;">
           <div>
             <button
-              onclick="webphone.getUserAgent().start('user_q5eNt95vwv', 'cxNMVV2BD47J');"
+              onclick="webphone.getUserAgent().start('user_one', 'my_password');"
             >
-              Start Mahfuzel New Softphone (1009)
+              Start as User 1
             </button>
           </div>
           <div>
             <button
-              onclick="webphone.getUserAgent().start('user_743dJ3fuNj', '72aBcdBvQnz3');"
+              onclick="webphone.getUserAgent().start('user_two', 'my_password');"
             >
-              Start Multiple WebRTC (1008)
+              Start as User 2
             </button>
           </div>
         </div>

@@ -85,4 +85,22 @@ export default class {
   static trackKinds() {
     return ["audio", "video"];
   }
+
+  static isChrome() {
+    let isChromium = window.chrome;
+    let winNav = window.navigator;
+    let vendorName = winNav.vendor;
+    let isOpera = typeof window.opr !== "undefined";
+    let isIEedge = winNav.userAgent.indexOf("Edge") > -1;
+    let isIOSChrome = winNav.userAgent.match("CriOS");
+
+    return (
+      isIOSChrome ||
+      (isChromium !== null &&
+        typeof isChromium !== "undefined" &&
+        vendorName === "Google Inc." &&
+        isOpera === false &&
+        isIEedge === false)
+    );
+  }
 }

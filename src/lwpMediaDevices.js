@@ -38,29 +38,6 @@ export default class extends lwpRenderer {
     });
   }
 
-  _createCallStream(mediaStream, requestId) {
-    let newMediaStream = new MediaStream();
-
-    mediaStream.getTracks().forEach((track) => {
-      newMediaStream.addTrack(track.clone());
-    });
-
-    if (!requestId) {
-      this._startedStreams.push({ id: null, mediaStream: mediaStream });
-    } else if (
-      !this._startedStreams.find((request) => {
-        return request.id == requestId;
-      })
-    ) {
-      this._startedStreams.push({
-        id: requestId,
-        mediaStream: mediaStream,
-      });
-    }
-
-    return newMediaStream;
-  }
-
   stopStreams(requestId = null) {
     if (!requestId) {
       requestId = null;
@@ -74,6 +51,7 @@ export default class extends lwpRenderer {
       this._startedStreams.splice(requestIndex, 1).forEach((request) => {
         if (request.mediaStream) {
           request.mediaStream.getTracks().forEach((track) => {
+            track.enabled = false;
             track.stop();
           });
         }
@@ -86,6 +64,14 @@ export default class extends lwpRenderer {
   }
 
   stopAllStreams() {
+    this._startedStreams.forEach((request) => {
+      if (request.mediaStream) {
+        request.mediaStream.getTracks().forEach((track) => {
+          track.enabled = false;
+          track.stop();
+        });
+      }
+    });
     this._startedStreams = [];
 
     return this._mediaStreamPromise.then((mediaStream) => {
@@ -163,7 +149,6 @@ export default class extends lwpRenderer {
   }
 
   async refreshAvailableDevices() {
-    /** TODO: optimize */
     return this._shimEnumerateDevices()
       .then(async (devices) => {
         let release = await this._changeStreamMutex.acquire();
@@ -361,7 +346,11 @@ export default class extends lwpRenderer {
           this._config[deviceKind].mediaElement.element.addEventListener(
             eventName,
             (event) => {
-              this._emit(deviceKind + "." + eventName, this, event);
+              this._emit(
+                this._deviceKindtoEventKind(deviceKind) + "." + eventName,
+                this,
+                event
+              );
             }
           );
         });
@@ -381,9 +370,13 @@ export default class extends lwpRenderer {
         }
       }
 
-      // NOTE: it makes more sense if configured with highest priority to
-      //   lowest, but we use the index number to represent that so flip it
-      this._config[deviceKind].preferedDeviceIds.reverse();
+      if (this._config[deviceKind].mediaElement.element) {
+        this._emit(
+          this._deviceKindtoEventKind(deviceKind) + ".element",
+          this,
+          this._config[deviceKind].mediaElement.element
+        );
+      }
 
       this._availableDevices[deviceKind] = [];
 
@@ -406,6 +399,22 @@ export default class extends lwpRenderer {
       audio: this._config["audioinput"].enabled,
       video: this._config["videoinput"].enabled,
     };
+
+    if (
+      constraints.audio &&
+      this._config.audioinput.preferedDeviceIds.length > 0
+    ) {
+      constraints.audio = {};
+      constraints.audio.deviceId = this._config.audioinput.preferedDeviceIds;
+    }
+
+    if (
+      constraints.video &&
+      this._config.audioinput.preferedDeviceIds.length > 0
+    ) {
+      constraints.video = {};
+      constraints.video.deviceId = this._config.videoinput.preferedDeviceIds;
+    }
 
     this._mediaStreamPromise = this._shimGetUserMedia(constraints)
       .then((mediaStream) => {
@@ -430,11 +439,12 @@ export default class extends lwpRenderer {
     this._mediaStreamPromise.then((mediaStream) => {
       this._shimEnumerateDevices().then((devices) => {
         this._importInputDevices(devices);
-        this._sortAvailableDevices();
         mediaStream.getTracks().forEach((track) => {
           this._addTrack(mediaStream, track);
           this._removeTrack(mediaStream, track, false);
         });
+
+        this._sortAvailableDevices();
 
         Object.keys(this._availableDevices).forEach((deviceKind) => {
           let selectedDevice = this._availableDevices[deviceKind].find(
@@ -848,6 +858,8 @@ export default class extends lwpRenderer {
         }
 
         if (this._config.manageMediaElements && element && element.paused) {
+          // TODO: without the interaction history of my dev site, can we still
+          //  issue a play this early?
           element.play().catch(() => {});
         }
       } else {
@@ -930,7 +942,7 @@ export default class extends lwpRenderer {
     return constraints;
   }
 
-  _preferDevice(preferedDevice) {
+  _preferDevice(preferedDevice, options = { sort: true, updateConfig: true }) {
     let maxPreference = this._availableDevices[
       preferedDevice.deviceKind
     ].reduce((max, availableDevice) => {
@@ -945,7 +957,36 @@ export default class extends lwpRenderer {
 
     preferedDevice.preference = maxPreference + 1;
 
-    this._sortAvailableDevices();
+    if (options.sort) {
+      this._sortAvailableDevices();
+    }
+
+    if (options.updateConfig && preferedDevice.id != "none") {
+      let deviceKind = preferedDevice.deviceKind;
+      let insertIndex = this._config[deviceKind].preferedDeviceIds.findIndex(
+        (deviceId) => {
+          let device = this._findAvailableDevice(deviceKind, deviceId);
+          return deviceId != preferedDevice.id && device && device.connected;
+        }
+      );
+      let removeIndex = this._config[deviceKind].preferedDeviceIds.indexOf(
+        preferedDevice.id
+      );
+
+      if (removeIndex > -1) {
+        this._config[deviceKind].preferedDeviceIds.splice(removeIndex, 1);
+      }
+
+      if (insertIndex == -1) {
+        this._config[deviceKind].preferedDeviceIds.push(preferedDevice.id);
+      } else {
+        this._config[deviceKind].preferedDeviceIds.splice(
+          insertIndex,
+          0,
+          preferedDevice.id
+        );
+      }
+    }
   }
 
   _startMediaElements() {
@@ -959,6 +1000,38 @@ export default class extends lwpRenderer {
         }
       });
     }
+  }
+
+  _createCallStream(mediaStream, requestId) {
+    let newMediaStream = new MediaStream();
+
+    /**
+     * We need to clone the tracks here because
+     * lwpCall will toggle track.enabled to mute
+     * the call and if multiple calls share the
+     * same track umuting the call you are on
+     * unmutes you for all calls (possibly making
+     * for a bad day...)
+     *
+     */
+    mediaStream.getTracks().forEach((track) => {
+      newMediaStream.addTrack(track.clone());
+    });
+
+    if (!requestId) {
+      this._startedStreams.push({ id: null, mediaStream: newMediaStream });
+    } else if (
+      !this._startedStreams.find((request) => {
+        return request.id == requestId;
+      })
+    ) {
+      this._startedStreams.push({
+        id: requestId,
+        mediaStream: newMediaStream,
+      });
+    }
+
+    return newMediaStream;
   }
 
   /** MediaStream Helpers */
@@ -1094,6 +1167,17 @@ export default class extends lwpRenderer {
         return "audio";
       case "videoinput":
         return "video";
+    }
+  }
+
+  _deviceKindtoEventKind(deviceKind) {
+    switch (deviceKind) {
+      case "audiooutput":
+        return "audio.output";
+      case "audioinput":
+        return "audio.input";
+      case "videoinput":
+        return "video.input";
     }
   }
 

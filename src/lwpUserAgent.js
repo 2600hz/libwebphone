@@ -312,7 +312,7 @@ export default class extends lwpRenderer {
         no_answer_timeout: 60,
         register: true,
         register_expires: 300,
-        user_agent: "libwebphone 2.x - dev",
+        user_agent: "2600Hz libwebphone 2.x",
         redial: "*97",
       },
       debug: false,

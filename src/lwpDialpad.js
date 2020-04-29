@@ -360,7 +360,14 @@ export default class extends lwpRenderer {
         enter: {
           enabled: true,
           action: () => {
-            this.autoAction({ terminate: false });
+            if (
+              this._libwebphone.getUserAgent() &&
+              !this._libwebphone.getUserAgent().isStarted()
+            ) {
+              this._libwebphone.getUserAgent().start();
+            } else {
+              this.autoAction({ terminate: false });
+            }
           },
         },
         escape: {

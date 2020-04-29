@@ -129,6 +129,7 @@ export default class extends EventEmitter {
       userAgent: { enabled: true },
       videoCanvas: { enabled: false },
       call: {
+        useAudioContext: false,
         globalKeyShortcuts: true,
         keys: {
           spacebar: {
@@ -154,6 +155,8 @@ export default class extends EventEmitter {
       },
     };
     this._config = lwpUtils.merge(defaults, config);
+    this._config.call.useAudioContext =
+      this._config.call.useAudioContext && this._config.audioContext.enabled;
   }
 
   _initInternationalization(config) {

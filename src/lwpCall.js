@@ -267,6 +267,40 @@ export default class {
     }
   }
 
+  changeVolume(volume = null, kind = null) {
+    if (volume === null && this._libwebphone.getAudioContext()) {
+      volume = this._libwebphone
+        .getAudioContext()
+        .getVolume("remote", { scale: false, relativeToMaster: true });
+    }
+
+    if (!volume && volume !== 0) {
+      return;
+    }
+
+    if (volume < 0) {
+      volume = 0;
+    }
+
+    if (volume > 1) {
+      volume = 1;
+    }
+
+    if (kind) {
+      let element = this._streams.remote.elements[kind];
+      if (element) {
+        element.volume = volume;
+      }
+    } else {
+      Object.keys(this._streams.remote.elements).forEach((kind) => {
+        let element = this._streams.remote.elements[kind];
+        if (element) {
+          element.volume = volume;
+        }
+      });
+    }
+  }
+
   replaceSenderTrack(newTrack) {
     let peerConnection = this.getPeerConnection();
     if (!peerConnection) {
@@ -354,6 +388,8 @@ export default class {
 
     this._muteHint = false;
 
+    this._config = this._libwebphone._config.call;
+
     this._streams = {
       remote: {
         mediaStream: new MediaStream(),
@@ -389,8 +425,12 @@ export default class {
           });
         });
 
-        // NOTE: don't mute the remote audio by default
-        element.muted = !(type == "remote" && kind == "audio");
+        if (this._config.useAudioContext) {
+          element.muted = true;
+        } else {
+          // NOTE: don't mute the remote audio by default
+          element.muted = !(type == "remote" && kind == "audio");
+        }
         element.preload = "none";
 
         this._emit(type + "." + kind + ".element", this, element);
@@ -430,12 +470,21 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.audio.output.changed",
       (lwp, mediaDevices, preferedDevice) => {
-        let element = this._streams.remote.elements.audio;
-        if (element && preferedDevice.id) {
-          element.setSinkId(preferedDevice.id);
-        }
+        Object.keys(this._streams.remote.elements).forEach((kind) => {
+          let element = this._streams.remote.elements[kind];
+          if (element) {
+            element.setSinkId(preferedDevice.id);
+          }
+        });
       }
     );
+
+    this._libwebphone.on("audioContext.channel.master.volume", () => {
+      this.changeVolume();
+    });
+    this._libwebphone.on("audioContext.channel.remote.volume", () => {
+      this.changeVolume();
+    });
 
     if (this.hasPeerConnection()) {
       let peerConnection = this.getPeerConnection();
@@ -496,7 +545,7 @@ export default class {
         });
       });
 
-      if (this._libwebphone._config.call.globalKeyShortcuts) {
+      if (this._config.globalKeyShortcuts) {
         document.addEventListener("keydown", (event) => {
           if (
             event.target != document.body ||
@@ -508,11 +557,8 @@ export default class {
 
           switch (event.key) {
             case " ":
-              if (this._libwebphone._config.call.keys["spacebar"].enabled) {
-                this._libwebphone._config.call.keys["spacebar"].action(
-                  event,
-                  this
-                );
+              if (this._config.keys["spacebar"].enabled) {
+                this._config.keys["spacebar"].action(event, this);
               }
               break;
           }
@@ -528,11 +574,8 @@ export default class {
 
           switch (event.key) {
             case " ":
-              if (this._libwebphone._config.call.keys["spacebar"].enabled) {
-                this._libwebphone._config.call.keys["spacebar"].action(
-                  event,
-                  this
-                );
+              if (this._config.keys["spacebar"].enabled) {
+                this._config.keys["spacebar"].action(event, this);
               }
               break;
           }
@@ -708,7 +751,9 @@ export default class {
              * it never gets data so the play never starts
              * and if we then pause there is a nasty looking
              * but ignorable error...
+             *
              * https://developers.google.com/web/updates/2017/06/play-request-was-interrupted
+             *
              */
           });
         }
