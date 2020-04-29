@@ -1,7 +1,7 @@
 "use strict";
 
 import * as JsSIP from "jssip";
-import { merge, uuid } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
 
@@ -219,7 +219,7 @@ export default class extends lwpRenderer {
   }
 
   call(target = null) {
-    let options = { data: { lwpStreamId: uuid() } };
+    let options = { data: { lwpStreamId: lwpUtils.uuid() } };
     let mediaDevices = this._libwebphone.getMediaDevices();
     let callList = this._libwebphone.getCallList();
 
@@ -237,7 +237,7 @@ export default class extends lwpRenderer {
       mediaDevices
         .startStreams(options.data.lwpStreamId)
         .then((streams) => {
-          options = merge(options, {
+          options = lwpUtils.merge(options, {
             mediaStream: streams,
           });
           this._call(target, options);
@@ -286,7 +286,10 @@ export default class extends lwpRenderer {
         unregister: "Unregister",
       },
     };
-    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    let resourceBundles = lwpUtils.merge(
+      defaults,
+      config.resourceBundles || {}
+    );
     this._libwebphone.i18nAddResourceBundles("userAgent", resourceBundles);
   }
 
@@ -315,7 +318,7 @@ export default class extends lwpRenderer {
       debug: false,
     };
 
-    this._config = merge(defaults, config);
+    this._config = lwpUtils.merge(defaults, config);
 
     this._sockets = [];
     this._userAgent = null;
@@ -378,7 +381,7 @@ export default class extends lwpRenderer {
         password: "libwebphone:userAgent.password",
         realm: "libwebphone:userAgent.realm",
       },
-      data: merge(this._renderData(), this._config),
+      data: lwpUtils.merge(this._renderData(), this._config),
       by_id: {
         debug: {
           events: {

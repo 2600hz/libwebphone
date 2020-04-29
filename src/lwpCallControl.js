@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 
 export default class extends lwpRenderer {
@@ -117,7 +117,10 @@ export default class extends lwpRenderer {
         transfercomplete: "Transfer (complete)",
       },
     };
-    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    let resourceBundles = lwpUtils.merge(
+      defaults,
+      config.resourceBundles || {}
+    );
     this._libwebphone.i18nAddResourceBundles("callControl", resourceBundles);
   }
 
@@ -125,7 +128,7 @@ export default class extends lwpRenderer {
     let defaults = {
       renderTargets: [],
     };
-    this._config = merge(defaults, config);
+    this._config = lwpUtils.merge(defaults, config);
   }
 
   _initEventBindings() {
@@ -193,7 +196,7 @@ export default class extends lwpRenderer {
         transferblind: "libwebphone:callControl.transferblind",
         transferattended: "libwebphone:callControl.transferattended",
       },
-      data: merge(this._renderData(), this._config),
+      data: lwpUtils.merge(this._renderData(), this._config),
       by_id: {
         redial: {
           events: {

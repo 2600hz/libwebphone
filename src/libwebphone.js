@@ -3,7 +3,7 @@
 import i18next from "i18next";
 import EventEmitter from "eventemitter2";
 
-import { merge } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 import lwpUserAgent from "./lwpUserAgent";
 import lwpCallList from "./lwpCallList";
 import lwpCallControl from "./lwpCallControl";
@@ -27,12 +27,12 @@ export default class extends EventEmitter {
       this._callList = new lwpCallList(this, this._config.callList);
     }
 
-    if (this._config.audioContext.enabled) {
-      this._audioContext = new lwpAudioContext(this, this._config.audioContext);
-    }
-
     if (this._config.mediaDevices.enabled) {
       this._mediaDevices = new lwpMediaDevices(this, this._config.mediaDevices);
+    }
+
+    if (this._config.audioContext.enabled) {
+      this._audioContext = new lwpAudioContext(this, this._config.audioContext);
     }
 
     if (this._config.callControl.enabled) {
@@ -128,8 +128,32 @@ export default class extends EventEmitter {
       audioContext: { enabled: true },
       userAgent: { enabled: true },
       videoCanvas: { enabled: false },
+      call: {
+        globalKeyShortcuts: true,
+        keys: {
+          spacebar: {
+            enabled: true,
+            action: (event, call) => {
+              if (event.type == "keydown") {
+                call._muteHint = call.isMuted();
+                if (call._muteHint) {
+                  call.unmute();
+                } else {
+                  call.mute();
+                }
+              } else {
+                if (call._muteHint) {
+                  call.mute();
+                } else {
+                  call.unmute();
+                }
+              }
+            },
+          },
+        },
+      },
     };
-    this._config = merge(defaults, config);
+    this._config = lwpUtils.merge(defaults, config);
   }
 
   _initInternationalization(config) {

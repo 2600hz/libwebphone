@@ -1,7 +1,7 @@
 "use strict";
 
 import Mustache from "mustache";
-import { merge, randomElementId } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 
 export default class {
   constructor(libwebphone) {
@@ -32,7 +32,7 @@ export default class {
       };
     }
 
-    let render = merge(this._renderDefaultConfig(), {
+    let render = lwpUtils.merge(this._renderDefaultConfig(), {
       data: config.data || {},
       i18n: config.i18n || {},
       template: config.template,
@@ -46,7 +46,7 @@ export default class {
       Object.keys(render.by_id).forEach((index) => {
         let by_id = render.by_id[index];
         if (!by_id.elementId) {
-          by_id.elementId = randomElementId();
+          by_id.elementId = lwpUtils.randomElementId();
         }
       });
     }
@@ -55,7 +55,7 @@ export default class {
       Object.keys(render.by_name).forEach((index) => {
         let by_name = render.by_name[index];
         if (!by_name.elementName) {
-          by_name.elementName = randomElementId();
+          by_name.elementName = lwpUtils.randomElementId();
         }
       });
     }

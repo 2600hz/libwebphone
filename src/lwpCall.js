@@ -1,11 +1,13 @@
 "use strict";
 
-import { uuid, mediaElementEvents, _trackParameters } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 
 export default class {
   constructor(libwebphone, session = null) {
     this._libwebphone = libwebphone;
-    this._id = session ? session.data.lwpStreamId || uuid() : uuid();
+    this._id = session
+      ? session.data.lwpStreamId || lwpUtils.uuid()
+      : lwpUtils.uuid();
     this._emit = this._libwebphone._callEvent;
     this._session = session;
     this._initProperties();
@@ -350,6 +352,8 @@ export default class {
 
     this._inTransfer = false;
 
+    this._muteHint = false;
+
     this._streams = {
       remote: {
         mediaStream: new MediaStream(),
@@ -379,7 +383,7 @@ export default class {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
 
-        mediaElementEvents().forEach((eventName) => {
+        lwpUtils.mediaElementEvents().forEach((eventName) => {
           element.addEventListener(eventName, (event) => {
             this._emit(type + "." + kind + "." + eventName, this, event);
           });
@@ -387,6 +391,9 @@ export default class {
 
         // NOTE: don't mute the remote audio by default
         element.muted = !(type == "remote" && kind == "audio");
+        element.preload = "none";
+
+        this._emit(type + "." + kind + ".element", this, element);
       });
     });
 
@@ -417,6 +424,15 @@ export default class {
           } else {
             this.removeSenderTrack("video");
           }
+        }
+      }
+    );
+    this._libwebphone.on(
+      "mediaDevices.audio.output.changed",
+      (lwp, mediaDevices, preferedDevice) => {
+        let element = this._streams.remote.elements.audio;
+        if (element && preferedDevice.id) {
+          element.setSinkId(preferedDevice.id);
         }
       }
     );
@@ -479,6 +495,49 @@ export default class {
           this._updateStreams();
         });
       });
+
+      if (this._libwebphone._config.call.globalKeyShortcuts) {
+        document.addEventListener("keydown", (event) => {
+          if (
+            event.target != document.body ||
+            event.repeat ||
+            !this.isPrimary()
+          ) {
+            return;
+          }
+
+          switch (event.key) {
+            case " ":
+              if (this._libwebphone._config.call.keys["spacebar"].enabled) {
+                this._libwebphone._config.call.keys["spacebar"].action(
+                  event,
+                  this
+                );
+              }
+              break;
+          }
+        });
+        document.addEventListener("keyup", (event) => {
+          if (
+            event.target != document.body ||
+            event.repeat ||
+            !this.isPrimary()
+          ) {
+            return;
+          }
+
+          switch (event.key) {
+            case " ":
+              if (this._libwebphone._config.call.keys["spacebar"].enabled) {
+                this._libwebphone._config.call.keys["spacebar"].action(
+                  event,
+                  this
+                );
+              }
+              break;
+          }
+        });
+      }
     }
   }
 
@@ -499,7 +558,7 @@ export default class {
     return this._session;
   }
 
-  _setPrimary(resume = false) {
+  _setPrimary(resume = true) {
     if (this.isPrimary()) {
       return;
     }
@@ -515,7 +574,7 @@ export default class {
     this._connectStreams();
   }
 
-  _clearPrimary(pause = false) {
+  _clearPrimary(pause = true) {
     if (!this.isPrimary()) {
       return;
     }
@@ -564,18 +623,20 @@ export default class {
 
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        let track = mediaStream.getTracks().find((track) => {
-          return track.kind == kind;
-        });
+        if (element) {
+          let track = mediaStream.getTracks().find((track) => {
+            return track.kind == kind;
+          });
 
-        if (track) {
-          this._streams[type].kinds[kind] = true;
-          if (!element.srcObject || element.srcObject.id != mediaStream.id) {
-            element.srcObject = mediaStream;
+          if (track) {
+            this._streams[type].kinds[kind] = true;
+            if (!element.srcObject || element.srcObject.id != mediaStream.id) {
+              element.srcObject = mediaStream;
+            }
+          } else {
+            this._streams[type].kinds[kind] = false;
+            element.srcObject = null;
           }
-        } else {
-          this._streams[type].kinds[kind] = false;
-          element.srcObject = null;
         }
       });
     });
@@ -600,7 +661,7 @@ export default class {
         this._emit(
           type + "." + track.kind + ".removed",
           this,
-          _trackParameters(mediaStream, track)
+          lwpUtils.trackParameters(mediaStream, track)
         );
       }
     });
@@ -610,7 +671,7 @@ export default class {
         this._emit(
           type + "." + track.kind + ".added",
           this,
-          _trackParameters(mediaStream, track)
+          lwpUtils.trackParameters(mediaStream, track)
         );
       }
     });
@@ -638,17 +699,19 @@ export default class {
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        element.play().catch(() => {
-          /*
-           * We are catching any play interuptions
-           * because we get a "placeholder" remote video
-           * track in the mediaStream for ALL calls but
-           * it never gets data so the play never starts
-           * and if we then pause there is a nasty looking
-           * but ignorable error...
-           * https://developers.google.com/web/updates/2017/06/play-request-was-interrupted
-           */
-        });
+        if (element && element.paused) {
+          element.play().catch(() => {
+            /*
+             * We are catching any play interuptions
+             * because we get a "placeholder" remote video
+             * track in the mediaStream for ALL calls but
+             * it never gets data so the play never starts
+             * and if we then pause there is a nasty looking
+             * but ignorable error...
+             * https://developers.google.com/web/updates/2017/06/play-request-was-interrupted
+             */
+          });
+        }
       });
     });
   }
@@ -675,7 +738,7 @@ export default class {
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
         let element = this._streams[type].elements[kind];
-        if (!element.paused) {
+        if (element && !element.paused) {
           element.pause();
         }
       });
@@ -693,11 +756,5 @@ export default class {
         }
       });
     }
-
-    Object.keys(this._streams).forEach((type) => {
-      remoteSthis._streams[type].getTracks().forEach((track) => {
-        track.stop();
-      });
-    });
   }
 }

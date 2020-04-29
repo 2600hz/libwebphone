@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
 
@@ -114,7 +114,10 @@ export default class extends lwpRenderer {
         new: "New Call",
       },
     };
-    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    let resourceBundles = lwpUtils.merge(
+      defaults,
+      config.resourceBundles || {}
+    );
     this._libwebphone.i18nAddResourceBundles("callList", resourceBundles);
   }
 
@@ -122,7 +125,7 @@ export default class extends lwpRenderer {
     let defaults = {
       renderTargets: [],
     };
-    this._config = merge(defaults, config);
+    this._config = lwpUtils.merge(defaults, config);
 
     let newCall = new lwpCall(this._libwebphone);
     newCall._setPrimary();
@@ -198,7 +201,7 @@ export default class extends lwpRenderer {
       i18n: {
         new: "libwebphone:callList.new",
       },
-      data: merge(this._renderData(), this._config),
+      data: lwpUtils.merge(this._renderData(), this._config),
       by_name: {
         calls: {
           events: {

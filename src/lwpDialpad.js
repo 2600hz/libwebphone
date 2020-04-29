@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 
 export default class extends lwpRenderer {
@@ -229,7 +229,7 @@ export default class extends lwpRenderer {
       transfer: true,
       terminate: true,
     };
-    options = merge(defaultOptions, options);
+    options = lwpUtils.merge(defaultOptions, options);
     switch (this.getAutoAction()) {
       case "answer":
         if (options.answer) this.answer();
@@ -302,7 +302,10 @@ export default class extends lwpRenderer {
         disablefilter: "Any",
       },
     };
-    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    let resourceBundles = lwpUtils.merge(
+      defaults,
+      config.resourceBundles || {}
+    );
     this._libwebphone.i18nAddResourceBundles("dialpad", resourceBundles);
   }
 
@@ -352,8 +355,41 @@ export default class extends lwpRenderer {
         zero: [1336, 941],
         pound: [1477, 941],
       },
+      globalKeyShortcuts: true,
+      keys: {
+        enter: {
+          enabled: true,
+          action: () => {
+            this.autoAction({ terminate: false });
+          },
+        },
+        escape: {
+          enabled: true,
+          action: () => {
+            if (this._getCall()) {
+              this.terminate();
+            } else {
+              this.clear();
+            }
+          },
+        },
+        backspace: {
+          enabled: true,
+          action: () => {
+            this.backspace();
+          },
+        },
+        printable: {
+          enabled: true,
+          action: (event) => {
+            if (!this._getCall() || /^[0-9#*]$/.test(event.key)) {
+              this.dial(event.key);
+            }
+          },
+        },
+      },
     };
-    this._config = merge(defaults, config);
+    this._config = lwpUtils.merge(defaults, config);
     this._target = [];
   }
 
@@ -393,6 +429,39 @@ export default class extends lwpRenderer {
     this._libwebphone.on("dialpad.filter.disabled", () => {
       this.updateRenders();
     });
+
+    if (this._config.globalKeyShortcuts) {
+      document.addEventListener("keydown", (event) => {
+        let key = event.key;
+        if (event.target != document.body) {
+          return;
+        }
+
+        switch (key) {
+          case "Enter":
+            if (this._config.keys["enter"].enabled) {
+              this._config.keys["enter"].action(event, this);
+            }
+            break;
+          case "Escape":
+            if (this._config.keys["escape"].enabled) {
+              this._config.keys["escape"].action(event, this);
+            }
+            break;
+          case "Backspace":
+            if (this._config.keys["backspace"].enabled) {
+              this._config.keys["backspace"].action(event, this);
+            }
+            break;
+          default:
+            if (key.length == 1) {
+              if (this._config.keys["printable"].enabled) {
+                this._config.keys["printable"].action(event, this);
+              }
+            }
+        }
+      });
+    }
   }
 
   _initRenderTargets() {
@@ -428,7 +497,7 @@ export default class extends lwpRenderer {
         enablefilter: "libwebphone:dialpad.enablefilter",
         disablefilter: "libwebphone:dialpad.disablefilter",
       },
-      data: merge(this._renderData(), this._config),
+      data: lwpUtils.merge(this._renderData(), this._config),
       by_id: {
         dialed: {
           events: {

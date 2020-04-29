@@ -1,6 +1,6 @@
 "use strict";
 
-import { merge, randomElementId } from "./lwpUtils";
+import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 
 export default class extends lwpRenderer {
@@ -306,7 +306,10 @@ export default class extends lwpRenderer {
         stopscreenshare: "Stop",
       },
     };
-    let resourceBundles = merge(defaults, config.resourceBundles || {});
+    let resourceBundles = lwpUtils.merge(
+      defaults,
+      config.resourceBundles || {}
+    );
     this._libwebphone.i18nAddResourceBundles("videoCanvas", resourceBundles);
   }
 
@@ -341,7 +344,7 @@ export default class extends lwpRenderer {
         },
       },
     };
-    this._config = merge(defaults, config);
+    this._config = lwpUtils.merge(defaults, config);
 
     this._canvas = {};
     this._canvas.element = document.createElement("canvas");
@@ -354,7 +357,7 @@ export default class extends lwpRenderer {
     this._fullscreen = false;
     this._fullScreenVideo = document.createElement("video");
     this._fullScreenVideo.muted = true;
-    this._fullScreenVideo.id = randomElementId();
+    this._fullScreenVideo.id = lwpUtils.randomElementId();
 
     this._screenshare = false;
 
@@ -469,7 +472,7 @@ export default class extends lwpRenderer {
         startscreenshare: "libwebphone:videoCanvas.startscreenshare",
         stopscreenshare: "libwebphone:videoCanvas.stopscreenshare",
       },
-      data: merge(this._renderData(), this._config),
+      data: lwpUtils.merge(this._renderData(), this._config),
       by_id: {
         canvas: {
           canvas: true,

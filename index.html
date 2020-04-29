@@ -639,7 +639,7 @@
                 <label for="{{by_id.mastervolume.elementId}}">
                   {{i18n.mastervolume}}
                 </label>
-                <input type="number" id="{{by_id.mastervolume.elementId}}" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.output.master.value}}">
+                <input type="number" id="{{by_id.mastervolume.elementId}}" min="{{data.volume.min}}" max="{{data.volume.max}}" value="{{data.volumes.master}}">
               </div>
             `;
             var customConfig = {
@@ -654,7 +654,7 @@
                       let element = event.srcElement;
                       let audioContext = webphone.getAudioContext();
                       if (audioContext) {
-                        audioContext.changeOutputVolume(
+                        audioContext.changeVolume(
                           "master",
                           element.value / audioContext._config.volumeMax
                         );
