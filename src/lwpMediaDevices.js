@@ -21,8 +21,6 @@ export default class extends lwpRenderer {
   }
 
   startStreams(requestId = null) {
-    this._config[deviceKind].mediaElement.element.preload = "none";
-
     this._startMediaElements();
 
     if (this._inputActive) {
