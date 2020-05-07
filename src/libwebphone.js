@@ -127,7 +127,7 @@ export default class extends EventEmitter {
       mediaPreviews: { enabled: false },
       audioContext: { enabled: true },
       userAgent: { enabled: true },
-      videoCanvas: { enabled: false },
+      videoCanvas: { enabled: true },
       call: {
         useAudioContext: false,
         globalKeyShortcuts: true,

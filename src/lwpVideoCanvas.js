@@ -16,209 +16,6 @@ export default class extends lwpRenderer {
     return this;
   }
 
-  startFullScreen(element = null) {
-    if (!element) {
-      element = document.getElementById(this._fullScreenVideo.id);
-    }
-
-    if (!element) {
-      element = document.body.appendChild(this._fullScreenVideo);
-    }
-
-    if (element.requestFullscreen) {
-      element
-        .requestFullscreen()
-        .then(() => this.updateRenders())
-        .catch((error) => {
-          console.log(error),
-            alert(
-              `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
-            );
-        });
-    } else if (element.mozRequestFullScreen) {
-      /* Firefox */
-      element
-        .mozRequestFullScreen()
-        .then(() => this.updateRenders())
-        .catch((error) => console.log(error));
-    } else if (element.webkitRequestFullscreen) {
-      /* Chrome, Safari and Opera */
-      element
-        .webkitRequestFullscreen()
-        .then(() => this.updateRenders())
-        .catch((error) => {
-          console.log(error);
-          alert(
-            `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
-          );
-        });
-    } else if (element.msRequestFullscreen) {
-      /* IE/Edge */
-      element
-        .msRequestFullscreen()
-        .then(() => this.updateRenders())
-        .catch((error) => console.log(error));
-    }
-
-    this._emit("fullscreen.start", this);
-  }
-
-  oldFullScreen() {
-    /** TODO: figure out which canvas to fullscreen.. */
-    let elementId = this._renders[0].by_id.canvas.elementId;
-    element = document.getElementById(elementId);
-    this._emit("remote.stream.fullscreen: ", element, this._renders[0]);
-
-    if (!this._renders[0].data.canvasLoop.remoteCanvasContext.original) {
-      this._renders[0].data.canvasLoop.remoteCanvasContext.original = {};
-    }
-
-    this._renders[0].data.canvasLoop.remoteCanvasContext.original.width =
-      element.width;
-    this._renders[0].data.canvasLoop.remoteCanvasContext.original.height =
-      element.height;
-    element.width = document.body.clientWidth;
-    element.height = document.body.clientHeight;
-
-    //element = this._remoteVideo;
-
-    this._renders[0].enabled = false;
-
-    console.log("startFullScreen: ", element);
-    /*
-    if (element) {
-      return;
-    }
-    */
-
-    if (element.requestFullscreen) {
-      element
-        .requestFullscreen()
-        .then(() => this.updateRenders())
-        .catch((error) => {
-          console.log(error),
-            alert(
-              `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
-            );
-        });
-    } else if (element.mozRequestFullScreen) {
-      /* Firefox */
-      element
-        .mozRequestFullScreen()
-        .then(() => this.updateRenders())
-        .catch((error) => console.log(error));
-    } else if (element.webkitRequestFullscreen) {
-      /* Chrome, Safari and Opera */
-      element
-        .webkitRequestFullscreen()
-        .then(() => this.updateRenders())
-        .catch((error) => {
-          console.log(error);
-          alert(
-            `Error attempting to enable full-screen mode: ${error.message} (${error.name})`
-          );
-        });
-    } else if (element.msRequestFullscreen) {
-      /* IE/Edge */
-      element
-        .msRequestFullscreen()
-        .then(() => this.updateRenders())
-        .catch((error) => console.log(error));
-    }
-
-    this._emit("fullscreen.start", this);
-  }
-
-  stopFullScreen() {
-    if (this._renders[0].data.canvasLoop.remoteCanvasContext.original) {
-      element = this._renders[0].data.canvasLoop.remoteCanvasContext.canvas
-        .element;
-
-      element.width = this._renders[0].data.canvasLoop.remoteCanvasContext.original.width;
-      element.height = this._renders[0].data.canvasLoop.remoteCanvasContext.original.height;
-    }
-
-    this._emit("fullscreen.stop", this);
-  }
-
-  toggleFullScreen() {
-    if (this.isFullScreen()) {
-      return this.stopFullScreen();
-    } else {
-      return this.startFullScreen();
-    }
-  }
-
-  isFullScreen() {
-    return this._fullscreen;
-  }
-
-  startScreenShare() {
-    this._screenshare = true;
-
-    console.log("attempting screenshare");
-
-    this._getScreenStream((screenStream) => {
-      console.log("screenStream: ", screenStream);
-      let newTrack = screenStream.getTracks().find((track) => {
-        return track.kind == "video" && track.readyState == "live";
-      });
-      console.log("new track: ", newTrack);
-      let call = this._libwebphone.getCallList().getCall();
-      if (call) {
-        call.updateRemoteVideoTrack({ track: newTrack });
-      }
-    });
-
-    this._emit("screenshare.start", this);
-  }
-
-  _getScreenStream(callback) {
-    if (navigator.getDisplayMedia) {
-      navigator
-        .getDisplayMedia({
-          video: true,
-        })
-        .then((screenStream) => {
-          callback(screenStream);
-        });
-    } else if (navigator.mediaDevices.getDisplayMedia) {
-      navigator.mediaDevices
-        .getDisplayMedia({
-          video: true,
-        })
-        .then((screenStream) => {
-          callback(screenStream);
-        });
-    } else {
-      getScreenId(function (error, sourceId, screen_constraints) {
-        navigator.mediaDevices
-          .getUserMedia(screen_constraints)
-          .then(function (screenStream) {
-            callback(screenStream);
-          });
-      });
-    }
-  }
-
-  stopScreenShare() {
-    this._screenshare = false;
-
-    this._emit("screenshare.stop", this);
-  }
-
-  toggleScreenShare() {
-    if (this.isSharingScreen()) {
-      return this.stopScreenShare();
-    } else {
-      return this.startScreenShare();
-    }
-  }
-
-  isSharingScreen() {
-    return this._screenshare;
-  }
-
   startPictureInPicture() {
     this._config.pictureInPicture.enabled = true;
 
@@ -244,48 +41,32 @@ export default class extends lwpRenderer {
   }
 
   changePictureInPictureRatio(ratio) {
-    ratio = ratio.toFixed(2);
     if (ratio > 0 && ratio <= 1) {
       this._config.pictureInPicture.ratio = ratio;
-
-      this._renders.forEach((render) => {
-        this._rescalePip(render);
-      });
-
+      this._rescale(this._localVideo, this._config.pictureInPicture.ratio);
       this._emit("pictureInPicture.ratio.change", this, ratio);
     }
   }
 
   changeCanvasFramesPerSecond(framesPerSecond) {
     this._config.canvasLoop.framesPerSecond = framesPerSecond;
+
+    if (this._canvasRender) {
+      clearInterval(this._canvasRender);
+    }
+
+    this._canvasRender = setInterval(() => {
+      this._renderCanvas();
+    }, 1000 / this._config.canvasLoop.framesPerSecond);
+
     this._emit("canvas.framesPerSecond.change", this, framesPerSecond);
   }
 
   updateRenders() {
-    this._pointerLockStop();
-    this.render(
-      (render) => {
-        render.data = this._renderData(render.data);
-        return render;
-      },
-      (render) => {
-        Object.keys(render.by_id).forEach((key) => {
-          if (render.by_id[key].canvas) {
-            let element = render.by_id[key].element;
-            if (element) {
-              if (!render.by_id[key].canvasContext) {
-                render.by_id[key].context = element.getContext("2d");
-              }
-
-              this._fullScreenVideoStream = element.captureStream(
-                this._config.canvasLoop.framesPerSecond
-              );
-              this._fullScreenVideo.srcObject = this._fullScreenVideoStream;
-            }
-          }
-        });
-      }
-    );
+    this.render((render) => {
+      render.data = this._renderData(render.data);
+      return render;
+    });
   }
 
   /** Init functions */
@@ -314,13 +95,22 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
+    if (config.canvas && typeof config.canvas == "string") {
+      config.canvas = { elementId: config.canvas };
+    }
+
     let defaults = {
       renderTargets: [],
+      canvas: {
+        elementId: null,
+        element: null,
+        context: null,
+      },
       screenshare: {
-        show: true,
+        show: false,
       },
       fullscreen: {
-        show: true,
+        show: false,
         supported: !!(
           document.fullscreenEnabled ||
           document.mozFullScreenEnabled ||
@@ -338,56 +128,84 @@ export default class extends lwpRenderer {
       canvasLoop: {
         show: true,
         framesPerSecond: 15,
-        offset: {
-          x: 0,
-          y: 0,
-        },
+      },
+      backgrounds: {
+        disconnected:
+          "data:image/svg+xml;base64,PHN2ZyBpZD0idGVzdCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNzAuNTQ2N21tIiBoZWlnaHQ9IjcwLjU0NjdtbSIgdmlld0JveD0iMCAwIDIwMCAyMDAiPgo8cGF0aCBpZD0iU2VsZWN0aW9uIiBmaWxsPSJ3aGl0ZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxIiBkPSJNIDEwNC4wMCwxMjUuMDAmIzEwOyAgICAgICAgICAgQyAxMDQuMDAsMTI1LjAwIDExMS40Miw4NS4wMCAxMTEuNDIsODUuMDAmIzEwOyAgICAgICAgICAgICAxMTMuMjQsNzYuNzkgMTE5LjM5LDUzLjkzIDExOC45MCw0Ny4wMCYjMTA7ICAgICAgICAgICAgIDExNy40OSwyNi44MiA5MC45OCwyNS4wNyA4My4yMywzOC4wMiYjMTA7ICAgICAgICAgICAgIDc5LjUzLDQ0LjE5IDgxLjA1LDU0LjI2IDgyLjQwLDYxLjAwJiMxMDsgICAgICAgICAgICAgODIuNDAsNjEuMDAgOTIuMjUsMTA2LjAwIDkyLjI1LDEwNi4wMCYjMTA7ICAgICAgICAgICAgIDkyLjgwLDEwOS4xOSA5NC41OCwxMjIuNDEgOTYuNTksMTIzLjk4JiMxMDsgICAgICAgICAgICAgOTguMjIsMTI1LjI0IDEwMS45OCwxMjQuOTkgMTA0LjAwLDEyNS4wMCBaJiMxMDsgICAgICAgICAgIE0gNzQuMDAsNTEuMDAmIzEwOyAgICAgICAgICAgQyA3NC4wMCw0MS4wMSA3My40Nyw0Mi43NCA3Ni4wMCwzMy4wMCYjMTA7ICAgICAgICAgICAgIDU3LjY3LDMzLjQwIDMyLjQ0LDQ2LjUyIDE4LjAwLDU3LjM3JiMxMDsgICAgICAgICAgICAgMTQuNzksNTkuNzkgNS4yMiw2Ni41MyA2LjM0LDcxLjAwJiMxMDsgICAgICAgICAgICAgNi44MSw3Mi44OCA5LjYxLDc1LjYzIDExLjAwLDc2Ljk4JiMxMDsgICAgICAgICAgICAgMTIuMjQsNzguMTggMTQuMzEsODAuMjQgMTYuMDAsODAuNjYmIzEwOyAgICAgICAgICAgICAxOS40Myw4MS41MyAyOS43MSw3MS43OSAzMy4wMCw2OS40MyYjMTA7ICAgICAgICAgICAgIDQ1LjIxLDYwLjY3IDU5LjIxLDUzLjk4IDc0LjAwLDUxLjAwIFomIzEwOyAgICAgICAgICAgTSAxMjQuMDAsMzMuMDAmIzEwOyAgICAgICAgICAgQyAxMjUuMzIsNDIuMzkgMTI2LjgyLDQwLjg0IDEyNS4wMCw1MS4wMCYjMTA7ICAgICAgICAgICAgIDEzOS43MCw1Ni41MCAxNDcuMDUsNTcuOTEgMTYxLjAwLDY3LjA4JiMxMDsgICAgICAgICAgICAgMTY0LjgzLDY5LjYwIDE2OS40OCw3My4zMCAxNzMuMDAsNzYuMjgmIzEwOyAgICAgICAgICAgICAxNzQuNDcsNzcuNTMgMTc3LjE5LDgwLjIyIDE3OS4wMCw4MC42NiYjMTA7ICAgICAgICAgICAgIDE4Mi41Miw4MS41MyAxODkuNzUsNzQuMDYgMTkwLjgzLDcxLjAxJiMxMDsgICAgICAgICAgICAgMTkyLjQzLDY2LjUxIDE4MS4zNCw1OC44MyAxNzguMDAsNTYuNDMmIzEwOyAgICAgICAgICAgICAxNjIuODIsNDUuNTEgMTQyLjY3LDM1LjYzIDEyNC4wMCwzMy4wMCBaJiMxMDsgICAgICAgICAgIE0gMzIuMDAsOTguMDAmIzEwOyAgICAgICAgICAgQyAzMi4wMCw5OC4wMCA0NC4wMCwxMDkuMDAgNDQuMDAsMTA5LjAwJiMxMDsgICAgICAgICAgICAgNTIuOTIsMTAyLjY0IDU1Ljk5LDk4LjM5IDY3LjAwLDkzLjMxJiMxMDsgICAgICAgICAgICAgNjkuNjksOTIuMDcgNzkuODMsODguOTYgODAuOTcsODcuMzAmIzEwOyAgICAgICAgICAgICA4Mi4wNCw4NS43MyA4MC44OCw3MS40NCA3NC45NCw3MS42MSYjMTA7ICAgICAgICAgICAgIDY2LjQwLDcxLjg1IDQ3LjgyLDgyLjM4IDQxLjAwLDg3LjY2JiMxMDsgICAgICAgICAgICAgMzYuODcsOTAuODYgMzMuNTcsOTIuOTAgMzIuMDAsOTguMDAgWiYjMTA7ICAgICAgICAgICBNIDEyMS4wMCw3MS4wMCYjMTA7ICAgICAgICAgICBDIDEyMS4wMCw3MS4wMCAxMTcuMDAsODkuMDAgMTE3LjAwLDg5LjAwJiMxMDsgICAgICAgICAgICAgMTI2LjUzLDkwLjk0IDEzNC4wNSw5NC44NiAxNDIuMDAsMTAwLjM1JiMxMDsgICAgICAgICAgICAgMTQ0LjQ4LDEwMi4wNiAxNTAuNTcsMTA3LjgxIDE1My4wMCwxMDcuODAmIzEwOyAgICAgICAgICAgICAxNTYuMjMsMTA3LjgwIDE2My41NSw5OS40NSAxNjYuMDAsOTcuMDAmIzEwOyAgICAgICAgICAgICAxNTcuMTQsODQuODkgMTM1LjU4LDc0LjMyIDEyMS4wMCw3MS4wMCBaJiMxMDsgICAgICAgICAgIE0gNTguMDAsMTI0LjAwJiMxMDsgICAgICAgICAgIEMgNjAuODMsMTI2LjAyIDY3Ljk0LDEzMy4xNCA3MC4wMCwxMzMuNjYmIzEwOyAgICAgICAgICAgICA3Mi44NSwxMzQuMzkgNzUuNzYsMTMxLjM4IDc4LjAwLDEyOS45MSYjMTA7ICAgICAgICAgICAgIDgyLjA3LDEyNy4yNCA4NS4yMywxMjUuODcgOTAuMDAsMTI1LjAwJiMxMDsgICAgICAgICAgICAgOTAuMDAsMTI1LjAwIDg3LjAwLDEwNy4wMCA4Ny4wMCwxMDcuMDAmIzEwOyAgICAgICAgICAgICA3Ny40NywxMDguOTIgNjIuNTAsMTE0Ljk0IDU4LjAwLDEyNC4wMCBaJiMxMDsgICAgICAgICAgIE0gMTEyLjAwLDEwOC4wMCYjMTA7ICAgICAgICAgICBDIDExMi4wMCwxMDguMDAgMTA5LjAwLDEyNS4wMCAxMDkuMDAsMTI1LjAwJiMxMDsgICAgICAgICAgICAgMTEzLjU2LDEyNi41OSAxMTUuOTEsMTI3LjQ5IDEyMC4wMCwxMzAuMjImIzEwOyAgICAgICAgICAgICAxMjEuODUsMTMxLjQ1IDEyNC43MCwxMzMuOTUgMTI3LjAwLDEzMy44NCYjMTA7ICAgICAgICAgICAgIDEyOS45NywxMzMuNzEgMTM2Ljk1LDEyNi44MSAxMzcuNjYsMTI0LjAwJiMxMDsgICAgICAgICAgICAgMTM4LjA2LDEyMi40MiAxMzcuNTYsMTIxLjQyIDEzNi42MywxMjAuMTcmIzEwOyAgICAgICAgICAgICAxMzIuMzYsMTE0LjQ0IDExOS4xMiwxMDguNjUgMTEyLjAwLDEwOC4wMCBaJiMxMDsgICAgICAgICAgIE0gOTYuMDAsMTM1LjQ3JiMxMDsgICAgICAgICAgIEMgOTIuMDQsMTM2LjQ0IDg5LjMyLDEzNy4zNSA4Ni4zMywxNDAuMzMmIzEwOyAgICAgICAgICAgICA3My4zMiwxNTMuMjYgODUuMjMsMTc0Ljc0IDEwMy4wMCwxNzEuNTMmIzEwOyAgICAgICAgICAgICAxMTYuMTYsMTY5LjE1IDEyMy4yOSwxNTQuMjIgMTE1LjM1LDE0My4wMiYjMTA7ICAgICAgICAgICAgIDExMC42NiwxMzYuNDAgMTAzLjY5LDEzNC40MSA5Ni4wMCwxMzUuNDcgWiIvPgo8L3N2Zz4",
+        idle:
+          "data:image/svg+xml;base64,PHN2ZyBpZD0idGVzdCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHg9IjAiIHk9IjAiIHdpZHRoPSIxNzUiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCAxNzUgNDkiIGNsYXNzPSJsb2dvIj4KPHBhdGggY2xhc3M9ImxvZ29fX3N5bWJvbCIgc3R5bGU9ImZpbGw6ICNmZjU5MzM7IiBkPSJNNDIuMSAwLjZjLTAuOC0wLjgtMi0wLjgtMi43IDAgLTAuOCAwLjgtMC44IDIgMCAyLjggMC44IDAuOCAyIDAuOCAyLjcgMEM0Mi45IDIuNiA0Mi45IDEuMyA0Mi4xIDAuNnpNMTEuNyAzMy45bDIyLTIyLjFjLTAuNC0wLjUtMC44LTEtMS4zLTEuNSAtMC41LTAuNS0wLjktMC45LTEuNC0xLjNMOSAzMS4yYy0wLjggMC44LTAuOCAyIDAgMi44QzkuOCAzNC43IDExIDM0LjcgMTEuNyAzMy45ek0zOCA3LjVjMC44LTAuOCAwLjgtMiAwLTIuOCAtMC44LTAuOC0yLTAuOC0yLjcgMGwtMiAyQzI2IDAuNyAxNS4yIDEuMiA4LjQgOGMtNS4xIDUuMS02LjYgMTIuNC00LjYgMTguOGwtMy4zIDMuM2MtMC44IDAuOC0wLjggMiAwIDIuOCAwLjggMC44IDIgMC44IDIuNyAwbDE1LjktMTZjMC44LTAuOCAwLjgtMiAwLTIuOCAtMC44LTAuOC0yLTAuOC0yLjcgMEw4IDIyLjdjLTAuOS00LjggMC41LTkuOSA0LjItMTMuNSA1LjktNiAxNS41LTYgMjEuNSAwIDUuOSA2IDUuOSAxNS42IDAgMjEuNiAtMy4xIDMuMS03LjIgNC42LTExLjMgNC41TDE4IDM5LjZjNS45IDEuMiAxMi4yLTAuNSAxNi44LTUuMSA2LjgtNi44IDcuMi0xNy43IDEuMy0yNUwzOCA3LjV6TTIzLjQgMjguOWMtMC44LTAuOC0yLTAuOC0yLjcgMEwxMCAzOS42Yy0wLjggMC44LTAuOCAyIDAgMi44IDAuOCAwLjggMiAwLjggMi43IDBsMTAuNy0xMC43QzI0LjIgMzAuOSAyNC4yIDI5LjcgMjMuNCAyOC45ek0yNC44IDI0LjhjLTAuOCAwLjgtMC44IDIgMCAyLjggMC44IDAuOCAyIDAuOCAyLjcgMCAwLjgtMC44IDAuOC0yIDAtMi44QzI2LjggMjQgMjUuNiAyNCAyNC44IDI0Ljh6TTIzLjMgMTIuN2MwLjgtMC44IDAuOC0yIDAtMi44IC0wLjgtMC44LTItMC44LTIuNyAwIC0wLjggMC44LTAuOCAyIDAgMi44QzIxLjMgMTMuNSAyMi41IDEzLjUgMjMuMyAxMi43eiIvPgo8cGF0aCBjbGFzcz0ibG9nb19fd29yZG1hcmsiIHN0eWxlPSJmaWxsOiAjRkZGRkZGOyIgZD0iTTc5LjQgMTYuNmwzLjktMy45YzAuOC0wLjggMC44LTIgMC0yLjcgLTAuNC0wLjQtMC45LTAuNi0xLjQtMC42IC0wLjMgMC0wLjcgMC4xLTEgMC4zbC0wLjEgMC4xYy0wLjEgMC0wLjEgMC4xLTAuMiAwLjFMNzkuNSAxMWwtMC4xIDAuMUw3MS40IDE5Yy0wLjggMC45LTEuMyAxLjctMS43IDIuNiAtMC40IDAuOS0wLjcgMi0wLjcgMy4xIDAgMC4xIDAgMC4yIDAgMC4zIDAgMC4xIDAgMC4yIDAgMC4zIDAgNC45IDMuOSA4LjkgOC44IDguOSA0LjkgMCA4LjgtNCA4LjgtOC45Qzg2LjcgMjAuOSA4My41IDE3LjMgNzkuNCAxNi42ek03Ny45IDMwLjNjLTIuNyAwLTUtMi4yLTUtNSAwLTIuNyAyLjItNSA1LTUgMi43IDAgNSAyLjIgNSA1QzgyLjggMjggODAuNiAzMC4zIDc3LjkgMzAuM3pNOTkuNyA5LjNDOTIuOSA5LjMgODggMTQuOSA4OCAyMS43YzAgNi44IDQuOSAxMi40IDExLjcgMTIuNCA2LjggMCAxMS43LTUuNSAxMS43LTEyLjRTMTA2LjUgOS4zIDk5LjcgOS4zek05OS43IDMwLjJjLTQuNyAwLTcuOS0zLjgtNy45LTguNSAwLTQuNyAzLjItOC41IDcuOS04LjUgNC43IDAgNy45IDMuOCA3LjkgOC41QzEwNy42IDI2LjQgMTA0LjQgMzAuMiA5OS43IDMwLjJ6TTEyNC40IDkuM2MtNi44IDAtMTEuNyA1LjYtMTEuNyAxMi40IDAgNi44IDQuOSAxMi40IDExLjcgMTIuNCA2LjggMCAxMS43LTUuNSAxMS43LTEyLjRTMTMxLjIgOS4zIDEyNC40IDkuM3pNMTI0LjQgMzAuMmMtNC43IDAtNy45LTMuOC03LjktOC41IDAtNC43IDMuMi04LjUgNy45LTguNSA0LjcgMCA3LjkgMy44IDcuOSA4LjVDMTMyLjMgMjYuNCAxMjkuMSAzMC4yIDEyNC40IDMwLjJ6TTUzLjEgMzIuN2MwLjIgMC42IDAuOCAxLjQgMS45IDEuNCAwIDAgMTEuMSAwIDExLjEgMCAxLjEgMCAxLjktMC45IDEuOS0xLjkgMC0xLjEtMC45LTItMS45LTIgMCAwLTkuOCAwLTkuOCAwIC0wLjQtMy41IDIuMi01LjUgNC40LTUuN2wwLjktMC4xYzMuNy0wLjUgNi40LTMuNyA2LjQtNy41IDAtNC4yLTMuNC03LjYtNy42LTcuNiAtMy41IDAtNi40IDIuNC03LjMgNS42bDAgMGMwIDAuMS0wLjEgMC4zLTAuMSAwLjUgMCAxLjEgMC45IDEuOSAxLjkgMS45IDAuOSAwIDEuNy0wLjYgMS45LTEuNWwwLTAuMWMwLjUtMS41IDEuOS0yLjYgMy41LTIuNiAyIDAgMy43IDEuNyAzLjcgMy43IDAgMS45LTEuMyAzLjQtMy4xIDMuNmwtMC4zIDBjLTQuNyAwLjMtOC4zIDQuMy04LjMgOC42QzUyLjYgMjkuMiA1Mi41IDMwLjkgNTMuMSAzMi43eiIvPgo8cGF0aCBjbGFzcz0ibG9nb19fd29yZG1hcmsiIHN0eWxlPSJmaWxsOiAjRkZGRkZGOyIgZD0iTTE1My42IDkuM2MtMS4xIDAtMS45IDAuOS0xLjkgMS45djUuNWgtOS45di01LjVjMC0xLjEtMC45LTEuOS0xLjktMS45IC0xLjEgMC0xLjkgMC45LTEuOSAxLjl2MjAuOWMwIDEuMSAwLjkgMS45IDEuOSAxLjkgMS4xIDAgMS45LTAuOSAxLjktMS45VjIwLjZoOS45djExLjVjMCAxLjEgMC45IDEuOSAxLjkgMS45czEuOS0wLjkgMS45LTEuOVYxMS4zQzE1NS41IDEwLjIgMTU0LjYgOS4zIDE1My42IDkuM3pNMTczLjEgMzAuMmgtOUwxNzQuMiAyMGMwLjgtMC44IDAuOC0yIDAtMi43IC0wLjQtMC40LTAuOS0wLjYtMS40LTAuNiAwIDAgMCAwIDAgMGgtMTMuNWMtMS4xIDAtMS45IDAuOS0xLjkgMiAwIDEuMSAwLjkgMS45IDEuOSAxLjloOC45TDE1OCAzMC44Yy0wLjggMC44LTAuOCAyIDAgMi43IDAuMyAwLjMgMC43IDAuNSAxLjEgMC41IDAuMSAwIDAuMSAwIDAuMiAwIDAgMCAwIDAgMCAwaDEzLjdjMS4xIDAgMS45LTAuOSAxLjktMS45QzE3NSAzMS4xIDE3NC4xIDMwLjIgMTczLjEgMzAuMnoiLz4KPC9zdmc+",
+        defaultAvatar:
+          "data:image/svg+xml;base64,PHN2ZyBpZD0idGVzdCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZD0iTTEyLjYgN2MtMSAxLjUtMi43IDIuNS00LjYgMi41UzQuNCA4LjUgMy40IDdDMi45IDcuMSAwIDggMCAxM2MwIDIuNyA0IDMgOCAzczgtLjMgOC0zYzAtNS0yLjktNS45LTMuNC02eiIvPjxjaXJjbGUgY3g9IjgiIGN5PSI0IiByPSI0Ii8+PC9zdmc+",
+      },
+      averageRGB: {
+        threshold: 1,
       },
     };
     this._config = lwpUtils.merge(defaults, config);
 
-    this._canvas = {};
-    this._canvas.element = document.createElement("canvas");
-    this._canvas.context = this._canvas.element.getContext("2d");
-
     this._remoteVideo = null;
-
     this._localVideo = null;
 
-    this._fullscreen = false;
-    this._fullScreenVideo = document.createElement("video");
-    this._fullScreenVideo.muted = true;
-    this._fullScreenVideo.id = lwpUtils.randomElementId();
-
-    this._screenshare = false;
-
-    let updater = (event) => {
-      this._pointerLockMoveHandler(event);
-    };
-    this._pointerLockContext = {
-      canvas: null,
-      renders: null,
-      active: false,
-      moveHandler: updater,
-    };
-
-    this._canvasLoop();
+    this._canvasLoop = { idle: true, avatar: true, statusLines: [] };
   }
 
   _initEventBindings() {
-    this._libwebphone.on("videoCanvas.remote.video.added", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("videoCanvas.remote.video.removed", () => {
-      this.updateRenders();
+    window.addEventListener("load", () => {
+      this._initCanvasConfig();
     });
 
-    this._libwebphone.on("videoCanvas.local.video.added", () => {
-      this.updateRenders();
+    this._libwebphone.on("call.promoted", (lwp, call) => {
+      this._canvasLoop.statusLines = [];
+      this._canvasLoop.idle = !call.hasSession();
+
+      if (call.hasSession()) {
+        this._canvasLoop.statusLines = [{ text: call.remoteIdentity() }];
+      }
     });
-    this._libwebphone.on("videoCanvas.local.video.removed", () => {
-      this.updateRenders();
-    });
+    this._libwebphone.on(
+      "call.primary.timeupdate",
+      (lwp, call, start, duration, prettyDuration) => {
+        this._canvasLoop.statusLines[1] = { text: prettyDuration };
+      }
+    );
+    this._libwebphone.on(
+      "call.primary.remote.video.playing",
+      (lwp, call, element) => {
+        this._setRemoteVideo(element);
+      }
+    );
+    this._libwebphone.on(
+      "call.primary.remote.video.timeupdate",
+      (lwp, call, element) => {
+        this._checkCanvasSource(
+          this._remoteVideo,
+          element,
+          element.videoWidth,
+          element.videoHeight
+        );
+      }
+    );
+    this._libwebphone.on(
+      "call.primary.local.video.playing",
+      (lwp, call, element) => {
+        this._setLocalVideo(element);
+      }
+    );
+    this._libwebphone.on(
+      "call.primary.local.video.timeupdate",
+      (lwp, call, element) => {
+        if (
+          this._checkCanvasSource(
+            this._localVideo,
+            element,
+            element.videoWidth,
+            element.videoHeight
+          )
+        ) {
+          this._rescale(this._localVideo, this._config.pictureInPicture.ratio);
+        }
+      }
+    );
 
     this._libwebphone.on("videoCanvas.screenshare.start", () => {
       this.updateRenders();
@@ -401,51 +219,85 @@ export default class extends lwpRenderer {
     this._libwebphone.on("videoCanvas.fullscreen.stop", () => {
       this.updateRenders();
     });
-
     this._libwebphone.on("videoCanvas.pictureInPicture.start", () => {
       this.updateRenders();
     });
     this._libwebphone.on("videoCanvas.pictureInPicture.stop", () => {
       this.updateRenders();
     });
+  }
 
-    this._libwebphone.on("videoCanvas.remote.stream.playing", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("videoCanvas.local.stream.playing", () => {
-      this.updateRenders();
-    });
+  _initCanvasConfig() {
+    this._backgrounds = {};
+    if (!this._config.canvas.element && this._config.canvas.elementId) {
+      this._config.canvas.element = document.getElementById(
+        this._config.canvas.elementId
+      );
+    }
 
-    document.addEventListener("fullscreenchange", (event) => {
-      if (document.fullscreenElement) {
-        this._fullscreen = true;
-        this._renders[0].enabled = false;
-        this.updateRenders();
-        console.log(
-          `Element: ${document.fullscreenElement.id} entered full-screen mode.`
+    if (!this._config.canvas.element) {
+      this._config.canvas.element = document.createElement("canvas");
+    }
+
+    if (!this._config.canvas.context && this._config.canvas.element) {
+      this._config.canvas.context = this._config.canvas.element.getContext(
+        "2d"
+      );
+    }
+
+    if (this._config.backgrounds.disconnected) {
+      let disconnectedImage = document.createElement("img");
+      disconnectedImage.onload = () => {
+        this._backgrounds.disconnected = this._createCanvasSource(
+          disconnectedImage,
+          disconnectedImage.width,
+          disconnectedImage.height
         );
-      } else {
-        this._fullscreen = false;
-        this._renders[0].enabled = true;
-        this.updateRenders();
-        this.stopFullScreen();
-        console.log("Leaving full-screen mode.");
-      }
-    });
-    document.addEventListener(
-      "pointerlockchange",
-      (...data) => {
-        this._pointerLockHandler(...data);
-      },
-      false
-    );
-    document.addEventListener(
-      "mozpointerlockchange",
-      (...data) => {
-        this._pointerLockHandler(...data);
-      },
-      false
-    );
+        this._backgrounds.disconnected.type = "background.disconnected";
+        this._rescale(this._backgrounds.disconnected, 0.5);
+        this._backgrounds.disconnected.destination.current.x =
+          this._config.canvas.element.width / 2 -
+          this._backgrounds.disconnected.destination.current.width / 2;
+        this._backgrounds.disconnected.destination.current.y =
+          this._config.canvas.element.height / 2 -
+          this._backgrounds.disconnected.destination.current.height / 2;
+      };
+      disconnectedImage.src = this._config.backgrounds.disconnected;
+    }
+
+    if (this._config.backgrounds.idle) {
+      let idleImage = document.createElement("img");
+      idleImage.onload = () => {
+        this._backgrounds.idle = this._createCanvasSource(
+          idleImage,
+          idleImage.width,
+          idleImage.height
+        );
+        this._backgrounds.idle.type = "background.idle";
+      };
+      idleImage.src = this._config.backgrounds.idle;
+    }
+
+    if (this._config.backgrounds.defaultAvatar) {
+      let defaultAvatarImage = document.createElement("img");
+      defaultAvatarImage.onload = () => {
+        this._backgrounds.defaultAvatar = this._createCanvasSource(
+          defaultAvatarImage,
+          defaultAvatarImage.width,
+          defaultAvatarImage.height
+        );
+        this._backgrounds.defaultAvatar.type = "background.avatar.default";
+        this._rescale(this._backgrounds.defaultAvatar, 0.2);
+        this._backgrounds.defaultAvatar.destination.current.x =
+          this._config.canvas.element.width / 2 -
+          this._backgrounds.defaultAvatar.destination.current.width / 2;
+      };
+      defaultAvatarImage.src = this._config.backgrounds.defaultAvatar;
+    }
+
+    this._canvasRender = setInterval(() => {
+      this._renderCanvas();
+    }, 1000 / this._config.canvasLoop.framesPerSecond);
   }
 
   _initRenderTargets() {
@@ -472,46 +324,8 @@ export default class extends lwpRenderer {
         startscreenshare: "libwebphone:videoCanvas.startscreenshare",
         stopscreenshare: "libwebphone:videoCanvas.stopscreenshare",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_id: {
-        canvas: {
-          canvas: true,
-          events: {
-            onmousedown: (event, render) => {
-              let canvas = event.srcElement;
-              if (this._canvasLoop && this._canvasLoop.localCanvasContext) {
-                let canvasContext = this._canvasLoop.localCanvasContext;
-                let boundingRect = canvas.getBoundingClientRect();
-                let videoWidth = canvasContext.destination.current.width;
-                let videoHeight = canvasContext.destination.current.height;
-                let offsetX = canvasContext.destination.current.x;
-                let offsetY = canvasContext.destination.current.y;
-                let mouseX = event.clientX - boundingRect.left;
-                let mouseY = event.clientY - boundingRect.top;
-
-                if (
-                  mouseX >= offsetX &&
-                  mouseX <= offsetX + videoWidth &&
-                  mouseY >= offsetY &&
-                  mouseY <= offsetY + videoHeight
-                ) {
-                  this._pointerLockContext.canvas = canvas;
-                  this._pointerLockContext.render = render;
-                  this._pointerLockContext.x =
-                    canvasContext.destination.current.x + boundingRect.left;
-                  this._pointerLockContext.y =
-                    canvasContext.destination.current.y + boundingRect.top;
-
-                  this._pointerLockStart(canvas);
-                }
-              }
-            },
-            onmouseup: (event) => {
-              let canvas = event.srcElement;
-              this._pointerLockStop(canvas);
-            },
-          },
-        },
         pictureInPicture: {
           events: {
             onclick: (event) => {
@@ -521,10 +335,6 @@ export default class extends lwpRenderer {
         },
         pictureInPictureRatio: {
           events: {
-            onchange: (event) => {
-              let element = event.srcElement;
-              this.changePictureInPictureRatio(element.value / 100);
-            },
             oninput: (event) => {
               let element = event.srcElement;
               this.changePictureInPictureRatio(element.value / 100);
@@ -537,24 +347,6 @@ export default class extends lwpRenderer {
               let element = event.srcElement;
               this.changeCanvasFramesPerSecond(element.value);
             },
-            oninput: (event) => {
-              let element = event.srcElement;
-              this.changeCanvasFramesPerSecond(element.value);
-            },
-          },
-        },
-        fullscreen: {
-          events: {
-            onclick: (event) => {
-              this.toggleFullScreen();
-            },
-          },
-        },
-        screenshare: {
-          events: {
-            onclick: (event) => {
-              this.toggleScreenShare();
-            },
           },
         },
       },
@@ -563,8 +355,6 @@ export default class extends lwpRenderer {
 
   _renderDefaultTemplate() {
     return `
-        <canvas id="{{by_id.canvas.elementId}}"></canvas>
-
         {{#data.pictureInPicture.show}}
           <div>
             <label for="{{by_id.pictureInPicture.elementId}}">
@@ -591,7 +381,6 @@ export default class extends lwpRenderer {
           {{/data.pictureInPicture.enabled}}
 
         {{/data.pictureInPicture.show}}
-
 
         {{#data.canvasLoop.show}}
           <div>
@@ -643,11 +432,9 @@ export default class extends lwpRenderer {
   _renderData(
     data = {
       pictureInPicture: {},
-      canvasLoop: { remoteCanvasContext: null, localCanvasContext: null },
+      canvasLoop: {},
     }
   ) {
-    data.isFullScreen = this.isFullScreen();
-    data.isSharingScreen = this.isSharingScreen();
     data.pictureInPicture.enabled = this.isPictureInPicture();
     data.pictureInPicture.ratio = this._config.pictureInPicture.ratio * 100;
     data.canvasLoop.framesPerSecond = this._config.canvasLoop.framesPerSecond;
@@ -658,251 +445,372 @@ export default class extends lwpRenderer {
 
   _setRemoteVideo(remoteVideo = null) {
     if (remoteVideo) {
-      this._remoteVideo = remoteVideo;
-      let remoteCanvasContext = this._createCanvasContext(
-        canvasContext,
-        element,
-        this._remoteVideo
+      this._remoteVideo = this._createCanvasSource(
+        remoteVideo,
+        remoteVideo.videoWidth,
+        remoteVideo.videoHeight
       );
-      this._canvasLoop.remoteCanvasContext = remoteCanvasContext;
-
+      this._remoteVideo.type = "remote.video";
       this._emit("remote.video.added", this, this._removeVideo);
-      return;
+    } else {
+      this._remoteVideo = null;
+      this._emit("remote.video.removed", this);
     }
-
-    this._pointerLockStop();
-
-    this._remoteVideo = null;
-
-    this._emit("remote.video.removed", this);
   }
 
   _setLocalVideo(localVideo = null) {
     if (localVideo) {
-      this._localVideo = localVideo;
-      let localCanvasContext = this._createCanvasContext(
-        canvasContext,
-        element,
-        this._localVideo
+      this._localVideo = this._createCanvasSource(
+        localVideo,
+        localVideo.videoWidth,
+        localVideo.videoHeight
       );
-      this._canvasLoop.localCanvasContext = localCanvasContext;
-      this._rescalePip(render);
-
+      this._localVideo.type = "local.video";
+      this._rescale(this._localVideo, this._config.pictureInPicture.ratio);
       this._emit("local.video.added", this, this._localVideo);
-      return;
+    } else {
+      this._localVideo = null;
+      this._emit("local.video.removed", this);
     }
-
-    this._pointerLockStop();
-
-    this._localVideo = null;
-
-    this._emit("local.video.removed", this);
   }
 
-  _createCanvasContext(canvasContext, canvas, video) {
-    let videoWidth = video.videoWidth || 640;
-    let videoHeight = video.videoHeight || 480;
-    let canvasWidth = videoWidth; //canvas.width || 640;
-    let canvasHeight = videoHeight; //canvas.height || 480;
-    let scale = Math.min(canvasWidth / videoWidth, canvasHeight / videoHeight);
+  _checkCanvasSource(context, source, sourceWidth = 640, sourceHeight = 480) {
+    let canvasWidth = this._config.canvas.element.width || 640;
+    let canvasHeight = this._config.canvas.element.height || 480;
+    let scale = Math.min(
+      canvasWidth / sourceWidth,
+      canvasHeight / sourceHeight
+    );
+    let rescaled = false;
 
-    return {
-      context: canvasContext,
+    if (!context) {
+      return rescaled;
+    }
+
+    if (context.source.width != sourceWidth) {
+      context.source.width = sourceWidth;
+      context.destination.original.x =
+        canvasWidth / 2 - (sourceWidth / 2) * scale;
+      context.destination.original.width = sourceWidth * scale;
+      context.destination.current.x = context.destination.original.x;
+      context.destination.current.width = context.destination.original.width;
+      rescaled = true;
+    }
+
+    if (context.source.height != sourceHeight) {
+      context.source.height = sourceHeight;
+      context.destination.original.y =
+        canvasHeight / 2 - (sourceHeight / 2) * scale;
+      context.destination.original.height = sourceHeight * scale;
+      context.destination.current.y = context.destination.original.y;
+      context.destination.current.height = context.destination.original.height;
+      rescaled = true;
+    }
+
+    if (rescaled && context.type) {
+      this._emit(context.type + ".rescaled", this, context);
+    }
+
+    this._averageRGB(context);
+
+    return rescaled;
+  }
+
+  _createCanvasSource(
+    source,
+    sourceWidth = 640,
+    sourceHeight = 480,
+    options = {}
+  ) {
+    let canvasWidth = this._config.canvas.element.width || 640;
+    let canvasHeight = this._config.canvas.element.height || 480;
+    let scale = Math.min(
+      canvasWidth / sourceWidth,
+      canvasHeight / sourceHeight
+    );
+    let context = {
       scale: scale,
-      canvas: {
-        element: canvas,
-        width: canvasWidth,
-        height: canvasHeight,
-      },
       source: {
-        stream: video,
+        stream: source,
         x: 0,
         y: 0,
-        width: videoWidth,
-        height: videoHeight,
+        width: sourceWidth,
+        height: sourceHeight,
       },
       destination: {
         original: {
-          x: canvasWidth / 2 - (videoWidth / 2) * scale,
-          y: canvasHeight / 2 - (videoHeight / 2) * scale,
-          width: videoWidth * scale,
-          height: videoHeight * scale,
-        },
-        current: {
-          x: canvasWidth / 2 - (videoWidth / 2) * scale,
-          y: canvasHeight / 2 - (videoHeight / 2) * scale,
-          width: videoWidth * scale,
-          height: videoHeight * scale,
+          x: canvasWidth / 2 - (sourceWidth / 2) * scale,
+          y: canvasHeight / 2 - (sourceHeight / 2) * scale,
+          width: sourceWidth * scale,
+          height: sourceHeight * scale,
         },
       },
+      averageRGB: {
+        canvas: document.createElement("canvas"),
+        red: 0,
+        green: 0,
+        blue: 0,
+        distance: 0,
+      },
     };
+
+    context.averageRGB.context = context.averageRGB.canvas.getContext("2d");
+    context.destination.current = lwpUtils.merge(
+      {},
+      context.destination.original
+    );
+
+    this._averageRGB(context);
+
+    return context;
   }
 
-  _canvasLoop() {
-    this._renders.forEach((render) => {
-      if (this._canvasLoop.remoteCanvasContext) {
-        let canvasContext = this._canvasLoop.remoteCanvasContext;
-        canvasContext.context.fillStyle = "#black";
-        canvasContext.context.fillRect(
-          0,
-          0,
-          canvasContext.canvas.width,
-          canvasContext.canvas.height
-        );
-        canvasContext.context.drawImage(
-          canvasContext.source.stream,
-          canvasContext.source.x,
-          canvasContext.source.y,
-          canvasContext.source.width,
-          canvasContext.source.height,
-          canvasContext.destination.current.x,
-          canvasContext.destination.current.y,
-          canvasContext.destination.current.width,
-          canvasContext.destination.current.height
-        );
-      }
+  _averageRGB(context) {
+    let stepSize = 10 * 4; // every 10th pixel of the RGBA (4 elements) 2d array
 
-      if (
-        this._config.pictureInPicture.enabled &&
-        this._canvasLoop.localCanvasContext
-      ) {
-        let canvasContext = this._canvasLoop.localCanvasContext;
-        canvasContext.context.drawImage(
-          canvasContext.source.stream,
-          canvasContext.source.x,
-          canvasContext.source.y,
-          canvasContext.source.width,
-          canvasContext.source.height,
-          canvasContext.destination.current.x,
-          canvasContext.destination.current.y,
-          canvasContext.destination.current.width,
-          canvasContext.destination.current.height
-        );
-      }
-    });
+    context.averageRGB.context.drawImage(context.source.stream, 0, 0);
+    let imageData = context.averageRGB.context.getImageData(
+      0,
+      0,
+      context.averageRGB.canvas.width,
+      context.averageRGB.canvas.height
+    );
 
-    setTimeout(() => {
-      this._canvasLoop();
-    }, 1000 / this._config.canvasLoop.framesPerSecond);
+    context.averageRGB.red = 0;
+    context.averageRGB.green = 0;
+    context.averageRGB.blue = 0;
+
+    for (let index = 0; index < imageData.data.length; index += stepSize) {
+      context.averageRGB.red += imageData.data[index];
+      context.averageRGB.green += imageData.data[index + 1];
+      context.averageRGB.blue += imageData.data[index + 2];
+      /// ignore alpha (imageData.data[index + 3])
+    }
+
+    // ~~ used to floor values
+    let count = imageData.data.length / stepSize;
+    context.averageRGB.red = ~~(context.averageRGB.red / count);
+    context.averageRGB.green = ~~(context.averageRGB.green / count);
+    context.averageRGB.blue = ~~(context.averageRGB.blue / count);
+
+    // how far are we from a solid color (such as all black)
+    context.averageRGB.distance =
+      Math.abs(context.averageRGB.red - context.averageRGB.green) +
+      Math.abs(context.averageRGB.red - context.averageRGB.blue) +
+      Math.abs(context.averageRGB.green - context.averageRGB.blue);
   }
 
-  _rescalePip(render) {
-    let canvasContext = this._canvasLoop.localCanvasContext;
-    if (!canvasContext) {
+  _rescale(context, ratio) {
+    if (!context) {
       return;
     }
 
-    canvasContext.destination.current.width =
-      canvasContext.destination.original.width *
-      this._config.pictureInPicture.ratio;
-    canvasContext.destination.current.height =
-      canvasContext.destination.original.height *
-      this._config.pictureInPicture.ratio;
+    context.destination.current.width =
+      context.destination.original.width * ratio;
+    context.destination.current.height =
+      context.destination.original.height * ratio;
 
     if (
-      canvasContext.destination.current.width +
-        canvasContext.destination.current.x >
-      canvasContext.canvas.width
+      context.destination.current.width + context.destination.current.x >
+      this._config.canvas.element.width
     ) {
-      canvasContext.destination.current.x =
-        canvasContext.canvas.width - canvasContext.destination.current.width;
+      context.destination.current.x =
+        this._config.canvas.element.width - context.destination.current.width;
     }
 
     if (
-      canvasContext.destination.current.height +
-        canvasContext.destination.current.y >
-      canvasContext.canvas.height
+      context.destination.current.height + context.destination.current.y >
+      this._config.canvas.element.height
     ) {
-      canvasContext.destination.current.y =
-        canvasContext.canvas.height - canvasContext.destination.current.height;
+      context.destination.current.y =
+        this._config.canvas.element.height - context.destination.current.height;
     }
   }
 
-  _pointerLockStart(canvas) {
-    if (!this._pointerLockContext.active) {
-      canvas.requestPointerLock =
-        canvas.requestPointerLock || canvas.mozRequestPointerLock;
-      canvas.requestPointerLock();
+  _renderCanvas() {
+    if (!this._config.canvas.element) {
+      return;
     }
-  }
 
-  _pointerLockStop(canvas = null) {
-    if (
-      (!canvas ||
-        document.pointerLockElement === canvas ||
-        document.mozPointerLockElement === canvas) &&
-      this._pointerLockContext.active
-    ) {
-      this._pointerLockStop.active = false;
-      document.exitPointerLock =
-        document.exitPointerLock || document.mozExitPointerLock;
-      document.exitPointerLock();
+    let hasRemoteVideo =
+      this._remoteVideo &&
+      this._remoteVideo.averageRGB.distance > this._config.averageRGB.threshold;
+
+    this._config.canvas.context.clearRect(
+      0,
+      0,
+      this._config.canvas.element.width,
+      this._config.canvas.element.height
+    );
+
+    this._config.canvas.context.fillStyle = "#2e2e32";
+    this._config.canvas.context.fillRect(
+      0,
+      0,
+      this._config.canvas.element.width,
+      this._config.canvas.element.height
+    );
+
+    if (this._libwebphone.getUserAgent()) {
+      if (!this._libwebphone.getUserAgent().isReady()) {
+        this._config.canvas.context.drawImage(
+          this._backgrounds.disconnected.source.stream,
+          this._backgrounds.disconnected.source.x,
+          this._backgrounds.disconnected.source.y,
+          this._backgrounds.disconnected.source.width,
+          this._backgrounds.disconnected.source.height,
+          this._backgrounds.disconnected.destination.current.x,
+          this._backgrounds.disconnected.destination.current.y,
+          this._backgrounds.disconnected.destination.current.width,
+          this._backgrounds.disconnected.destination.current.height
+        );
+
+        return;
+      }
     }
-  }
 
-  _pointerLockHandler() {
+    if (this._canvasLoop.idle) {
+      if (this._backgrounds.idle) {
+        this._config.canvas.context.drawImage(
+          this._backgrounds.idle.source.stream,
+          this._backgrounds.idle.source.x,
+          this._backgrounds.idle.source.y,
+          this._backgrounds.idle.source.width,
+          this._backgrounds.idle.source.height,
+          this._backgrounds.idle.destination.current.x,
+          this._backgrounds.idle.destination.current.y,
+          this._backgrounds.idle.destination.current.width,
+          this._backgrounds.idle.destination.current.height
+        );
+      }
+      return;
+    }
+
+    if (hasRemoteVideo) {
+      this._config.canvas.context.drawImage(
+        this._remoteVideo.source.stream,
+        this._remoteVideo.source.x,
+        this._remoteVideo.source.y,
+        this._remoteVideo.source.width,
+        this._remoteVideo.source.height,
+        this._remoteVideo.destination.current.x,
+        this._remoteVideo.destination.current.y,
+        this._remoteVideo.destination.current.width,
+        this._remoteVideo.destination.current.height
+      );
+    }
+
     if (
-      document.pointerLockElement === this._pointerLockContext.canvas ||
-      document.mozPointerLockElement === this._pointerLockContext.canvas
+      this._config.pictureInPicture.enabled &&
+      this._localVideo &&
+      this._localVideo.averageRGB.distance > this._config.averageRGB.threshold
     ) {
-      this._pointerLockContext.active = true;
+      this._config.canvas.context.drawImage(
+        this._localVideo.source.stream,
+        this._localVideo.source.x,
+        this._localVideo.source.y,
+        this._localVideo.source.width,
+        this._localVideo.source.height,
+        this._localVideo.destination.current.x,
+        this._localVideo.destination.current.y,
+        this._localVideo.destination.current.width,
+        this._localVideo.destination.current.height
+      );
+    }
 
-      document.addEventListener(
-        "mousemove",
-        this._pointerLockContext.moveHandler,
-        false
+    if (
+      this._canvasLoop.statusLines &&
+      this._canvasLoop.statusLines.length > 0
+    ) {
+      let totalHeight = 0;
+      let padding = 20;
+
+      if (!hasRemoteVideo && this._backgrounds.defaultAvatar) {
+        totalHeight =
+          this._backgrounds.defaultAvatar.destination.current.height +
+          padding +
+          25;
+      }
+
+      this._config.canvas.context.save();
+      this._canvasLoop.statusLines.forEach((line, index) => {
+        let defaults = {
+          font: "24px Arial",
+          fillStyle: "#ffffff",
+          textAlign: "center",
+          textBaseline: "middle",
+        };
+        this._canvasLoop.statusLines[index] = lwpUtils.merge(
+          this._canvasLoop.statusLines[index],
+          defaults
+        );
+
+        this._config.canvas.context.font = line.font;
+        this._config.canvas.context.fillStyle = line.fillStyle;
+        this._config.canvas.context.textAlign = line.textAlign;
+        this._config.canvas.context.textBaseline = line.textBaseline;
+        this._canvasLoop.statusLines[
+          index
+        ].measurements = this._config.canvas.context.measureText(line.text);
+        this._canvasLoop.statusLines[index].expectedHeight =
+          (this._canvasLoop.statusLines[index].measurements
+            .actualBoundingBoxAscent || 12) +
+          (this._canvasLoop.statusLines[index].measurements
+            .actualBoundingBoxDescent || 12) +
+          padding;
+        totalHeight += this._canvasLoop.statusLines[index].expectedHeight;
+      });
+      this._config.canvas.context.restore();
+
+      let startingHeight =
+        this._config.canvas.element.height / 2 - totalHeight / 2;
+
+      /*
+      this._config.canvas.context.arc(
+        this._backgrounds.defaultAvatar.destination.current.x +
+          this._backgrounds.defaultAvatar.destination.current.width / 2,
+        startingHeight +
+          this._backgrounds.defaultAvatar.destination.current.height / 2,
+        this._backgrounds.defaultAvatar.destination.current.height / 2,
+        0,
+        2 * Math.PI
+      );
+      this._config.canvas.context.fillStyle = "white";
+      this._config.canvas.context.fill();
+
+      this._config.canvas.context.fillStyle = "red";
+      */
+      this._config.canvas.context.drawImage(
+        this._backgrounds.defaultAvatar.source.stream,
+        this._backgrounds.defaultAvatar.source.x,
+        this._backgrounds.defaultAvatar.source.y,
+        this._backgrounds.defaultAvatar.source.width,
+        this._backgrounds.defaultAvatar.source.height,
+        this._backgrounds.defaultAvatar.destination.current.x,
+        startingHeight,
+        this._backgrounds.defaultAvatar.destination.current.width,
+        this._backgrounds.defaultAvatar.destination.current.height
       );
 
-      this._emit("pointer.locked", this);
-    } else {
-      this._pointerLockContext.active = false;
+      startingHeight +=
+        this._backgrounds.defaultAvatar.destination.current.height +
+        padding +
+        25;
 
-      document.removeEventListener(
-        "mousemove",
-        this._pointerLockContext.moveHandler,
-        false
-      );
-
-      this._emit("pointer.unlocked", this);
-    }
-  }
-
-  _pointerLockMoveHandler(event) {
-    let render = this._pointerLockContext.render;
-    if (
-      this._canvasLoop.localCanvasContext &&
-      this._pointerLockContext.active &&
-      event.which
-    ) {
-      let canvas = this._pointerLockContext.canvas;
-      let canvasContext = this._canvasLoop.localCanvasContext;
-      let boundingRect = canvas.getBoundingClientRect();
-      let videoWidth = canvasContext.destination.current.width;
-      let videoHeight = canvasContext.destination.current.height;
-
-      this._pointerLockContext.x += event.movementX;
-      this._pointerLockContext.y += event.movementY;
-
-      if (this._pointerLockContext.x < boundingRect.left) {
-        this._pointerLockContext.x = boundingRect.left;
-      }
-
-      if (this._pointerLockContext.x + videoWidth > boundingRect.right) {
-        this._pointerLockContext.x = boundingRect.right - videoWidth;
-      }
-
-      if (this._pointerLockContext.y < boundingRect.top) {
-        this._pointerLockContext.y = boundingRect.top;
-      }
-
-      if (this._pointerLockContext.y + videoHeight > boundingRect.bottom) {
-        this._pointerLockContext.y = boundingRect.bottom - videoHeight;
-      }
-
-      canvasContext.destination.current.x =
-        this._pointerLockContext.x - boundingRect.left;
-      canvasContext.destination.current.y =
-        this._pointerLockContext.y - boundingRect.top;
+      this._canvasLoop.statusLines.forEach((line) => {
+        if (line.text) {
+          this._config.canvas.context.font = line.font;
+          this._config.canvas.context.fillStyle = line.fillStyle;
+          this._config.canvas.context.textAlign = line.textAlign;
+          this._config.canvas.context.textBaseline = line.textBaseline;
+          this._config.canvas.context.fillText(
+            line.text,
+            this._config.canvas.element.width / 2,
+            startingHeight
+          );
+          startingHeight += line.expectedHeight;
+        }
+      });
     }
   }
 }

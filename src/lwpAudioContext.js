@@ -622,7 +622,7 @@ export default class extends lwpRenderer {
           },
         },
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
     };
   }
 
@@ -803,7 +803,7 @@ export default class extends lwpRenderer {
     if (sourceStream) {
       this.startAudioContext();
       this._remoteAudio.sourceStream = sourceStream;
-      //this._remoteAudio.sourceStream.connect(this._getOutputGainNode("remote"));
+      this._remoteAudio.sourceStream.connect(this._getOutputGainNode("remote"));
     }
 
     this._emit(

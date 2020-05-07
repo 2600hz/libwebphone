@@ -504,7 +504,7 @@ export default class extends lwpRenderer {
         enablefilter: "libwebphone:dialpad.enablefilter",
         disablefilter: "libwebphone:dialpad.disablefilter",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_id: {
         dialed: {
           events: {

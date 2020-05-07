@@ -381,7 +381,7 @@ export default class extends lwpRenderer {
         password: "libwebphone:userAgent.password",
         realm: "libwebphone:userAgent.realm",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_id: {
         debug: {
           events: {

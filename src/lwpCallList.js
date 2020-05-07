@@ -201,7 +201,7 @@ export default class extends lwpRenderer {
       i18n: {
         new: "libwebphone:callList.new",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_name: {
         calls: {
           events: {

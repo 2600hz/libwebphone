@@ -1,6 +1,7 @@
 "use strict";
 
 import lwpUtils from "./lwpUtils";
+import prettyMilliseconds from "pretty-ms";
 
 export default class {
   constructor(libwebphone, session = null) {
@@ -19,6 +20,10 @@ export default class {
     }
 
     this._emit("created", this);
+
+    if (session) {
+      this._timeUpdate();
+    }
   }
 
   getId() {
@@ -105,15 +110,37 @@ export default class {
     return "originating";
   }
 
-  localIdentity() {
-    if (this.hasSession()) {
-      return this._getSession().local_identity;
+  localIdentity(simple = true) {
+    let session = this._getSession();
+    if (session) {
+      if (!simple) {
+        return session.local_identity;
+      }
+      let display_name = session.local_identity.display_name;
+      let uri_user = session.local_identity.uri.user;
+
+      if (display_name && display_name != uri_user) {
+        return display_name + " (" + uri_user + ")";
+      } else {
+        return uri_user;
+      }
     }
   }
 
-  remoteIdentity() {
-    if (this.hasSession()) {
-      return this._getSession().remote_identity;
+  remoteIdentity(simple = true) {
+    let session = this._getSession();
+    if (session) {
+      if (!simple) {
+        return session.remote_identity;
+      }
+      let display_name = session.remote_identity.display_name;
+      let uri_user = session.remote_identity.uri.user;
+
+      if (display_name && display_name != uri_user) {
+        return display_name + " (" + uri_user + ")";
+      } else {
+        return uri_user;
+      }
     }
   }
 
@@ -421,7 +448,12 @@ export default class {
 
         lwpUtils.mediaElementEvents().forEach((eventName) => {
           element.addEventListener(eventName, (event) => {
-            this._emit(type + "." + kind + "." + eventName, this, event);
+            this._emit(
+              type + "." + kind + "." + eventName,
+              this,
+              element,
+              event
+            );
           });
         });
 
@@ -585,6 +617,31 @@ export default class {
   }
 
   /** Helper functions */
+  _timeUpdate() {
+    let session = this._getSession();
+    if (session && session.start_time) {
+      let startTime = session.start_time;
+      let duration = Math.abs(startTime - new Date());
+      let options = {
+        secondsDecimalDigits: 0,
+      };
+
+      this._emit(
+        "timeupdate",
+        this,
+        startTime,
+        duration,
+        prettyMilliseconds((duration / 1000) * 1000, options)
+      );
+    }
+
+    if (session) {
+      setTimeout(() => {
+        this._timeUpdate();
+      }, 100);
+    }
+  }
+
   _destroyCall() {
     this._emit("terminated", this);
 
@@ -757,6 +814,7 @@ export default class {
              */
           });
         }
+        this._emit(type + "." + kind + ".connect", this, element);
       });
     });
   }
@@ -786,6 +844,7 @@ export default class {
         if (element && !element.paused) {
           element.pause();
         }
+        this._emit(type + "." + kind + ".disconnect", this, element);
       });
     });
   }

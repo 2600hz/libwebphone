@@ -349,6 +349,7 @@ export default class extends lwpRenderer {
               this._emit(
                 this._deviceKindtoEventKind(deviceKind) + "." + eventName,
                 this,
+                this._config[deviceKind].mediaElement.element,
                 event
               );
             }
@@ -561,7 +562,7 @@ export default class extends lwpRenderer {
           },
         },
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
     };
   }
 
@@ -650,7 +651,7 @@ export default class extends lwpRenderer {
   /** Helper functions */
 
   async _changeOutputDevice(preferedDevice) {
-    if (this._config.manageMediaElements) {
+    if (this._config.audiooutput.mediaElement.element) {
       return this._config.audiooutput.mediaElement.element
         .setSinkId(preferedDevice.id)
         .then(() => {

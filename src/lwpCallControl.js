@@ -196,7 +196,7 @@ export default class extends lwpRenderer {
         transferblind: "libwebphone:callControl.transferblind",
         transferattended: "libwebphone:callControl.transferattended",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_id: {
         redial: {
           events: {

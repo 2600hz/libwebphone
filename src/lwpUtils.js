@@ -46,7 +46,7 @@ export default class {
       "seeking",
       "stalled",
       "suspend",
-      //"timeupdate",
+      "timeupdate",
       "volumechange",
       "waiting",
     ];
