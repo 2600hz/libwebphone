@@ -14,6 +14,7 @@ export default class {
       if (this._windowLoaded && this._i18nReady) {
         this._renderReady = true;
         this.render();
+        this._emit("render.ready", this);
       }
     });
     window.addEventListener("load", () => {
@@ -21,6 +22,7 @@ export default class {
       if (this._windowLoaded && this._i18nReady) {
         this._renderReady = true;
         this.render();
+        this._emit("render.ready", this);
       }
     });
   }
