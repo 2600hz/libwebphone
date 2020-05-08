@@ -56,6 +56,16 @@ export default class extends lwpRenderer {
     let previousCall = this.getCall();
     let primaryCall = this.getCall(callid);
 
+    /**
+     * If Switching to same call, we should not end it
+     */
+    if (previousCall) {
+      if(previousCall._id === callid) {
+        this._emit('calls.changed', this, primaryCall, previousCall);
+        return;
+      }
+    }
+
     this._calls.map((call) => {
       if (call.isPrimary) {
         call._clearPrimary();

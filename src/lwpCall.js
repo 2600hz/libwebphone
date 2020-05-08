@@ -117,6 +117,24 @@ export default class {
     }
   }
 
+  remoteDisplayName() {
+    if (this.hasSession()) {
+      const username = this._session._remote_identity._display_name;
+      let initials = "";
+      if (username) {
+        const name = username.split(" ");
+        if (name.length >= 2) {
+          initials = `${name[0].charAt(0)} ${name[1].charAt(0)}`;
+        } else if (name.length === 1) {
+          initials = `${name[0].charAt(0)}`;
+        }
+      } else {
+        initials = this._session._remote_identity._uri._user;
+      }
+      return initials;
+    }
+  }
+
   terminate() {
     if (this.hasSession()) {
       if (this.isEstablished()) {
@@ -376,6 +394,7 @@ export default class {
       originating: direction == "originating",
       local_identity: this.localIdentity(),
       remote_identity: this.remoteIdentity(),
+      remote_display_name: this.remoteDisplayName()
     };
   }
 
