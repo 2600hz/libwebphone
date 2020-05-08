@@ -535,6 +535,7 @@ export default class {
         this._emit("progress", this, ...event);
       });
       this._getSession().on("confirmed", (...event) => {
+        this._answerTime = new Date();
         this._emit("ringing.stopped", this);
         this._emit("established", this, ...event);
       });
@@ -618,10 +619,8 @@ export default class {
 
   /** Helper functions */
   _timeUpdate() {
-    let session = this._getSession();
-    if (session && session.start_time) {
-      let startTime = session.start_time;
-      let duration = Math.abs(startTime - new Date());
+    if (this._answerTime) {
+      let duration = new Date() - this._answerTime;
       let options = {
         secondsDecimalDigits: 0,
       };
@@ -629,13 +628,13 @@ export default class {
       this._emit(
         "timeupdate",
         this,
-        startTime,
+        this._answerTime,
         duration,
-        prettyMilliseconds((duration / 1000) * 1000, options)
+        prettyMilliseconds(Math.ceil(duration / 1000) * 1000, options)
       );
     }
 
-    if (session) {
+    if (this.hasSession()) {
       setTimeout(() => {
         this._timeUpdate();
       }, 100);
