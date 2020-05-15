@@ -65,13 +65,15 @@ export default class extends lwpRenderer {
   }
 
   rescaleImage(name, scale = null) {
-    let configImage = this._configGetImage(name);
-    let canvasImage = this._canvasGetImage(this._canvasRender, name);
+    if (scale) {
+      let configImage = this._configGetImage(name);
 
-    if (configImage) {
-      configImage.rescale = scale;
+      if (configImage) {
+        configImage.rescale = scale;
+      }
     }
 
+    let canvasImage = this._canvasGetImage(this._canvasRender, name);
     return this._rescaleCanvasImage(this._canvasRender, canvasImage, scale);
   }
 
@@ -86,23 +88,25 @@ export default class extends lwpRenderer {
       y
     );
 
-    if (updatedImage) {
-      configImage.position = updatedImage.position;
-    } else {
-      if (!configImage.position) {
-        configImage.position.mode = "center";
-      }
+    if (configImage) {
+      if (updatedImage) {
+        configImage.position = updatedImage.position;
+      } else {
+        if (!configImage.position) {
+          configImage.position = { mode: "center" };
+        }
 
-      if (mode) {
-        configImage.position.mode = mode;
-      }
+        if (mode) {
+          configImage.position.mode = mode;
+        }
 
-      if (x) {
-        configImage.position.x = x;
-      }
+        if (x) {
+          configImage.position.x = x;
+        }
 
-      if (y) {
-        configImage.position.y = y;
+        if (y) {
+          configImage.position.y = y;
+        }
       }
     }
 
@@ -215,54 +219,87 @@ export default class extends lwpRenderer {
         show: true,
         framesPerSecond: 15,
       },
+      strings: [
+        {
+          name: "dialpadTarget",
+        },
+        {
+          name: "remoteIdentity",
+        },
+        {
+          name: "callTimer",
+        },
+      ],
       images: [
         {
           name: "disconnected",
           enabled: true,
           rescale: 0.5,
-          position: { mode: "centered" },
+          position: { mode: "center" },
           source:
             "data:image/svg+xml;base64,PHN2ZyBpZD0idGVzdCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNzAuNTQ2N21tIiBoZWlnaHQ9IjcwLjU0NjdtbSIgdmlld0JveD0iMCAwIDIwMCAyMDAiPgo8cGF0aCBpZD0iU2VsZWN0aW9uIiBmaWxsPSJ3aGl0ZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxIiBkPSJNIDEwNC4wMCwxMjUuMDAmIzEwOyAgICAgICAgICAgQyAxMDQuMDAsMTI1LjAwIDExMS40Miw4NS4wMCAxMTEuNDIsODUuMDAmIzEwOyAgICAgICAgICAgICAxMTMuMjQsNzYuNzkgMTE5LjM5LDUzLjkzIDExOC45MCw0Ny4wMCYjMTA7ICAgICAgICAgICAgIDExNy40OSwyNi44MiA5MC45OCwyNS4wNyA4My4yMywzOC4wMiYjMTA7ICAgICAgICAgICAgIDc5LjUzLDQ0LjE5IDgxLjA1LDU0LjI2IDgyLjQwLDYxLjAwJiMxMDsgICAgICAgICAgICAgODIuNDAsNjEuMDAgOTIuMjUsMTA2LjAwIDkyLjI1LDEwNi4wMCYjMTA7ICAgICAgICAgICAgIDkyLjgwLDEwOS4xOSA5NC41OCwxMjIuNDEgOTYuNTksMTIzLjk4JiMxMDsgICAgICAgICAgICAgOTguMjIsMTI1LjI0IDEwMS45OCwxMjQuOTkgMTA0LjAwLDEyNS4wMCBaJiMxMDsgICAgICAgICAgIE0gNzQuMDAsNTEuMDAmIzEwOyAgICAgICAgICAgQyA3NC4wMCw0MS4wMSA3My40Nyw0Mi43NCA3Ni4wMCwzMy4wMCYjMTA7ICAgICAgICAgICAgIDU3LjY3LDMzLjQwIDMyLjQ0LDQ2LjUyIDE4LjAwLDU3LjM3JiMxMDsgICAgICAgICAgICAgMTQuNzksNTkuNzkgNS4yMiw2Ni41MyA2LjM0LDcxLjAwJiMxMDsgICAgICAgICAgICAgNi44MSw3Mi44OCA5LjYxLDc1LjYzIDExLjAwLDc2Ljk4JiMxMDsgICAgICAgICAgICAgMTIuMjQsNzguMTggMTQuMzEsODAuMjQgMTYuMDAsODAuNjYmIzEwOyAgICAgICAgICAgICAxOS40Myw4MS41MyAyOS43MSw3MS43OSAzMy4wMCw2OS40MyYjMTA7ICAgICAgICAgICAgIDQ1LjIxLDYwLjY3IDU5LjIxLDUzLjk4IDc0LjAwLDUxLjAwIFomIzEwOyAgICAgICAgICAgTSAxMjQuMDAsMzMuMDAmIzEwOyAgICAgICAgICAgQyAxMjUuMzIsNDIuMzkgMTI2LjgyLDQwLjg0IDEyNS4wMCw1MS4wMCYjMTA7ICAgICAgICAgICAgIDEzOS43MCw1Ni41MCAxNDcuMDUsNTcuOTEgMTYxLjAwLDY3LjA4JiMxMDsgICAgICAgICAgICAgMTY0LjgzLDY5LjYwIDE2OS40OCw3My4zMCAxNzMuMDAsNzYuMjgmIzEwOyAgICAgICAgICAgICAxNzQuNDcsNzcuNTMgMTc3LjE5LDgwLjIyIDE3OS4wMCw4MC42NiYjMTA7ICAgICAgICAgICAgIDE4Mi41Miw4MS41MyAxODkuNzUsNzQuMDYgMTkwLjgzLDcxLjAxJiMxMDsgICAgICAgICAgICAgMTkyLjQzLDY2LjUxIDE4MS4zNCw1OC44MyAxNzguMDAsNTYuNDMmIzEwOyAgICAgICAgICAgICAxNjIuODIsNDUuNTEgMTQyLjY3LDM1LjYzIDEyNC4wMCwzMy4wMCBaJiMxMDsgICAgICAgICAgIE0gMzIuMDAsOTguMDAmIzEwOyAgICAgICAgICAgQyAzMi4wMCw5OC4wMCA0NC4wMCwxMDkuMDAgNDQuMDAsMTA5LjAwJiMxMDsgICAgICAgICAgICAgNTIuOTIsMTAyLjY0IDU1Ljk5LDk4LjM5IDY3LjAwLDkzLjMxJiMxMDsgICAgICAgICAgICAgNjkuNjksOTIuMDcgNzkuODMsODguOTYgODAuOTcsODcuMzAmIzEwOyAgICAgICAgICAgICA4Mi4wNCw4NS43MyA4MC44OCw3MS40NCA3NC45NCw3MS42MSYjMTA7ICAgICAgICAgICAgIDY2LjQwLDcxLjg1IDQ3LjgyLDgyLjM4IDQxLjAwLDg3LjY2JiMxMDsgICAgICAgICAgICAgMzYuODcsOTAuODYgMzMuNTcsOTIuOTAgMzIuMDAsOTguMDAgWiYjMTA7ICAgICAgICAgICBNIDEyMS4wMCw3MS4wMCYjMTA7ICAgICAgICAgICBDIDEyMS4wMCw3MS4wMCAxMTcuMDAsODkuMDAgMTE3LjAwLDg5LjAwJiMxMDsgICAgICAgICAgICAgMTI2LjUzLDkwLjk0IDEzNC4wNSw5NC44NiAxNDIuMDAsMTAwLjM1JiMxMDsgICAgICAgICAgICAgMTQ0LjQ4LDEwMi4wNiAxNTAuNTcsMTA3LjgxIDE1My4wMCwxMDcuODAmIzEwOyAgICAgICAgICAgICAxNTYuMjMsMTA3LjgwIDE2My41NSw5OS40NSAxNjYuMDAsOTcuMDAmIzEwOyAgICAgICAgICAgICAxNTcuMTQsODQuODkgMTM1LjU4LDc0LjMyIDEyMS4wMCw3MS4wMCBaJiMxMDsgICAgICAgICAgIE0gNTguMDAsMTI0LjAwJiMxMDsgICAgICAgICAgIEMgNjAuODMsMTI2LjAyIDY3Ljk0LDEzMy4xNCA3MC4wMCwxMzMuNjYmIzEwOyAgICAgICAgICAgICA3Mi44NSwxMzQuMzkgNzUuNzYsMTMxLjM4IDc4LjAwLDEyOS45MSYjMTA7ICAgICAgICAgICAgIDgyLjA3LDEyNy4yNCA4NS4yMywxMjUuODcgOTAuMDAsMTI1LjAwJiMxMDsgICAgICAgICAgICAgOTAuMDAsMTI1LjAwIDg3LjAwLDEwNy4wMCA4Ny4wMCwxMDcuMDAmIzEwOyAgICAgICAgICAgICA3Ny40NywxMDguOTIgNjIuNTAsMTE0Ljk0IDU4LjAwLDEyNC4wMCBaJiMxMDsgICAgICAgICAgIE0gMTEyLjAwLDEwOC4wMCYjMTA7ICAgICAgICAgICBDIDExMi4wMCwxMDguMDAgMTA5LjAwLDEyNS4wMCAxMDkuMDAsMTI1LjAwJiMxMDsgICAgICAgICAgICAgMTEzLjU2LDEyNi41OSAxMTUuOTEsMTI3LjQ5IDEyMC4wMCwxMzAuMjImIzEwOyAgICAgICAgICAgICAxMjEuODUsMTMxLjQ1IDEyNC43MCwxMzMuOTUgMTI3LjAwLDEzMy44NCYjMTA7ICAgICAgICAgICAgIDEyOS45NywxMzMuNzEgMTM2Ljk1LDEyNi44MSAxMzcuNjYsMTI0LjAwJiMxMDsgICAgICAgICAgICAgMTM4LjA2LDEyMi40MiAxMzcuNTYsMTIxLjQyIDEzNi42MywxMjAuMTcmIzEwOyAgICAgICAgICAgICAxMzIuMzYsMTE0LjQ0IDExOS4xMiwxMDguNjUgMTEyLjAwLDEwOC4wMCBaJiMxMDsgICAgICAgICAgIE0gOTYuMDAsMTM1LjQ3JiMxMDsgICAgICAgICAgIEMgOTIuMDQsMTM2LjQ0IDg5LjMyLDEzNy4zNSA4Ni4zMywxNDAuMzMmIzEwOyAgICAgICAgICAgICA3My4zMiwxNTMuMjYgODUuMjMsMTc0Ljc0IDEwMy4wMCwxNzEuNTMmIzEwOyAgICAgICAgICAgICAxMTYuMTYsMTY5LjE1IDEyMy4yOSwxNTQuMjIgMTE1LjM1LDE0My4wMiYjMTA7ICAgICAgICAgICAgIDExMC42NiwxMzYuNDAgMTAzLjY5LDEzNC40MSA5Ni4wMCwxMzUuNDcgWiIvPgo8L3N2Zz4",
+          predicate: () => {
+            return (
+              this._libwebphone.getUserAgent() &&
+              !this._libwebphone.getUserAgent().isReady()
+            );
+          },
         },
         {
           name: "idle",
           enabled: true,
           rescale: 0.9,
-          position: { mode: "centered" },
+          position: { mode: "center" },
           source:
             "data:image/svg+xml;base64,PHN2ZyBpZD0idGVzdCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHg9IjAiIHk9IjAiIHdpZHRoPSIxNzUiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCAxNzUgNDkiIGNsYXNzPSJsb2dvIj4KPHBhdGggY2xhc3M9ImxvZ29fX3N5bWJvbCIgc3R5bGU9ImZpbGw6ICNmZjU5MzM7IiBkPSJNNDIuMSAwLjZjLTAuOC0wLjgtMi0wLjgtMi43IDAgLTAuOCAwLjgtMC44IDIgMCAyLjggMC44IDAuOCAyIDAuOCAyLjcgMEM0Mi45IDIuNiA0Mi45IDEuMyA0Mi4xIDAuNnpNMTEuNyAzMy45bDIyLTIyLjFjLTAuNC0wLjUtMC44LTEtMS4zLTEuNSAtMC41LTAuNS0wLjktMC45LTEuNC0xLjNMOSAzMS4yYy0wLjggMC44LTAuOCAyIDAgMi44QzkuOCAzNC43IDExIDM0LjcgMTEuNyAzMy45ek0zOCA3LjVjMC44LTAuOCAwLjgtMiAwLTIuOCAtMC44LTAuOC0yLTAuOC0yLjcgMGwtMiAyQzI2IDAuNyAxNS4yIDEuMiA4LjQgOGMtNS4xIDUuMS02LjYgMTIuNC00LjYgMTguOGwtMy4zIDMuM2MtMC44IDAuOC0wLjggMiAwIDIuOCAwLjggMC44IDIgMC44IDIuNyAwbDE1LjktMTZjMC44LTAuOCAwLjgtMiAwLTIuOCAtMC44LTAuOC0yLTAuOC0yLjcgMEw4IDIyLjdjLTAuOS00LjggMC41LTkuOSA0LjItMTMuNSA1LjktNiAxNS41LTYgMjEuNSAwIDUuOSA2IDUuOSAxNS42IDAgMjEuNiAtMy4xIDMuMS03LjIgNC42LTExLjMgNC41TDE4IDM5LjZjNS45IDEuMiAxMi4yLTAuNSAxNi44LTUuMSA2LjgtNi44IDcuMi0xNy43IDEuMy0yNUwzOCA3LjV6TTIzLjQgMjguOWMtMC44LTAuOC0yLTAuOC0yLjcgMEwxMCAzOS42Yy0wLjggMC44LTAuOCAyIDAgMi44IDAuOCAwLjggMiAwLjggMi43IDBsMTAuNy0xMC43QzI0LjIgMzAuOSAyNC4yIDI5LjcgMjMuNCAyOC45ek0yNC44IDI0LjhjLTAuOCAwLjgtMC44IDIgMCAyLjggMC44IDAuOCAyIDAuOCAyLjcgMCAwLjgtMC44IDAuOC0yIDAtMi44QzI2LjggMjQgMjUuNiAyNCAyNC44IDI0Ljh6TTIzLjMgMTIuN2MwLjgtMC44IDAuOC0yIDAtMi44IC0wLjgtMC44LTItMC44LTIuNyAwIC0wLjggMC44LTAuOCAyIDAgMi44QzIxLjMgMTMuNSAyMi41IDEzLjUgMjMuMyAxMi43eiIvPgo8cGF0aCBjbGFzcz0ibG9nb19fd29yZG1hcmsiIHN0eWxlPSJmaWxsOiAjRkZGRkZGOyIgZD0iTTc5LjQgMTYuNmwzLjktMy45YzAuOC0wLjggMC44LTIgMC0yLjcgLTAuNC0wLjQtMC45LTAuNi0xLjQtMC42IC0wLjMgMC0wLjcgMC4xLTEgMC4zbC0wLjEgMC4xYy0wLjEgMC0wLjEgMC4xLTAuMiAwLjFMNzkuNSAxMWwtMC4xIDAuMUw3MS40IDE5Yy0wLjggMC45LTEuMyAxLjctMS43IDIuNiAtMC40IDAuOS0wLjcgMi0wLjcgMy4xIDAgMC4xIDAgMC4yIDAgMC4zIDAgMC4xIDAgMC4yIDAgMC4zIDAgNC45IDMuOSA4LjkgOC44IDguOSA0LjkgMCA4LjgtNCA4LjgtOC45Qzg2LjcgMjAuOSA4My41IDE3LjMgNzkuNCAxNi42ek03Ny45IDMwLjNjLTIuNyAwLTUtMi4yLTUtNSAwLTIuNyAyLjItNSA1LTUgMi43IDAgNSAyLjIgNSA1QzgyLjggMjggODAuNiAzMC4zIDc3LjkgMzAuM3pNOTkuNyA5LjNDOTIuOSA5LjMgODggMTQuOSA4OCAyMS43YzAgNi44IDQuOSAxMi40IDExLjcgMTIuNCA2LjggMCAxMS43LTUuNSAxMS43LTEyLjRTMTA2LjUgOS4zIDk5LjcgOS4zek05OS43IDMwLjJjLTQuNyAwLTcuOS0zLjgtNy45LTguNSAwLTQuNyAzLjItOC41IDcuOS04LjUgNC43IDAgNy45IDMuOCA3LjkgOC41QzEwNy42IDI2LjQgMTA0LjQgMzAuMiA5OS43IDMwLjJ6TTEyNC40IDkuM2MtNi44IDAtMTEuNyA1LjYtMTEuNyAxMi40IDAgNi44IDQuOSAxMi40IDExLjcgMTIuNCA2LjggMCAxMS43LTUuNSAxMS43LTEyLjRTMTMxLjIgOS4zIDEyNC40IDkuM3pNMTI0LjQgMzAuMmMtNC43IDAtNy45LTMuOC03LjktOC41IDAtNC43IDMuMi04LjUgNy45LTguNSA0LjcgMCA3LjkgMy44IDcuOSA4LjVDMTMyLjMgMjYuNCAxMjkuMSAzMC4yIDEyNC40IDMwLjJ6TTUzLjEgMzIuN2MwLjIgMC42IDAuOCAxLjQgMS45IDEuNCAwIDAgMTEuMSAwIDExLjEgMCAxLjEgMCAxLjktMC45IDEuOS0xLjkgMC0xLjEtMC45LTItMS45LTIgMCAwLTkuOCAwLTkuOCAwIC0wLjQtMy41IDIuMi01LjUgNC40LTUuN2wwLjktMC4xYzMuNy0wLjUgNi40LTMuNyA2LjQtNy41IDAtNC4yLTMuNC03LjYtNy42LTcuNiAtMy41IDAtNi40IDIuNC03LjMgNS42bDAgMGMwIDAuMS0wLjEgMC4zLTAuMSAwLjUgMCAxLjEgMC45IDEuOSAxLjkgMS45IDAuOSAwIDEuNy0wLjYgMS45LTEuNWwwLTAuMWMwLjUtMS41IDEuOS0yLjYgMy41LTIuNiAyIDAgMy43IDEuNyAzLjcgMy43IDAgMS45LTEuMyAzLjQtMy4xIDMuNmwtMC4zIDBjLTQuNyAwLjMtOC4zIDQuMy04LjMgOC42QzUyLjYgMjkuMiA1Mi41IDMwLjkgNTMuMSAzMi43eiIvPgo8cGF0aCBjbGFzcz0ibG9nb19fd29yZG1hcmsiIHN0eWxlPSJmaWxsOiAjRkZGRkZGOyIgZD0iTTE1My42IDkuM2MtMS4xIDAtMS45IDAuOS0xLjkgMS45djUuNWgtOS45di01LjVjMC0xLjEtMC45LTEuOS0xLjktMS45IC0xLjEgMC0xLjkgMC45LTEuOSAxLjl2MjAuOWMwIDEuMSAwLjkgMS45IDEuOSAxLjkgMS4xIDAgMS45LTAuOSAxLjktMS45VjIwLjZoOS45djExLjVjMCAxLjEgMC45IDEuOSAxLjkgMS45czEuOS0wLjkgMS45LTEuOVYxMS4zQzE1NS41IDEwLjIgMTU0LjYgOS4zIDE1My42IDkuM3pNMTczLjEgMzAuMmgtOUwxNzQuMiAyMGMwLjgtMC44IDAuOC0yIDAtMi43IC0wLjQtMC40LTAuOS0wLjYtMS40LTAuNiAwIDAgMCAwIDAgMGgtMTMuNWMtMS4xIDAtMS45IDAuOS0xLjkgMiAwIDEuMSAwLjkgMS45IDEuOSAxLjloOC45TDE1OCAzMC44Yy0wLjggMC44LTAuOCAyIDAgMi43IDAuMyAwLjMgMC43IDAuNSAxLjEgMC41IDAuMSAwIDAuMSAwIDAuMiAwIDAgMCAwIDAgMCAwaDEzLjdjMS4xIDAgMS45LTAuOSAxLjktMS45QzE3NSAzMS4xIDE3NC4xIDMwLjIgMTczLjEgMzAuMnoiLz4KPC9zdmc+",
+          predicate: () => {
+            return !this._call || !this._call.hasSession();
+          },
         },
         {
           name: "ringing",
           enabled: true,
           rescale: 0.5,
-          position: { mode: "centered" },
+          position: { mode: "center" },
           source:
             "data:image/svg+xml;base64,PHN2ZyBpZD0ic3ZnIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBkPSJNMTEuNSA2TDE2IDEuNSAxNC41IDAgMTAgNC41VjFIOHY3aDdWNnoiLz48cGF0aCBkPSJNMTIuOSAxMi40Yy0uMS0uMS0uMy0uMi0uMy0uMmwtMi45LTEtMS44IDEuMWMtLjEuMS0xLjUtLjItMi42LTEuNGwtLjMtLjNDMy43IDkuNCAzLjQgOC4yIDMuNSA4bDEuMy0xLjctMS0yLjlzLS4xLS4zLS4yLS4zYy0uMS0uMS0xLjUtLjMtMi4yLjRDLS41IDUuNC0xIDcuNCAzLjYgMTIuMWwuMy4zYzQuNyA0LjYgNi43IDQuMSA4LjYgMi4yLjctLjcuNS0yLjEuNC0yLjJ6Ii8+PC9zdmc+",
+          predicate: () => {
+            return this._call && this._call.isRinging();
+          },
         },
         {
           name: "muted",
           enabled: true,
           rescale: 0.5,
-          position: { mode: "centered" },
+          position: { mode: "center" },
           source:
             "data:image/svg+xml;base64,PHN2ZyBpZD0ic3ZnIiB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyLDZsNC0ydjhsLTQtMnYyYzAsMC42LTAuNCwxLTEsMUg0bC0zLDNsLTEtMUwxNSwwbDEsMWwtNCw0VjZ6IE0xMCwzSDFDMC40LDMsMCwzLjUsMCw0djgmIzEwOyYjOTtjMCwwLjMsMC4xLDAuNSwwLjMsMC43TDEwLDN6Ii8+Cjwvc3ZnPg==",
+          predicate: () => {
+            return this._call && this._call.isMuted();
+          },
         },
         {
           name: "held",
           enabled: true,
           rescale: 0.5,
-          position: { mode: "centered" },
+          position: { mode: "center" },
           source:
             "data:image/svg+xml;base64,PHN2ZyBpZD0ic3ZnIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBkPSJNNSA1aDJ2Nkg1VjV6bTQgMGgydjZIOVY1eiIvPjxwYXRoIGQ9Ik04IDE2YzQuNCAwIDgtMy42IDgtOHMtMy42LTgtOC04LTggMy42LTggOCAzLjYgOCA4IDh6TTggMmMzLjMgMCA2IDIuNyA2IDZzLTIuNyA2LTYgNi02LTIuNy02LTYgMi43LTYgNi02eiIvPjwvc3ZnPg==",
+          predicate: () => {
+            return this._call && this._call.isOnHold();
+          },
         },
         {
           name: "defaultAvatar",
           enabled: true,
           rescale: 0.1,
-          position: { mode: "centered" },
+          position: { mode: "center" },
           source:
             "data:image/svg+xml;base64,PHN2ZyBpZD0ic3ZnIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBkPSJNMTIuNiA3Yy0xIDEuNS0yLjcgMi41LTQuNiAyLjVTNC40IDguNSAzLjQgN0MyLjkgNy4xIDAgOCAwIDEzYzAgMi43IDQgMyA4IDNzOC0uMyA4LTNjMC01LTIuOS01LjktMy40LTZ6Ii8+PGNpcmNsZSBjeD0iOCIgY3k9IjQiIHI9IjQiLz48L3N2Zz4=",
+          predicate: () => {
+            return this._call && this._call.hasSession();
+          },
+          arc: true,
         },
       ],
     };
@@ -350,6 +387,8 @@ export default class extends lwpRenderer {
         hide: "libwebphone:videoCanvas.hide",
         rescale: "libwebphone:videoCanvas.rescale",
         position: "libwebphone:videoCanvas.position",
+        x: "libwebphone:videoCanvas.x",
+        y: "libwebphone:videoCanvas.y",
 
         center: "libwebphone:videoCanvas.center",
         topleft: "libwebphone:videoCanvas.topleft",
@@ -389,6 +428,56 @@ export default class extends lwpRenderer {
             onchange: (event) => {
               let element = event.srcElement;
               this.positionImage(this._config.localVideo.name, element.value);
+            },
+          },
+        },
+        localVideoRelativeX: {
+          events: {
+            onchange: (event) => {
+              let element = event.srcElement;
+              this.positionImage(
+                this._config.localVideo.name,
+                "relative",
+                element.value / 100
+              );
+            },
+          },
+        },
+        localVideoRelativeY: {
+          events: {
+            onchange: (event) => {
+              let element = event.srcElement;
+              this.positionImage(
+                this._config.localVideo.name,
+                "relative",
+                null,
+                element.value / 100
+              );
+            },
+          },
+        },
+        localVideoAbsoluteX: {
+          events: {
+            onchange: (event) => {
+              let element = event.srcElement;
+              this.positionImage(
+                this._config.localVideo.name,
+                "absolute",
+                element.value
+              );
+            },
+          },
+        },
+        localVideoAbsoluteY: {
+          events: {
+            onchange: (event) => {
+              let element = event.srcElement;
+              this.positionImage(
+                this._config.localVideo.name,
+                "absolute",
+                null,
+                element.value / 100
+              );
             },
           },
         },
@@ -443,6 +532,40 @@ export default class extends lwpRenderer {
               <option value="absolute" {{#data.localVideo.position.absolute}}selected{{/data.localVideo.position.absolute}}>{{i18n.absolute}}</option>
             </select>
           </div>
+
+          {{#data.localVideo.position.relative}}
+            <div>
+              <label for="{{by_id.localVideoRelativeX.elementId}}">
+                {{i18n.x}}
+              </label>
+              <input type="range" min="0" max="{{data.localVideo.position.maximumX}}" value="{{data.localVideo.position.relativeX}}" id="{{by_id.localVideoRelativeX.elementId}}">
+            </div>
+
+            <div>
+              <label for="{{by_id.localVideoRelativeY.elementId}}">
+                {{i18n.y}}
+              </label>
+              <input type="range" min="0" max="{{data.localVideo.position.maximumY}}" value="{{data.localVideo.position.relativeY}}" id="{{by_id.localVideoRelativeY.elementId}}">
+            </div>
+          {{/data.localVideo.position.relative}}
+
+
+          {{#data.localVideo.position.absolute}}
+            <div>
+              <label for="{{by_id.localVideoAbsoluteX.elementId}}">
+                {{i18n.x}}
+              </label>
+              <input type="range" min="0" max="{{data.localVideo.position.maximumX}}" value="{{data.localVideo.position.absoluteX}}" id="{{by_id.localVideoAbsoluteX.elementId}}">
+            </div>
+
+            <div>
+              <label for="{{by_id.localVideoAbsoluteY.elementId}}">
+                {{i18n.y}}
+              </label>
+              <input type="range" min="0" max="{{data.localVideo.position.maximumY}}" value="{{data.localVideo.position.absoluteX}}" id="{{by_id.localVideoAbsoluteY.elementId}}">
+            </div>
+          {{/data.localVideo.position.absolute}}
+
         {{/data.localVideo.show}}
 
         {{#data.canvasLoop.show}}
@@ -482,41 +605,50 @@ export default class extends lwpRenderer {
       canvasLoop: {},
     }
   ) {
-    let canvasRender = this._canvasRender;
-    let localVideo = null;
+    let localVideo = this._canvasGetImage(
+      this._canvasRender,
+      this._config.localVideo.name
+    );
 
-    if (canvasRender) {
-      localVideo = canvasRender.data.images.find((image) => {
-        return image.name == this._config.localVideo.name;
-      });
+    if (!localVideo) {
+      localVideo = {};
     }
 
-    if (localVideo) {
-      data.localVideo = localVideo;
-    } else {
-      data.localVideo = lwpUtils.merge({}, this._config.localVideo);
-    }
-
-    if (!data.localVideo.position) {
-      data.localVideo.position.mode = "center";
+    if (!localVideo.position) {
+      localVideo.position = this._config.localVideo.position;
     }
 
     data.localVideo.position = {
-      mode: data.localVideo.position.mode,
-      x: data.localVideo.position.x || 0,
-      y: data.localVideo.position.y || 0,
-      center: data.localVideo.position.mode == "center",
-      topleft: data.localVideo.position.mode == "top-left",
-      topright: data.localVideo.position.mode == "top-right",
-      bottomleft: data.localVideo.position.mode == "bottom-left",
-      bottomright: data.localVideo.position.mode == "bottom-right",
-      relative: data.localVideo.position.mode == "relative",
-      absolute: data.localVideo.position.mode == "absolute",
+      mode: localVideo.position.mode,
+      center: localVideo.position.mode == "center",
+      topleft: localVideo.position.mode == "top-left",
+      topright: localVideo.position.mode == "top-right",
+      bottomleft: localVideo.position.mode == "bottom-left",
+      bottomright: localVideo.position.mode == "bottom-right",
+      relative: localVideo.position.mode == "relative",
+      absolute: localVideo.position.mode == "absolute",
+      maximumX: 0,
+      maximumY: 0,
     };
+
+    if (data.localVideo.position.relative) {
+      data.localVideo.position.relativeX = (localVideo.position.x || 0) * 100;
+      data.localVideo.position.relativeY = (localVideo.position.y || 0) * 100;
+      data.localVideo.position.maximumX = 100;
+      data.localVideo.position.maximumY = 100;
+    } else if (data.localVideo.position.absolute) {
+      data.localVideo.position.absoluteX = localVideo.position.x || 0;
+      data.localVideo.position.absoluteY = localVideo.position.y || 0;
+      if (this._canvasRender.element) {
+        data.localVideo.position.maximumX = this._canvasRender.element.width;
+        data.localVideo.position.maximumY = this._canvasRender.element.height;
+      }
+    }
 
     data.localVideo.rescale = this._config.localVideo.rescale * 100;
 
     data.canvasLoop.framesPerSecond = this._config.canvasLoop.framesPerSecond;
+
     return data;
   }
 
@@ -536,6 +668,9 @@ export default class extends lwpRenderer {
 
   _callPromoted(call = null) {
     this._call = call;
+
+    this._setCanvasImage(this._canvasRender, this._config.localVideo.name);
+    this._setCanvasImage(this._canvasRender, this._config.remoteVideo.name);
 
     if (!call._statusLines) {
       call._statusLines = [];
@@ -562,10 +697,9 @@ export default class extends lwpRenderer {
           })
         );
       }
-    } else {
-      this._setCanvasImage(this._canvasRender, this._config.localVideo.name);
-      this._setCanvasImage(this._canvasRender, this._config.remoteVideo.name);
     }
+
+    this.updateRenders();
   }
 
   _callTimeupdate(call, prettyDuration) {
@@ -607,9 +741,6 @@ export default class extends lwpRenderer {
 
   _setElement(name, element = null, options = {}) {
     let canvasRender = this._canvasRender;
-    if (!canvasRender) {
-      return;
-    }
 
     if (!element) {
       this._setCanvasImage(canvasRender, name);
@@ -701,7 +832,21 @@ export default class extends lwpRenderer {
       );
     }
 
+    if (options.predicate) {
+      canvasImage.predicate = options.predicate;
+    } else {
+      canvasImage.predicate = () => {
+        return false;
+      };
+    }
+
+    if (options.arc) {
+      canvasImage.arc = true;
+    }
+
     canvasRender.data.images.push(canvasImage);
+
+    this.updateRenders();
 
     return canvasImage;
   }
@@ -931,6 +1076,7 @@ export default class extends lwpRenderer {
       canvasImage.destination.current.y =
         canvasHeight - canvasImage.destination.current.height;
     }
+    this.updateRenders();
 
     return canvasImage;
   }
@@ -1036,7 +1182,17 @@ export default class extends lwpRenderer {
         element: null,
       },
       context: null,
-      data: { images: [] },
+      data: {
+        images: [],
+        strings: [],
+        fills: {
+          background: "#2e2e32",
+          avatar: "#909099",
+        },
+        strokes: {
+          debug: "white",
+        },
+      },
       timer: null,
       framesPerSecond: null,
     };
@@ -1089,20 +1245,20 @@ export default class extends lwpRenderer {
     let canvasWidth = canvasRender.root.element.width;
     let canvasHeight = canvasRender.root.element.height;
 
-    canvasRender.context.fillStyle = "#2e2e32";
+    canvasRender.context.fillStyle = canvasRender.data.fills.background;
     canvasRender.context.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    if (true) {
+    if (canvasRender.debug) {
       canvasRender.context.beginPath();
       canvasRender.context.moveTo(canvasWidth / 2, 0);
       canvasRender.context.lineTo(canvasWidth / 2, canvasHeight);
-      canvasRender.context.strokeStyle = "white";
+      canvasRender.context.strokeStyle = canvasRender.data.strokes.debug;
       canvasRender.context.stroke();
 
       canvasRender.context.beginPath();
       canvasRender.context.moveTo(0, canvasHeight / 2);
       canvasRender.context.lineTo(canvasWidth, canvasHeight / 2);
-      canvasRender.context.strokeStyle = "white";
+      canvasRender.context.strokeStyle = canvasRender.data.strokes.debug;
       canvasRender.context.stroke();
     }
 
@@ -1129,78 +1285,34 @@ export default class extends lwpRenderer {
       );
     }
 
-    if (this._libwebphone.getUserAgent()) {
-      if (!this._libwebphone.getUserAgent().isReady()) {
-        this._renderCanvasImage(
-          canvasRender,
-          this._canvasGetImage(canvasRender, "disconnected")
+    let image = this._canvasRender.data.images.find((image) => {
+      return image.predicate() && image.enabled && image.source.stream;
+    });
+
+    if (image) {
+      if (image.arc) {
+        let radius = Math.hypot(
+          image.destination.current.width,
+          image.destination.current.height
         );
-        return;
-      }
-    }
-
-    if (!this._call || !this._call.hasSession()) {
-      if (this._libwebphone.getDialpad()) {
-        this._dialpadStatusLine.text = this._libwebphone
-          .getDialpad()
-          .getTarget();
-      } else {
-        this._dialpadStatusLine.text = "";
-      }
-
-      let image = this._canvasGetImage(canvasRender, "idle");
-      if (image) {
-        totalHeight =
-          image.destination.current.height +
-          this._dialpadStatusLine.expectedHeight;
-
+        totalHeight += radius;
         currentHeight = canvasHeight / 2 - totalHeight / 2;
-        currentHeight += this._renderCanvasImage(
-          canvasRender,
-          image,
-          currentHeight
+
+        canvasRender.context.beginPath();
+        canvasRender.context.fillStyle = canvasRender.data.fills.avatar; // Perhaps just average the avatar RGB?
+        canvasRender.context.arc(
+          image.destination.current.x + image.destination.current.width / 2,
+          currentHeight + image.destination.current.height / 2,
+          radius / 2,
+          0,
+          2 * Math.PI
         );
-        currentHeight += padding;
-      }
+        canvasRender.context.fill();
 
-      this._renderStatusLine(
-        canvasRender,
-        this._dialpadStatusLine,
-        currentHeight
-      );
+        this._renderCanvasImage(canvasRender, image, currentHeight);
 
-      return;
-    }
-
-    if (this._call && this._call._statusLines) {
-      statusLines = this._call._statusLines;
-    }
-
-    totalHeight = statusLines.reduce((total, line) => {
-      return total + padding + line.expectedHeight;
-    }, 0);
-    currentHeight = canvasHeight / 2 - totalHeight / 2;
-
-    if (this._call) {
-      let image = null;
-      if (
-        this._call.isRinging() &&
-        this._canvasHasImage(canvasRender, "ringing")
-      ) {
-        image = this._canvasGetImage(canvasRender, "ringing");
-      } else if (
-        this._call.isOnHold() &&
-        this._canvasHasImage(canvasRender, "held")
-      ) {
-        image = this._canvasGetImage(canvasRender, "held");
-      } else if (
-        this._call.isMuted() &&
-        this._canvasHasImage(canvasRender, "muted")
-      ) {
-        image = this._canvasGetImage(canvasRender, "muted");
-      }
-
-      if (image) {
+        currentHeight += radius;
+      } else {
         totalHeight += image.destination.current.height;
 
         currentHeight = canvasHeight / 2 - totalHeight / 2;
@@ -1209,37 +1321,6 @@ export default class extends lwpRenderer {
           image,
           currentHeight
         );
-      } else {
-        let avatar = null;
-        if (this._canvasHasImage(canvasRender, "avatar")) {
-          avatar = this._canvasGetImage(canvasRender, "avatar");
-        } else if (this._canvasHasImage(canvasRender, "defaultAvatar")) {
-          avatar = this._canvasGetImage(canvasRender, "defaultAvatar");
-        }
-
-        if (avatar) {
-          let radius = Math.hypot(
-            avatar.destination.current.width,
-            avatar.destination.current.height
-          );
-          totalHeight += radius;
-          currentHeight = canvasHeight / 2 - totalHeight / 2;
-
-          canvasRender.context.beginPath();
-          canvasRender.context.arc(
-            avatar.destination.current.x + avatar.destination.current.width / 2,
-            currentHeight + avatar.destination.current.height / 2,
-            radius / 2,
-            0,
-            2 * Math.PI
-          );
-          canvasRender.context.fillStyle = "#909099";
-          canvasRender.context.fill();
-
-          this._renderCanvasImage(canvasRender, avatar, currentHeight);
-
-          currentHeight += radius;
-        }
       }
     }
 
@@ -1251,6 +1332,10 @@ export default class extends lwpRenderer {
   }
 
   _canvasGetImage(canvasRender, name, options = { checkShouldShow: false }) {
+    if (!canvasRender) {
+      return;
+    }
+
     let canvasImage = canvasRender.data.images.find((image) => {
       return image.name == name;
     });
@@ -1277,7 +1362,7 @@ export default class extends lwpRenderer {
   }
 
   _renderCanvasImage(canvasRender, image, y = null, x = null) {
-    if (!image) {
+    if (!canvasRender || !image) {
       return 0;
     }
 
@@ -1301,21 +1386,23 @@ export default class extends lwpRenderer {
       image.destination.current.height
     );
 
-    canvasRender.context.beginPath();
-    canvasRender.context.strokeRect(
-      image.destination.current.x,
-      image.destination.current.y,
-      image.destination.current.width,
-      image.destination.current.height
-    );
-    canvasRender.context.strokeStyle = "white";
-    canvasRender.context.stroke();
+    if (canvasRender.debug) {
+      canvasRender.context.beginPath();
+      canvasRender.context.strokeStyle = canvasRender.data.strokes.debug;
+      canvasRender.context.strokeRect(
+        image.destination.current.x,
+        image.destination.current.y,
+        image.destination.current.width,
+        image.destination.current.height
+      );
+      canvasRender.context.stroke();
+    }
 
     return image.destination.current.height;
   }
 
   _renderStatusLine(canvasRender, line, y = null, x = null) {
-    if (!line) {
+    if (!canvasRender || !line) {
       return;
     }
 
