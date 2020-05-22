@@ -17,7 +17,7 @@ export default class extends lwpRenderer {
   }
 
   dial(char, tones = true) {
-    let call = this._getCall();
+    const call = this._getCall();
 
     if (typeof char !== "string" && !(char instanceof String)) {
       char = char.toString();
@@ -106,7 +106,7 @@ export default class extends lwpRenderer {
 
   getTarget(clear = false, join = true) {
     let target = this._target;
-    let options = this._config.dialed;
+    const options = this._config.dialed;
 
     if (options.convert.enabled) {
       target = target.map((char) => {
@@ -152,7 +152,7 @@ export default class extends lwpRenderer {
   }
 
   hasTarget() {
-    let target = this.getTarget(false, false);
+    const target = this.getTarget(false, false);
 
     if (target.length > 0) {
       return true;
@@ -162,7 +162,7 @@ export default class extends lwpRenderer {
   }
 
   answer() {
-    let call = this._getCall();
+    const call = this._getCall();
 
     if (!call) {
       return;
@@ -172,8 +172,8 @@ export default class extends lwpRenderer {
   }
 
   call(redial = true) {
-    let userAgent = this._libwebphone.getUserAgent();
     let target = this.getTarget(true, false);
+    const userAgent = this._libwebphone.getUserAgent();
 
     if (!userAgent) {
       return;
@@ -191,7 +191,7 @@ export default class extends lwpRenderer {
   }
 
   redial() {
-    let userAgent = this._libwebphone.getUserAgent();
+    const userAgent = this._libwebphone.getUserAgent();
 
     if (!userAgent) {
       return;
@@ -203,7 +203,7 @@ export default class extends lwpRenderer {
   }
 
   transfer() {
-    let call = this._getCall();
+    const call = this._getCall();
 
     if (call) {
       call.transfer(this.getTarget());
@@ -212,7 +212,7 @@ export default class extends lwpRenderer {
   }
 
   terminate() {
-    let call = this._getCall();
+    const call = this._getCall();
 
     if (!call) {
       return;
@@ -222,7 +222,7 @@ export default class extends lwpRenderer {
   }
 
   autoAction(options) {
-    let defaultOptions = {
+    const defaultOptions = {
       answer: true,
       redial: true,
       call: true,
@@ -250,7 +250,7 @@ export default class extends lwpRenderer {
   }
 
   getAutoAction() {
-    let call = this._getCall();
+    const call = this._getCall();
 
     if (!call) {
       if (!this.hasTarget()) {
@@ -278,7 +278,7 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
         one: "1",
         two: "2",
@@ -302,7 +302,7 @@ export default class extends lwpRenderer {
         disablefilter: "Any",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -310,7 +310,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {
+    const defaults = {
       renderTargets: [],
       dialed: {
         show: true,
@@ -439,7 +439,7 @@ export default class extends lwpRenderer {
 
     if (this._config.globalKeyShortcuts) {
       document.addEventListener("keydown", (event) => {
-        let key = event.key;
+        const key = event.key;
         if (event.target != document.body) {
           return;
         }
@@ -522,8 +522,8 @@ export default class extends lwpRenderer {
         one: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -531,8 +531,8 @@ export default class extends lwpRenderer {
         two: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -540,8 +540,8 @@ export default class extends lwpRenderer {
         three: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -549,8 +549,8 @@ export default class extends lwpRenderer {
         four: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -558,8 +558,8 @@ export default class extends lwpRenderer {
         five: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -567,8 +567,8 @@ export default class extends lwpRenderer {
         six: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -576,8 +576,8 @@ export default class extends lwpRenderer {
         seven: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -585,8 +585,8 @@ export default class extends lwpRenderer {
         eight: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -594,8 +594,8 @@ export default class extends lwpRenderer {
         nine: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -603,8 +603,8 @@ export default class extends lwpRenderer {
         astrisk: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -612,8 +612,8 @@ export default class extends lwpRenderer {
         zero: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -621,8 +621,8 @@ export default class extends lwpRenderer {
         pound: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let value = element.dataset.value;
+              const element = event.srcElement;
+              const value = element.dataset.value;
               this.dial(this._valueToChar(value), this._valueToTone(value));
             },
           },
@@ -658,7 +658,7 @@ export default class extends lwpRenderer {
         call: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.call();
             },
@@ -667,7 +667,7 @@ export default class extends lwpRenderer {
         transfer: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.transfer();
             },
@@ -759,7 +759,7 @@ export default class extends lwpRenderer {
   }
 
   _renderData(data = {}) {
-    let call = this._getCall();
+    const call = this._getCall();
 
     if (call) {
       data.call = call.summary();
@@ -785,8 +785,8 @@ export default class extends lwpRenderer {
   }
 
   _charToValue(char) {
-    let dictionary = this._charDictionary();
-    let flipped = Object.keys(dictionary).reduce((flipped, key) => {
+    const dictionary = this._charDictionary();
+    const flipped = Object.keys(dictionary).reduce((flipped, key) => {
       flipped[dictionary[key]] = key;
       return flipped;
     }, {});
@@ -815,9 +815,9 @@ export default class extends lwpRenderer {
   }
 
   _syncElementValue(event) {
-    let element = event.srcElement;
-    let tones = this._charToTone(event.data);
-    let call = this._getCall();
+    const element = event.srcElement;
+    const tones = this._charToTone(event.data);
+    const call = this._getCall();
 
     if (tones) {
       this._emit("tones.play", this, tones);
@@ -832,7 +832,7 @@ export default class extends lwpRenderer {
     this.updateRenders((render) => {
       render.data = this._renderData(render.data);
       if (element.id == render.by_id.dialed.elementId) {
-        let position = element.selectionStart;
+        const position = element.selectionStart;
         render.by_id.dialed.element.focus();
         render.by_id.dialed.element.setSelectionRange(position, position);
       }
@@ -842,7 +842,7 @@ export default class extends lwpRenderer {
   }
 
   _getCall() {
-    let callList = this._libwebphone.getCallList();
+    const callList = this._libwebphone.getCallList();
 
     if (callList) {
       return callList.getCall();

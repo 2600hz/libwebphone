@@ -87,12 +87,12 @@ export default class {
   }
 
   static isChrome() {
-    let isChromium = window.chrome;
-    let winNav = window.navigator;
-    let vendorName = winNav.vendor;
-    let isOpera = typeof window.opr !== "undefined";
-    let isIEedge = winNav.userAgent.indexOf("Edge") > -1;
-    let isIOSChrome = winNav.userAgent.match("CriOS");
+    const isChromium = window.chrome;
+    const winNav = window.navigator;
+    const vendorName = winNav.vendor;
+    const isOpera = typeof window.opr !== "undefined";
+    const isIEedge = winNav.userAgent.indexOf("Edge") > -1;
+    const isIOSChrome = winNav.userAgent.match("CriOS");
 
     return (
       isIOSChrome ||

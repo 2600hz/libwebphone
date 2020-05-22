@@ -134,7 +134,7 @@ export default class extends lwpRenderer {
   }
 
   changeVolume(channel, volume, options = { scale: true }) {
-    let gainNode = this._getOutputGainNode(channel);
+    const gainNode = this._getOutputGainNode(channel);
 
     this.startAudioContext();
 
@@ -163,22 +163,22 @@ export default class extends lwpRenderer {
   playTones(...tones) {
     this.startAudioContext();
 
-    let duration = this._config.channels.tones.duration;
-    let sampleRate = 8000; //this._tonesAudio.context.sampleRate;
-    let buffer = this._tonesAudio.context.createBuffer(
+    const duration = this._config.channels.tones.duration;
+    const sampleRate = 8000; //this._tonesAudio.context.sampleRate;
+    const buffer = this._tonesAudio.context.createBuffer(
       tones.length,
       sampleRate,
       sampleRate
     );
 
     for (let index = 0; index < tones.length; index++) {
-      let channel = buffer.getChannelData(index);
+      const channel = buffer.getChannelData(index);
       for (let i = 0; i < duration * sampleRate; i++) {
         channel[i] = Math.sin(2 * Math.PI * tones[index] * (i / sampleRate));
       }
     }
 
-    let bufferSource = this._tonesAudio.context.createBufferSource();
+    const bufferSource = this._tonesAudio.context.createBufferSource();
     bufferSource.buffer = buffer;
     bufferSource.connect(this._getOutputGainNode("tones"));
     bufferSource.start();
@@ -213,7 +213,7 @@ export default class extends lwpRenderer {
       requestId = null;
     }
 
-    let requestIndex = this._ringerAudio.calls.indexOf(requestId);
+    const requestIndex = this._ringerAudio.calls.indexOf(requestId);
 
     if (requestIndex != -1) {
       this._ringerAudio.calls.splice(requestIndex, 1);
@@ -249,7 +249,7 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
         mastervolume: "Master Volume",
         ringervolume: "Ringer Volume",
@@ -258,7 +258,7 @@ export default class extends lwpRenderer {
         remotevolume: "Call Volume",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -266,7 +266,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {
+    const defaults = {
       channels: {
         master: {
           show: true,
@@ -346,7 +346,7 @@ export default class extends lwpRenderer {
   }
 
   _initOutputAudio() {
-    let mediaDevices = this._libwebphone.getMediaDevices();
+    const mediaDevices = this._libwebphone.getMediaDevices();
 
     this._outputAudio = {};
 
@@ -413,7 +413,7 @@ export default class extends lwpRenderer {
     this._outputAudio.masterGain.connect(this._outputAudio.destinationStream);
 
     if (mediaDevices && mediaDevices.getMediaElement("audiooutput")) {
-      let element = mediaDevices.getMediaElement("audiooutput");
+      const element = mediaDevices.getMediaElement("audiooutput");
       element.srcObject = this._outputAudio.destinationStream.stream;
       this._outputAudio.usingAudioElement = true;
     } else {
@@ -584,7 +584,7 @@ export default class extends lwpRenderer {
         mastervolume: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.changeVolume("master", element.value);
             },
           },
@@ -592,7 +592,7 @@ export default class extends lwpRenderer {
         ringervolume: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.changeVolume("ringer", element.value);
             },
           },
@@ -600,7 +600,7 @@ export default class extends lwpRenderer {
         tonesvolume: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.changeVolume("tones", element.value);
             },
           },
@@ -608,7 +608,7 @@ export default class extends lwpRenderer {
         previewvolume: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.changeVolume("preview", element.value);
             },
           },
@@ -616,7 +616,7 @@ export default class extends lwpRenderer {
         remotevolume: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.changeVolume("remote", element.value);
             },
           },
@@ -719,7 +719,7 @@ export default class extends lwpRenderer {
   }
 
   _ringerMute() {
-    let timestamp =
+    const timestamp =
       this._ringerAudio.context.currentTime +
       this._config.channels.ringer.onTime * 0.2;
 
@@ -731,7 +731,7 @@ export default class extends lwpRenderer {
   }
 
   _ringerUnmute() {
-    let timestamp =
+    const timestamp =
       this._ringerAudio.context.currentTime +
       this._config.channels.ringer.offTime * 0.2;
 
@@ -755,7 +755,7 @@ export default class extends lwpRenderer {
   }
 
   _connectLocalSourceStream(sourceStream = null) {
-    let previousSourceStream = this._previewAudio.sourceStream;
+    const previousSourceStream = this._previewAudio.sourceStream;
 
     if (previousSourceStream) {
       previousSourceStream.disconnect();
@@ -779,7 +779,7 @@ export default class extends lwpRenderer {
   }
 
   _createLocalSourceStream(mediaStream) {
-    let audioTrack = mediaStream.getTracks().find((track) => {
+    const audioTrack = mediaStream.getTracks().find((track) => {
       return track.kind == "audio";
     });
 
@@ -793,7 +793,7 @@ export default class extends lwpRenderer {
   }
 
   _connectRemoteSourceStream(sourceStream = null) {
-    let previousSourceStream = this._remoteAudio.sourceStream;
+    const previousSourceStream = this._remoteAudio.sourceStream;
 
     if (previousSourceStream) {
       previousSourceStream.disconnect();
@@ -815,7 +815,7 @@ export default class extends lwpRenderer {
   }
 
   _createRemoteSourceStream(mediaStream) {
-    let audioTrack = mediaStream.getTracks().find((track) => {
+    const audioTrack = mediaStream.getTracks().find((track) => {
       return track.kind == "audio";
     });
 

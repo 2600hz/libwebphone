@@ -14,7 +14,7 @@ export default class {
     this._initProperties();
     this._initEventBindings();
 
-    let callList = this._libwebphone.getCallList();
+    const callList = this._libwebphone.getCallList();
     if (!callList) {
       this._setPrimary();
     }
@@ -35,7 +35,7 @@ export default class {
   }
 
   hasPeerConnection() {
-    let session = this._getSession();
+    const session = this._getSession();
 
     return session && session.connection;
   }
@@ -111,13 +111,13 @@ export default class {
   }
 
   localIdentity(simple = true) {
-    let session = this._getSession();
+    const session = this._getSession();
     if (session) {
       if (!simple) {
         return session.local_identity;
       }
-      let display_name = session.local_identity.display_name;
-      let uri_user = session.local_identity.uri.user;
+      const display_name = session.local_identity.display_name;
+      const uri_user = session.local_identity.uri.user;
 
       if (display_name && display_name != uri_user) {
         return display_name + " (" + uri_user + ")";
@@ -128,13 +128,13 @@ export default class {
   }
 
   remoteIdentity(simple = true) {
-    let session = this._getSession();
+    const session = this._getSession();
     if (session) {
       if (!simple) {
         return session.remote_identity;
       }
-      let display_name = session.remote_identity.display_name;
-      let uri_user = session.remote_identity.uri.user;
+      const display_name = session.remote_identity.display_name;
+      const uri_user = session.remote_identity.uri.user;
 
       if (display_name && display_name != uri_user) {
         return display_name + " (" + uri_user + ")";
@@ -207,6 +207,7 @@ export default class {
 
   isMuted(details = false) {
     let status = { audio: false, video: false };
+
     if (this.hasSession()) {
       status = this._getSession().isMuted();
     }
@@ -221,7 +222,7 @@ export default class {
   transfer(target = null, autoHold = true) {
     if (this.hasSession()) {
       if (this.isInTransfer() || target) {
-        let dialpad = this._libwebphone.getDialpad();
+        const dialpad = this._libwebphone.getDialpad();
 
         this._inTransfer = false;
 
@@ -254,11 +255,11 @@ export default class {
 
   answer() {
     if (this.hasSession()) {
-      let mediaDevices = this._libwebphone.getMediaDevices();
+      const mediaDevices = this._libwebphone.getMediaDevices();
 
       if (mediaDevices) {
         mediaDevices.startStreams(this.getId()).then((streams) => {
-          let options = {
+          const options = {
             mediaStream: streams,
           };
 
@@ -314,13 +315,13 @@ export default class {
     }
 
     if (kind) {
-      let element = this._streams.remote.elements[kind];
+      const element = this._streams.remote.elements[kind];
       if (element) {
         element.volume = volume;
       }
     } else {
       Object.keys(this._streams.remote.elements).forEach((kind) => {
-        let element = this._streams.remote.elements[kind];
+        const element = this._streams.remote.elements[kind];
         if (element) {
           element.volume = volume;
         }
@@ -329,7 +330,7 @@ export default class {
   }
 
   replaceSenderTrack(newTrack) {
-    let peerConnection = this.getPeerConnection();
+    const peerConnection = this.getPeerConnection();
     if (!peerConnection) {
       return;
     }
@@ -341,9 +342,9 @@ export default class {
       return;
     }
 
-    let senders = peerConnection.getSenders();
-    let sender = senders.find((sender) => {
-      let track = sender.track;
+    const senders = peerConnection.getSenders();
+    const sender = senders.find((sender) => {
+      const track = sender.track;
       if (track) {
         return track.kind == newTrack.kind;
       }
@@ -360,7 +361,7 @@ export default class {
   }
 
   removeSenderTrack(kind) {
-    let peerConnection = this.getPeerConnection();
+    const peerConnection = this.getPeerConnection();
     if (!peerConnection) {
       return;
     }
@@ -372,9 +373,9 @@ export default class {
       return;
     }
 
-    let senders = peerConnection.getSenders();
-    let sender = senders.find((sender) => {
-      let track = sender.track;
+    const senders = peerConnection.getSenders();
+    const sender = senders.find((sender) => {
+      const track = sender.track;
       if (track) {
         return track.kind == kind;
       }
@@ -444,7 +445,7 @@ export default class {
 
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
-        let element = this._streams[type].elements[kind];
+        const element = this._streams[type].elements[kind];
 
         lwpUtils.mediaElementEvents().forEach((eventName) => {
           element.addEventListener(eventName, (event) => {
@@ -503,7 +504,7 @@ export default class {
       "mediaDevices.audio.output.changed",
       (lwp, mediaDevices, preferedDevice) => {
         Object.keys(this._streams.remote.elements).forEach((kind) => {
-          let element = this._streams.remote.elements[kind];
+          const element = this._streams.remote.elements[kind];
           if (element) {
             element.setSinkId(preferedDevice.id);
           }
@@ -519,7 +520,7 @@ export default class {
     });
 
     if (this.hasPeerConnection()) {
-      let peerConnection = this.getPeerConnection();
+      const peerConnection = this.getPeerConnection();
       this._emit("peerconnection", this, peerConnection);
       peerConnection.addEventListener("addstream", (...event) => {
         this._emit("peerconnection.add.stream", this, ...event);
@@ -566,7 +567,7 @@ export default class {
         this._emit("failed", this, ...event);
       });
       this._getSession().on("peerconnection", (...data) => {
-        let peerConnection = data[0].peerconnection;
+        const peerConnection = data[0].peerconnection;
         this._emit("peerconnection", this, peerConnection);
         peerConnection.addEventListener("addstream", (...event) => {
           this._emit("peerconnection.add.stream", this, ...event);
@@ -620,8 +621,8 @@ export default class {
   /** Helper functions */
   _timeUpdate() {
     if (this._answerTime) {
-      let duration = new Date() - this._answerTime;
-      let options = {
+      const duration = new Date() - this._answerTime;
+      const options = {
         secondsDecimalDigits: 0,
       };
 
@@ -697,10 +698,10 @@ export default class {
 
   _updateStreams() {
     Object.keys(this._streams).forEach((type) => {
-      let peerConnection = this.getPeerConnection();
-      let mediaStream = this._streams[type].mediaStream;
+      const peerConnection = this.getPeerConnection();
+      const mediaStream = this._streams[type].mediaStream;
       if (peerConnection) {
-        let peerTracks = [];
+        const peerTracks = [];
         switch (type) {
           case "remote":
             peerConnection.getReceivers().forEach((peer) => {
@@ -721,9 +722,9 @@ export default class {
       }
 
       Object.keys(this._streams[type].elements).forEach((kind) => {
-        let element = this._streams[type].elements[kind];
+        const element = this._streams[type].elements[kind];
         if (element) {
-          let track = mediaStream.getTracks().find((track) => {
+          const track = mediaStream.getTracks().find((track) => {
             return track.kind == kind;
           });
 
@@ -742,16 +743,16 @@ export default class {
   }
 
   _syncTracks(mediaStream, peerTracks, type) {
-    let peerIds = peerTracks.map((track) => {
+    const peerIds = peerTracks.map((track) => {
       return track.id;
     });
-    let currentIds = mediaStream.getTracks().map((track) => {
+    const currentIds = mediaStream.getTracks().map((track) => {
       return track.id;
     });
-    let addIds = peerIds.filter((peerId) => {
+    const addIds = peerIds.filter((peerId) => {
       return !currentIds.includes(peerId);
     });
-    let removeIds = currentIds.filter((currentId) => {
+    const removeIds = currentIds.filter((currentId) => {
       return !peerIds.includes(currentId);
     });
     mediaStream.getTracks().forEach((track) => {
@@ -778,7 +779,7 @@ export default class {
 
   _connectStreams() {
     Object.keys(this._streams).forEach((type) => {
-      let mediaStream = this._streams[type].mediaStream;
+      const mediaStream = this._streams[type].mediaStream;
       this._emit(type + ".mediaStream.connect", this, mediaStream);
     });
 
@@ -786,7 +787,7 @@ export default class {
       return;
     }
 
-    let peerConnection = this.getPeerConnection();
+    const peerConnection = this.getPeerConnection();
     if (peerConnection) {
       peerConnection.getSenders().forEach((peer) => {
         if (peer.track) {
@@ -797,7 +798,7 @@ export default class {
 
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
-        let element = this._streams[type].elements[kind];
+        const element = this._streams[type].elements[kind];
         if (element && element.paused) {
           element.play().catch(() => {
             /*
@@ -820,7 +821,7 @@ export default class {
 
   _disconnectStreams() {
     Object.keys(this._streams).forEach((type) => {
-      let mediaStream = this._streams[type].mediaStream;
+      const mediaStream = this._streams[type].mediaStream;
       this._emit(type + ".mediaStream.disconnect", this, mediaStream);
     });
 
@@ -828,7 +829,7 @@ export default class {
       return;
     }
 
-    let peerConnection = this.getPeerConnection();
+    const peerConnection = this.getPeerConnection();
     if (peerConnection) {
       peerConnection.getSenders().forEach((peer) => {
         if (peer.track) {
@@ -839,7 +840,7 @@ export default class {
 
     Object.keys(this._streams).forEach((type) => {
       Object.keys(this._streams[type].elements).forEach((kind) => {
-        let element = this._streams[type].elements[kind];
+        const element = this._streams[type].elements[kind];
         if (element && !element.paused) {
           element.pause();
         }
@@ -851,7 +852,7 @@ export default class {
   _destroyStreams() {
     this._emit("ringing.stopped", this);
 
-    let peerConnection = this.getPeerConnection();
+    const peerConnection = this.getPeerConnection();
     if (peerConnection) {
       peerConnection.getSenders().forEach((peer) => {
         if (peer.track) {

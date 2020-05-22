@@ -17,8 +17,8 @@ export default class extends lwpRenderer {
   }
 
   enableImage(name) {
-    let configImage = this._configGetImage(name);
-    let canvasImage = this._canvasGetImage(this._canvasRender, name);
+    const configImage = this._configGetImage(name);
+    const canvasImage = this._canvasGetImage(this._canvasRender, name);
 
     if (configImage) {
       configImage.enabled = true;
@@ -32,8 +32,8 @@ export default class extends lwpRenderer {
   }
 
   disableImage(name) {
-    let configImage = this._configGetImage(name);
-    let canvasImage = this._canvasGetImage(this._canvasRender, name);
+    const configImage = this._configGetImage(name);
+    const canvasImage = this._canvasGetImage(this._canvasRender, name);
 
     if (configImage) {
       configImage.enabled = false;
@@ -55,7 +55,7 @@ export default class extends lwpRenderer {
   }
 
   isImageEnabled(name) {
-    let configImage = this._configGetImage(name);
+    const configImage = this._configGetImage(name);
 
     if (configImage) {
       return configImage.enabled || false;
@@ -66,21 +66,21 @@ export default class extends lwpRenderer {
 
   rescaleImage(name, scale = null) {
     if (scale) {
-      let configImage = this._configGetImage(name);
+      const configImage = this._configGetImage(name);
 
       if (configImage) {
         configImage.rescale = scale;
       }
     }
 
-    let canvasImage = this._canvasGetImage(this._canvasRender, name);
+    const canvasImage = this._canvasGetImage(this._canvasRender, name);
     return this._rescaleCanvasImage(this._canvasRender, canvasImage, scale);
   }
 
   positionImage(name, mode = null, x = null, y = null) {
-    let configImage = this._configGetImage(name);
-    let canvasImage = this._canvasGetImage(this._canvasRender, name);
-    let updatedImage = this._positionCanvasImage(
+    const configImage = this._configGetImage(name);
+    const canvasImage = this._canvasGetImage(this._canvasRender, name);
+    const updatedImage = this._positionCanvasImage(
       this._canvasRender,
       canvasImage,
       mode,
@@ -116,7 +116,7 @@ export default class extends lwpRenderer {
   changeFramesPerSecond(framesPerSecond) {
     this._config.canvasLoop.framesPerSecond = framesPerSecond;
 
-    let canvasRender = this._canvasRender;
+    const canvasRender = this._canvasRender;
     if (!canvasRender) {
       return;
     }
@@ -142,7 +142,7 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
         piprescale: "Preview Rescale",
         pip: "Preview PIP",
@@ -157,7 +157,7 @@ export default class extends lwpRenderer {
         stopscreenshare: "Stop",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -171,7 +171,7 @@ export default class extends lwpRenderer {
       };
     }
 
-    let defaults = {
+    const defaults = {
       renderTargets: [],
       canvas: {
         root: {
@@ -415,7 +415,7 @@ export default class extends lwpRenderer {
         localVideoRescale: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.rescaleImage(
                 this._config.localVideo.name,
                 element.value / 100
@@ -426,7 +426,7 @@ export default class extends lwpRenderer {
         localVideoPosition: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.positionImage(this._config.localVideo.name, element.value);
             },
           },
@@ -434,7 +434,7 @@ export default class extends lwpRenderer {
         localVideoRelativeX: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.positionImage(
                 this._config.localVideo.name,
                 "relative",
@@ -446,7 +446,7 @@ export default class extends lwpRenderer {
         localVideoRelativeY: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.positionImage(
                 this._config.localVideo.name,
                 "relative",
@@ -459,7 +459,7 @@ export default class extends lwpRenderer {
         localVideoAbsoluteX: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.positionImage(
                 this._config.localVideo.name,
                 "absolute",
@@ -471,7 +471,7 @@ export default class extends lwpRenderer {
         localVideoAbsoluteY: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.positionImage(
                 this._config.localVideo.name,
                 "absolute",
@@ -484,7 +484,7 @@ export default class extends lwpRenderer {
         canvasframesPerSecond: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this.changeFramesPerSecond(element.value);
             },
           },
@@ -677,14 +677,14 @@ export default class extends lwpRenderer {
     }
 
     if (call && call.hasSession()) {
-      let line = call._statusLines.find((line) => {
+      const line = call._statusLines.find((line) => {
         return line.type == "remoteIdentity";
       });
 
       if (line) {
         line.text = call.remoteIdentity();
       } else {
-        let canvasRender = this._canvasRender;
+        const canvasRender = this._canvasRender;
 
         if (!canvasRender) {
           return;
@@ -707,14 +707,14 @@ export default class extends lwpRenderer {
       call._statusLines = [];
     }
 
-    let line = call._statusLines.find((line) => {
+    const line = call._statusLines.find((line) => {
       return line.type == "duration";
     });
 
     if (line) {
       line.text = prettyDuration;
     } else {
-      let canvasRender = this._canvasRender;
+      const canvasRender = this._canvasRender;
 
       if (!canvasRender) {
         return;
@@ -730,17 +730,17 @@ export default class extends lwpRenderer {
   }
 
   _setRemoteElement(element = null) {
-    let name = this._config.remoteVideo.name;
+    const name = this._config.remoteVideo.name;
     this._setElement(name, element, this._config.remoteVideo);
   }
 
   _setLocalElement(element = null) {
-    let name = this._config.localVideo.name;
+    const name = this._config.localVideo.name;
     this._setElement(name, element, this._config.localVideo);
   }
 
   _setElement(name, element = null, options = {}) {
-    let canvasRender = this._canvasRender;
+    const canvasRender = this._canvasRender;
 
     if (!element) {
       this._setCanvasImage(canvasRender, name);
@@ -756,7 +756,7 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let index = canvasRender.data.images.findIndex((image) => {
+    const index = canvasRender.data.images.findIndex((image) => {
       return image.name == name;
     });
 
@@ -768,22 +768,22 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let canvasWidth = canvasRender.root.element.width;
-    let canvasHeight = canvasRender.root.element.height;
-    let sourceWidth =
+    const canvasWidth = canvasRender.root.element.width;
+    const canvasHeight = canvasRender.root.element.height;
+    const sourceWidth =
       options.sourceWidth || source.videoWidth || source.width || canvasWidth;
-    let sourceHeight =
+    const sourceHeight =
       options.sourceHeight ||
       source.videoHeight ||
       source.height ||
       canvasHeight;
-    let scale = Math.min(
+    const scale = Math.min(
       canvasWidth / sourceWidth,
       canvasHeight / sourceHeight
     );
-    let scaledWidth = sourceWidth * scale;
-    let scaledHeight = sourceHeight * scale;
-    let canvasImage = {
+    const scaledWidth = sourceWidth * scale;
+    const scaledHeight = sourceHeight * scale;
+    const canvasImage = {
       enabled: true,
       source: {
         stream: source,
@@ -856,26 +856,27 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let canvasImage = this._canvasGetImage(canvasRender, name);
+    const canvasImage = this._canvasGetImage(canvasRender, name);
 
     if (!canvasImage) {
       return this._setCanvasImage(canvasRender, name, source, options);
     }
 
-    let canvasWidth = canvasRender.root.element.width;
-    let canvasHeight = canvasRender.root.element.height;
-    let sourceWidth =
+    let rescaled = false;
+
+    const canvasWidth = canvasRender.root.element.width;
+    const canvasHeight = canvasRender.root.element.height;
+    const sourceWidth =
       options.sourceWidth || source.videoWidth || source.width || canvasWidth;
-    let sourceHeight =
+    const sourceHeight =
       options.sourceHeight ||
       source.videoHeight ||
       source.height ||
       canvasHeight;
-    let scale = Math.min(
+    const scale = Math.min(
       canvasWidth / sourceWidth,
       canvasHeight / sourceHeight
     );
-    let rescaled = false;
 
     if (canvasImage.source.width != sourceWidth) {
       canvasImage.source.width = sourceWidth;
@@ -943,8 +944,8 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let canvasWidth = canvasRender.root.element.width;
-    let canvasHeight = canvasRender.root.element.height;
+    const canvasWidth = canvasRender.root.element.width;
+    const canvasHeight = canvasRender.root.element.height;
 
     if (!canvasImage.position) {
       canvasImage.position = {};
@@ -1053,15 +1054,15 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let left = canvasImage.destination.current.x;
-    let right =
+    const left = canvasImage.destination.current.x;
+    const right =
       canvasImage.destination.current.x + canvasImage.destination.current.width;
-    let top = canvasImage.destination.current.y;
-    let bottom =
+    const top = canvasImage.destination.current.y;
+    const bottom =
       canvasImage.destination.current.y +
       canvasImage.destination.current.height;
-    let canvasWidth = canvasRender.root.element.width;
-    let canvasHeight = canvasRender.root.element.height;
+    const canvasWidth = canvasRender.root.element.width;
+    const canvasHeight = canvasRender.root.element.height;
 
     if (left < 0) {
       canvasImage.destination.current.x = 0;
@@ -1086,7 +1087,7 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let stepSize = 10 * 4; // every 10th pixel of the RGBA (4 elements) 2d array
+    const stepSize = 10 * 4; // every 10th pixel of the RGBA (4 elements) 2d array
 
     if (!canvasImage.averageRGB) {
       canvasImage.averageRGB = {
@@ -1106,7 +1107,7 @@ export default class extends lwpRenderer {
     }
 
     canvasImage.averageRGB.context.drawImage(canvasImage.source.stream, 0, 0);
-    let imageData = canvasImage.averageRGB.context.getImageData(
+    const imageData = canvasImage.averageRGB.context.getImageData(
       0,
       0,
       canvasImage.averageRGB.canvas.width,
@@ -1125,7 +1126,7 @@ export default class extends lwpRenderer {
     }
 
     // ~~ used to floor values
-    let count = imageData.data.length / stepSize;
+    const count = imageData.data.length / stepSize;
     canvasImage.averageRGB.red = ~~(canvasImage.averageRGB.red / count);
     canvasImage.averageRGB.green = ~~(canvasImage.averageRGB.green / count);
     canvasImage.averageRGB.blue = ~~(canvasImage.averageRGB.blue / count);
@@ -1145,7 +1146,7 @@ export default class extends lwpRenderer {
 
   /** Canvas Text functions */
   _createStatusLine(canvasRender, line) {
-    let defaults = {
+    const defaults = {
       font: "14px sans-serif",
       fillStyle: "#ffffff",
       textAlign: "left",
@@ -1176,7 +1177,7 @@ export default class extends lwpRenderer {
 
   /** Canvas Render functions */
   _createCanvasRender(config) {
-    let defaults = {
+    const defaults = {
       root: {
         elementId: null,
         element: null,
@@ -1196,7 +1197,7 @@ export default class extends lwpRenderer {
       timer: null,
       framesPerSecond: null,
     };
-    let canvasRender = lwpUtils.merge(defaults, config);
+    const canvasRender = lwpUtils.merge(defaults, config);
 
     if (!canvasRender.root.element && canvasRender.root.elementId) {
       canvasRender.root.element = document.getElementById(
@@ -1215,7 +1216,7 @@ export default class extends lwpRenderer {
     }
 
     this._config.images.forEach((options) => {
-      let element = document.createElement("img");
+      const element = document.createElement("img");
       element.onload = () => {
         this._setCanvasImage(canvasRender, options.name, element, options);
       };
@@ -1238,12 +1239,13 @@ export default class extends lwpRenderer {
   }
 
   _renderCanvas(canvasRender) {
-    let padding = 15;
     let totalHeight = 0;
     let currentHeight = 0;
-    let statusLines = [];
-    let canvasWidth = canvasRender.root.element.width;
-    let canvasHeight = canvasRender.root.element.height;
+
+    const padding = 15;
+    const statusLines = [];
+    const canvasWidth = canvasRender.root.element.width;
+    const canvasHeight = canvasRender.root.element.height;
 
     canvasRender.context.fillStyle = canvasRender.data.fills.background;
     canvasRender.context.fillRect(0, 0, canvasWidth, canvasHeight);
@@ -1285,13 +1287,13 @@ export default class extends lwpRenderer {
       );
     }
 
-    let image = this._canvasRender.data.images.find((image) => {
+    const image = this._canvasRender.data.images.find((image) => {
       return image.predicate() && image.enabled && image.source.stream;
     });
 
     if (image) {
       if (image.arc) {
-        let radius = Math.hypot(
+        const radius = Math.hypot(
           image.destination.current.width,
           image.destination.current.height
         );
@@ -1336,7 +1338,7 @@ export default class extends lwpRenderer {
       return;
     }
 
-    let canvasImage = canvasRender.data.images.find((image) => {
+    const canvasImage = canvasRender.data.images.find((image) => {
       return image.name == name;
     });
 
