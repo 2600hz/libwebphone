@@ -263,7 +263,7 @@ export default class extends lwpRenderer {
         },
         transfer: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.transfer();
             },
           },

@@ -407,7 +407,7 @@ export default class extends lwpRenderer {
       by_id: {
         localVideoEnabled: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.toggleImage(this._config.localVideo.name);
             },
           },

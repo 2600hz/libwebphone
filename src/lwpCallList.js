@@ -32,7 +32,7 @@ export default class extends lwpRenderer {
   }
 
   addCall(newCall) {
-    let previousCall = this.getCall();
+    const previousCall = this.getCall();
 
     if (previousCall && !previousCall.isOnHold()) {
       this._calls.push(newCall);
@@ -53,8 +53,8 @@ export default class extends lwpRenderer {
   }
 
   switchCall(callid) {
-    let previousCall = this.getCall();
-    let primaryCall = this.getCall(callid);
+    const previousCall = this.getCall();
+    const primaryCall = this.getCall(callid);
 
     this._calls.map((call) => {
       if (call.isPrimary) {
@@ -73,7 +73,7 @@ export default class extends lwpRenderer {
   }
 
   removeCall(terminatedCall) {
-    let terminatedId = terminatedCall.getId();
+    const terminatedId = terminatedCall.getId();
 
     this._calls = this._calls.filter((call) => {
       return call.getId() != terminatedId;
@@ -81,7 +81,7 @@ export default class extends lwpRenderer {
     this._emit("calls.removed", this, terminatedCall);
 
     if (terminatedCall.isPrimary()) {
-      let withSession = this._calls.find((call) => {
+      const withSession = this._calls.find((call) => {
         return call.hasSession();
       });
 
@@ -109,12 +109,12 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
         new: "New Call",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -122,12 +122,12 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {
+    const defaults = {
       renderTargets: [],
     };
     this._config = lwpUtils.merge(defaults, config);
 
-    let newCall = new lwpCall(this._libwebphone);
+    const newCall = new lwpCall(this._libwebphone);
     newCall._setPrimary();
     this._calls = [newCall];
   }
@@ -145,7 +145,7 @@ export default class extends lwpRenderer {
     });
 
     /** TODO: make all these call.pimary.* when we don't need the debugging info */
-    this._libwebphone.on("call.created", (lwp, call) => {
+    this._libwebphone.on("call.created", () => {
       this.updateRenders();
     });
 
@@ -206,8 +206,8 @@ export default class extends lwpRenderer {
         calls: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let callid = element.value;
+              const element = event.srcElement;
+              const callid = element.value;
               this.switchCall(callid);
             },
           },

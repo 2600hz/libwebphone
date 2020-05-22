@@ -19,7 +19,7 @@ export default class extends lwpRenderer {
   dial(char, tones = true) {
     let call = this._getCall();
 
-    if (typeof char !== "string" && !char instanceof String) {
+    if (typeof char !== "string" && !(char instanceof String)) {
       char = char.toString();
     }
 
@@ -629,28 +629,28 @@ export default class extends lwpRenderer {
         },
         clear: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.clear();
             },
           },
         },
         convert: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.toggleConvertion();
             },
           },
         },
         filter: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.toggleFilter();
             },
           },
         },
         backspace: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.backspace();
             },
           },

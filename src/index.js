@@ -1,3 +1,2 @@
-const libwebphone = require('./libwebphone').default;
-module.exports = libwebphone;
-
+import libwebphone from "./libwebphone";
+export default libwebphone;

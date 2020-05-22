@@ -3,6 +3,7 @@
 import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import { Mutex } from "async-mutex";
+// eslint-disable-next-line no-unused-vars
 import adapter from "webrtc-adapter";
 
 export default class extends lwpRenderer {
@@ -474,7 +475,7 @@ export default class extends lwpRenderer {
     });
 
     if (this._config.detectDeviceChanges) {
-      navigator.mediaDevices.ondevicechange = (event) => {
+      navigator.mediaDevices.ondevicechange = () => {
         this.refreshAvailableDevices();
       };
     }

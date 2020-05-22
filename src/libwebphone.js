@@ -47,13 +47,6 @@ export default class extends EventEmitter {
       this._videoCanvas = new lwpVideoCanvas(this, this._config.videoCanvas);
     }
 
-    if (this._config.mediaPreviews.enabled) {
-      this._mediaPreviews = new lwpMediaPreviews(
-        this,
-        this._config.mediaPreviews
-      );
-    }
-
     this._libwebphone._emit("created", this._libwebphone);
   } //end of constructor
 
@@ -85,22 +78,18 @@ export default class extends EventEmitter {
     return this._audioContext;
   }
 
-  getMediaPreviews() {
-    return this._mediaPreviews;
-  }
-
   geti18n() {
     return i18next;
   }
 
   i18nAddResourceBundles(module, resources) {
-    for (let lang in resources) {
+    for (const lang in resources) {
       this.i18nAddResourceBundle(module, lang, resources[lang]);
     }
   }
 
   i18nAddResourceBundle(module, lang, resource) {
-    let bundle = {};
+    const bundle = {};
     bundle[module] = resource;
     i18next.addResourceBundle(lang, "libwebphone", bundle, true);
     this._libwebphone._emit(

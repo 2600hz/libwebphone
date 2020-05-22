@@ -538,7 +538,7 @@ export default class extends lwpRenderer {
         throw new Error("Webphone client not ready yet!");
       }
 
-      let session = this._userAgent.call(target, options);
+      this._userAgent.call(target, options);
 
       this._emit("call.started", this, target);
     } catch (error) {
