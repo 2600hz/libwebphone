@@ -117,7 +117,7 @@ export default class {
     }
   }
 
-  remoteDisplayName() {
+  remoteNameInitials() {
     if (this.hasSession()) {
       const username = this._session._remote_identity._display_name;
       let initials = "";
@@ -394,7 +394,7 @@ export default class {
       originating: direction == "originating",
       local_identity: this.localIdentity(),
       remote_identity: this.remoteIdentity(),
-      remote_display_name: this.remoteDisplayName()
+      remote_name_initials: this.remoteNameInitials()
     };
   }
 

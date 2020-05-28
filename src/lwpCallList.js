@@ -109,6 +109,12 @@ export default class extends lwpRenderer {
     }
   }
 
+  endAllCalls() {
+    for (const call of this._calls) {
+      call.hangup();
+    }
+  }
+
   updateRenders() {
     this.render((render) => {
       render.data = this._renderData(render.data);
