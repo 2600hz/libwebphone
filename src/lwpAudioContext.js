@@ -289,7 +289,7 @@ export default class extends lwpRenderer {
         tones: {
           duration: 0.15,
           show: true,
-          volume: 0.25,
+          volume: 0.15,
           connectToMaster: true,
         },
         remote: {

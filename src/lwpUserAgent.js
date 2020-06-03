@@ -98,6 +98,7 @@ export default class extends lwpRenderer {
       });
       this._userAgent.on("registrationExpiring", (...event) => {
         this._emit("registration.expiring", this, ...event);
+        this._userAgent.register();
       });
       this._userAgent.on("newRTCSession", (...event) => {
         const session = event[0].session;
