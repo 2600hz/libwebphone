@@ -52,9 +52,9 @@ export default class extends lwpRenderer {
     }
   }
 
-  switchCall(callid) {
+  switchCall(callId) {
     const previousCall = this.getCall();
-    const primaryCall = this.getCall(callid);
+    const primaryCall = this.getCall(callId);
 
     this._calls.map((call) => {
       if (call.isPrimary) {
@@ -140,15 +140,14 @@ export default class extends lwpRenderer {
       this.removeCall(call);
     });
 
+    this._libwebphone.on("calllist.calls.added", () => {
+      this.updateRenders();
+    });
     this._libwebphone.on("callList.calls.changed", () => {
       this.updateRenders();
     });
 
     /** TODO: make all these call.pimary.* when we don't need the debugging info */
-    this._libwebphone.on("call.created", () => {
-      this.updateRenders();
-    });
-
     this._libwebphone.on("call.promoted", () => {
       this.updateRenders();
     });
@@ -241,13 +240,13 @@ export default class extends lwpRenderer {
         <input type="radio" id="{{by_name.calls.elementName}}{{callId}}"  name="{{by_name.calls.elementName}}" value="{{callId}}">
         {{/primary}}
 
-        <label for="{{by_name.calls.elementName}}{{callId}}">{{remote_identity}}
+        <label for="{{by_name.calls.elementName}}{{callId}}">{{remoteIdentity}}
           <ul>
             <li>call id: {{callId}}</li>
             <li>primary: {{primary}}</li>
             <li>progress: {{progress}}</li>
             <li>established: {{established}}</li>
-            <li>hold: {{hold}}</li>
+            <li>held: {{held}}</li>
             <li>muted: {{muted}}</li>
             <li>inTransfer: {{inTransfer}}</li>
             <li>ended: {{ended}}</li>

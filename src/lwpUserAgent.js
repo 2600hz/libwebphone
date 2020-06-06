@@ -121,6 +121,7 @@ export default class extends lwpRenderer {
   stop() {
     if (this.isStarted()) {
       this.hangupAll();
+      this.unregister();
       this._userAgent.stop();
       this._userAgent = null;
       this._emit("stopped", this);
@@ -273,7 +274,6 @@ export default class extends lwpRenderer {
   _initInternationalization(config) {
     const defaults = {
       en: {
-        agent: "User Agent",
         agentstart: "Start",
         agentstop: "Stop",
         debug: "Debug",
@@ -369,7 +369,6 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        agent: "libwebphone:userAgent.agent",
         agentstart: "libwebphone:userAgent.agentstart",
         agentstop: "libwebphone:userAgent.agentstop",
         debug: "libwebphone:userAgent.debug",

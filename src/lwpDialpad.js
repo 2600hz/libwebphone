@@ -27,7 +27,7 @@ export default class extends lwpRenderer {
       tones = this._charToTone(char);
     }
 
-    if (tones) {
+    if (tones !=== false) {
       this._emit("tones.play", this, tones);
     }
 
@@ -314,7 +314,7 @@ export default class extends lwpRenderer {
       renderTargets: [],
       dialed: {
         show: true,
-        delete: {
+        backspace: {
           show: true,
         },
         clear: {
@@ -322,7 +322,7 @@ export default class extends lwpRenderer {
         },
         filter: {
           show: true,
-          enabled: false,
+          enabled: true,
         },
         convert: {
           show: true,
@@ -386,7 +386,7 @@ export default class extends lwpRenderer {
             this.backspace();
           },
         },
-        printable: {
+        dtmf: {
           enabled: true,
           action: (event) => {
             if (!this._getCall() || /^[0-9#*]$/.test(event.key)) {
@@ -405,9 +405,6 @@ export default class extends lwpRenderer {
       this.clear();
     });
     this._libwebphone.on("call.primary.transfer.complete", () => {
-      this.clear();
-    });
-    this._libwebphone.on("call.primary.transfer.failed", () => {
       this.clear();
     });
 
@@ -462,8 +459,8 @@ export default class extends lwpRenderer {
             break;
           default:
             if (key.length == 1) {
-              if (this._config.keys["printable"].enabled) {
-                this._config.keys["printable"].action(event, this);
+              if (this._config.keys["dtmf"].enabled) {
+                this._config.keys["dtmf"].action(event, this);
               }
             }
         }
@@ -684,9 +681,9 @@ export default class extends lwpRenderer {
         <div>
           <input type="text" id="{{by_id.dialed.elementId}}" value="{{data.target}}" />
 
-          {{#data.dialed.delete.show}}
+          {{#data.dialed.backspace.show}}
             <button id="{{by_id.backspace.elementId}}" {{^data.target}}disabled{{/data.target}}>{{i18n.backspace}}</button>
-          {{/data.dialed.delete.show}}
+          {{/data.dialed.backspace.show}}
 
           {{#data.dialed.clear.show}}
             <button id="{{by_id.clear.elementId}}" {{^data.target}}disabled{{/data.target}}>{{i18n.clear}}</button>

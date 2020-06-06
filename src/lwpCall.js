@@ -51,19 +51,19 @@ export default class {
   }
 
   getRemoteAudio() {
-    return this._remoteAudio;
+    return this._streams.remote.elements.audio;
   }
 
   getRemoteVideo() {
-    return this._remoteVideo;
+    return this._streams.remote.elements.video;
   }
 
   getLocalAudio() {
-    return this._localAudio;
+    return this._streams.local.elements.audio;
   }
 
   getLocalVideo() {
-    return this._localVideo;
+    return this._streams.local.elements.video;
   }
 
   isInProgress() {
@@ -110,10 +110,10 @@ export default class {
     return "originating";
   }
 
-  localIdentity(simple = true) {
+  localIdentity(details = false) {
     const session = this._getSession();
     if (session) {
-      if (!simple) {
+      if (details) {
         return session.local_identity;
       }
       const display_name = session.local_identity.display_name;
@@ -127,10 +127,10 @@ export default class {
     }
   }
 
-  remoteIdentity(simple = true) {
+  remoteIdentity(details = false) {
     const session = this._getSession();
     if (session) {
-      if (!simple) {
+      if (details) {
         return session.remote_identity;
       }
       const display_name = session.remote_identity.display_name;
@@ -193,13 +193,17 @@ export default class {
     }
   }
 
-  mute(options = { audio: true, video: true }) {
+  mute(options = {}) {
+    options = lwpUtils.merge(options, { audio: true, video: true });
+
     if (this.hasSession()) {
       this._getSession().mute(options);
     }
   }
 
-  unmute(options = { audio: true, video: true }) {
+  unmute(options = {}) {
+    options = lwpUtils.merge(options, { audio: true, video: true });
+
     if (this.hasSession()) {
       this._getSession().unmute(options);
     }
@@ -248,7 +252,7 @@ export default class {
           this.hold();
         }
 
-        this._emit("transfer.collecting", this, target);
+        this._emit("transfer.collecting", this);
       }
     }
   }
@@ -395,15 +399,15 @@ export default class {
       progress: this.isInProgress(),
       established: this.isEstablished(),
       ended: this.isEnded(),
-      hold: this.isOnHold(),
+      held: this.isOnHold(),
       muted: this.isMuted(),
       primary: this.isPrimary(),
       inTransfer: this.isInTransfer(),
       direction: direction,
       terminating: direction == "terminating",
       originating: direction == "originating",
-      local_identity: this.localIdentity(),
-      remote_identity: this.remoteIdentity(),
+      localIdentity: this.localIdentity(),
+      remoteIdentity: this.remoteIdentity(),
     };
   }
 
@@ -522,12 +526,12 @@ export default class {
     if (this.hasPeerConnection()) {
       const peerConnection = this.getPeerConnection();
       this._emit("peerconnection", this, peerConnection);
-      peerConnection.addEventListener("addstream", (...event) => {
-        this._emit("peerconnection.add.stream", this, ...event);
+      peerConnection.addEventListener("track", (...event) => {
+        this._emit("peerconnection.add.track", this, ...event);
         this._updateStreams();
       });
       peerConnection.addEventListener("removestream", (...event) => {
-        this._emit("peerconnection.remove.stream", this, ...event);
+        this._emit("peerconnection.remove.track", this, ...event);
         this._updateStreams();
       });
     }
@@ -569,12 +573,12 @@ export default class {
       this._getSession().on("peerconnection", (...data) => {
         const peerConnection = data[0].peerconnection;
         this._emit("peerconnection", this, peerConnection);
-        peerConnection.addEventListener("addstream", (...event) => {
-          this._emit("peerconnection.add.stream", this, ...event);
+        peerConnection.addEventListener("track", (...event) => {
+          this._emit("peerconnection.add.track", this, ...event);
           this._updateStreams();
         });
         peerConnection.addEventListener("remotestream", (...event) => {
-          this._emit("peerconnection.remove.stream", this, ...event);
+          this._emit("peerconnection.remove.track", this, ...event);
           this._updateStreams();
         });
       });

@@ -133,10 +133,18 @@ export default class extends lwpRenderer {
     return volume;
   }
 
-  changeVolume(channel, volume, options = { scale: true }) {
+  changeVolume(channel, volume, options = {}) {
     const gainNode = this._getOutputGainNode(channel);
 
     this.startAudioContext();
+
+    if (!options.hasOwnProperty("scale")) {
+      if (volume > 1) {
+        options.scale = true;
+      } else {
+        options.scale = false;
+      }
+    }
 
     if (options.scale) {
       volume = volume / this._config.volumeMax;
@@ -373,31 +381,6 @@ export default class extends lwpRenderer {
       this._config.channels.remote.connectToMaster &&
       this._libwebphone._config.call.useAudioContext
     ) {
-      /**
-       * Note about remote audio and a mediaStreamDestination + <audio>:
-       * In chrome connecting the AudioContext to an audio html element
-       * causes a few audio issues.  First if the sampleRate doesn't match
-       * it starts "detuning" the audio (mitigated by setting the AudioContext
-       * sampleRate on creation).  Second I can't seem to find a way
-       * that doesn't introduce weird timing slips (the remote stream as compared
-       * to playing in lwpCall audio elements drifts out of sync).  Finally, despite
-       * the gain nodes multiplying by 1 they seem to still clip audio that
-       * lwpCall audio elements don't. Afer much google-foo I believe that
-       * at its root its how the AudioContext threads interact with the threads
-       * responsible for the audio element.  However, there is no way to set
-       * the sinkId of an AudioContext.  Therefore, if we want to be able to
-       * change the output device we must pipe the AudioContext to an audio element,
-       * but maximum audio quality is achieved when directly connecting to the
-       * AudioContext.destination.  This implementation is a balance, non-critical
-       * audio will take the less ideal path to support output device selection
-       * and remote audio will be rendered in lwpCall (despite ideally handling
-       * it all in this audio graph).
-       *
-       * This has been a very helpful page to getting better understanding
-       * of the implementation details in the browsers:
-       * https://padenot.github.io/web-audio-perf
-       *
-       */
       this._outputAudio.remoteGain.connect(this._outputAudio.masterGain);
     }
 
@@ -508,22 +491,6 @@ export default class extends lwpRenderer {
       this.playTones.apply(this, tones);
     });
 
-    this._libwebphone.on("audioContext.channel.master.volume", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("audioContext.channel.ringer.volume", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("audioContext.channel.tones.volume", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("audioContext.channel.preview.volume", () => {
-      this.updateRenders();
-    });
-    this._libwebphone.on("audioContext.channel.remote.volume", () => {
-      this.updateRenders();
-    });
-
     this._libwebphone.on(
       "mediaDevices.streams.started",
       (lwp, mediaDevices, mediaStream) => {
@@ -560,6 +527,22 @@ export default class extends lwpRenderer {
         }
       });
     }
+
+    this._libwebphone.on("audioContext.channel.master.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.channel.ringer.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.channel.tones.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.channel.preview.volume", () => {
+      this.updateRenders();
+    });
+    this._libwebphone.on("audioContext.channel.remote.volume", () => {
+      this.updateRenders();
+    });
   }
 
   _initRenderTargets() {
