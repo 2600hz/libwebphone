@@ -78,7 +78,7 @@ Re-paint / update all render targets.
 
 | Event                  | Additional Parameters                                     | Description                                  |
 | ---------------------- | --------------------------------------------------------- | -------------------------------------------- |
-| callList.created       |                                                           | Emited when the class is instantiated        |
+| callList.created       |                                                           | Emitted when the class is instantiated       |
 | calllist.calls.added   | newCall (lwpCall)                                         | Emitted when a new call is added to the list |
 | calllist.calls.changed | newCall (lwpCall or null), previousCall (lwpCall or null) | Emitted when the primary call is changed     |
 | calllist.calls.removed | terminatedCall (lwpCall)                                  | Emitted when a call is removed from the list |

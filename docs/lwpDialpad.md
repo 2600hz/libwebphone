@@ -218,19 +218,19 @@ Re-paint / update all render targets.
 
 ### Emitted
 
-| Event                    | Additional Parameters                       | Description                                         |
-| ------------------------ | ------------------------------------------- | --------------------------------------------------- |
-| dialpad.created          |                                             | Emited when the class is instantiated               |
-| dialpad.tones.play       | tones (array of integers)                   | Emited when DTMF playback tones should be generated |
-| dialpad.target.updated   | target (array of strings), char (character) | Emited when a new character is added to the target  |
-| dialpad.target.backspace | target (array of strings)                   | Emited when a character is removed from the target  |
-| dialpad.target.clear     | target (array of strings)                   | Emited when the target is cleared / reset           |
-| dialpad.filter.enabled   |                                             | Emited when the filter is enabled                   |
-| dialpad.filter.disabled  |                                             | Emited when the filter is disabled                  |
-| dialpad.convert.enabled  |                                             | Emited when the converter is enabled                |
-| dialpad.convert.disabled |                                             | Emited when the converter is disabled               |
-| dialpad.call             | target (string)                             | Emited when the dialpad call action is invoked      |
-| dialpad.redial           |                                             | Emited when the dialpad redial action is invoked    |
+| Event                    | Additional Parameters                       | Description                                          |
+| ------------------------ | ------------------------------------------- | ---------------------------------------------------- |
+| dialpad.created          |                                             | Emitted when the class is instantiated               |
+| dialpad.tones.play       | tones (array of integers)                   | Emitted when DTMF playback tones should be generated |
+| dialpad.target.updated   | target (array of strings), char (character) | Emitted when a new character is added to the target  |
+| dialpad.target.backspace | target (array of strings)                   | Emitted when a character is removed from the target  |
+| dialpad.target.clear     | target (array of strings)                   | Emitted when the target is cleared / reset           |
+| dialpad.filter.enabled   |                                             | Emitted when the filter is enabled                   |
+| dialpad.filter.disabled  |                                             | Emitted when the filter is disabled                  |
+| dialpad.convert.enabled  |                                             | Emitted when the converter is enabled                |
+| dialpad.convert.disabled |                                             | Emitted when the converter is disabled               |
+| dialpad.call             | target (string)                             | Emitted when the dialpad call action is invoked      |
+| dialpad.redial           |                                             | Emitted when the dialpad redial action is invoked    |
 
 ### Consumed
 

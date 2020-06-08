@@ -239,21 +239,21 @@ Re-paint / update all render targets.
 
 ### Emitted
 
-| Event                                 | Additional Parameters            | Description                                                           |
-| ------------------------------------- | -------------------------------- | --------------------------------------------------------------------- |
-| audioContext.created                  |                                  | Emited when the class is instantiated                                 |
-| audioContext.started                  |                                  | Emited when the AudioContext is started                               |
-| audioContext.preview.tone.started     |                                  | Emited when the preview tones are started                             |
-| audioContext.preview.tone.stopped     |                                  | Emited when the preview tones are stopped                             |
-| audioContext.preview.loopback.started |                                  | Emited when the preview loopback audio is started                     |
-| audioContext.preview.loopback.stopped |                                  | Emited when the preview loopback audio is stopped                     |
-| audioContext.channel.master.volume    | volume (integer between 0 and 1) | Emited when the master channel volume is updated                      |
-| audioContext.channel.ringer.volume    | volume (integer between 0 and 1) | Emited when the ringer channel volume is updated                      |
-| audioContext.channel.tones.volume     | volume (integer between 0 and 1) | Emited when the tones channel volume is updated                       |
-| audioContext.channel.remote.volume    | volume (integer between 0 and 1) | Emited when the remote channel volume is updated                      |
-| audioContext.channel.preview.volume   | volume (integer between 0 and 1) | Emited when the preview channel volume is updated                     |
-| audioContext.stream.local.changed     | volume (integer between 0 and 1) | Emited when the stream used for the preview loopback audio is updated |
-| audioContext.stream.remote.changed    | volume (integer between 0 and 1) | Emited when the stream used for the remote audio is updated           |
+| Event                                 | Additional Parameters            | Description                                                            |
+| ------------------------------------- | -------------------------------- | ---------------------------------------------------------------------- |
+| audioContext.created                  |                                  | Emitted when the class is instantiated                                 |
+| audioContext.started                  |                                  | Emitted when the AudioContext is started                               |
+| audioContext.preview.tone.started     |                                  | Emitted when the preview tones are started                             |
+| audioContext.preview.tone.stopped     |                                  | Emitted when the preview tones are stopped                             |
+| audioContext.preview.loopback.started |                                  | Emitted when the preview loopback audio is started                     |
+| audioContext.preview.loopback.stopped |                                  | Emitted when the preview loopback audio is stopped                     |
+| audioContext.channel.master.volume    | volume (integer between 0 and 1) | Emitted when the master channel volume is updated                      |
+| audioContext.channel.ringer.volume    | volume (integer between 0 and 1) | Emitted when the ringer channel volume is updated                      |
+| audioContext.channel.tones.volume     | volume (integer between 0 and 1) | Emitted when the tones channel volume is updated                       |
+| audioContext.channel.remote.volume    | volume (integer between 0 and 1) | Emitted when the remote channel volume is updated                      |
+| audioContext.channel.preview.volume   | volume (integer between 0 and 1) | Emitted when the preview channel volume is updated                     |
+| audioContext.stream.local.changed     | volume (integer between 0 and 1) | Emitted when the stream used for the preview loopback audio is updated |
+| audioContext.stream.remote.changed    | volume (integer between 0 and 1) | Emitted when the stream used for the remote audio is updated           |
 
 ### Consumed
 

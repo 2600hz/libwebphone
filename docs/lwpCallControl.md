@@ -75,9 +75,9 @@ Re-paint / update all render targets.
 
 ### Emitted
 
-| Event               | Additional Parameters | Description                           |
-| ------------------- | --------------------- | ------------------------------------- |
-| callControl.created |                       | Emited when the class is instantiated |
+| Event               | Additional Parameters | Description                            |
+| ------------------- | --------------------- | -------------------------------------- |
+| callControl.created |                       | Emitted when the class is instantiated |
 
 ### Consumed
 
