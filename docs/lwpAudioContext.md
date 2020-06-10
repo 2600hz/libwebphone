@@ -213,7 +213,7 @@ Re-paint / update all render targets.
 | keys.arrowdown.action               | function |         | By default this callback decreases the master volume by 5% (0.05)                                                                                    |
 | volumeMax                           | integer  | 100     | The maximum value when converting the volume between floats and integers                                                                             |
 | volumeMin                           | integer  | 0       | The minimum value when converting the volume between floats and integers                                                                             |
-| renderTargets                       | array    | []      | See lwpRenderer                                                                                                                                      |
+| renderTargets                       | array    | []      | See [lwpRenderer](lwpRenderer.md)                                                                                                                    |
 
 ## Events
 

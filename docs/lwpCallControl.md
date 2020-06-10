@@ -69,9 +69,9 @@ Re-paint / update all render targets.
 
 ## Configuration
 
-| Name          | Type  | Default | Description   |
-| ------------- | ----- | ------- | ------------- |
-| renderTargets | array | []      | See lwpRender |
+| Name          | Type  | Default | Description                       |
+| ------------- | ----- | ------- | --------------------------------- |
+| renderTargets | array | []      | See [lwpRenderer](lwpRenderer.md) |
 
 ## Events
 

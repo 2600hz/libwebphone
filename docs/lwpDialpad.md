@@ -214,7 +214,7 @@ Re-paint / update all render targets.
 | keys.backspace.action  | function |             | By default this callback removes one character from the end of the current target                                                                               |
 | keys.dtmf.enabled      | boolean  | true        | If true, and globalKeyShortcuts is also true, preform keys.dtmf.action if a dtmf character key is pressed ([0-9#*]) when the body of the document has the focus |
 | keys.dtmf.action       | function |             | By default this callback adds the pressed character to the target                                                                                               |
-| renderTargets          | array    | []          | See lwpRenderer                                                                                                                                                 |
+| renderTargets          | array    | []          | See [lwpRenderer](lwpRenderer.md)                                                                                                                               |
 
 ## Events
 
