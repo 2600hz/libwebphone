@@ -201,3 +201,7 @@ Re-paint / update all render targets.
 ### Data
 
 ### HTML
+
+## Future Consideration
+
+Ideally, we would buffer/proxy the master MediaStream tracks via other means. For example, if the input audio went to a [MediaStreamTrackAudioSourceNode](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrackAudioSourceNode) we could use the capabilities of the [AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext) to manipulate it as we wanted and return a [MediaStreamAudioDestinationNode](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamAudioDestinationNode) to all requestors. This has the added benifit that all the requestors are opaque to any changes to the MediaStreamTrackAudioSourceNode (switching audio inputs). More compatable approaches explored using [HTMLMediaElements](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement). However, oddities in the browsers, availability of some capabilities, and restrictions with using a HTMLMediaElement as both a sink and source in the [Web APIs](https://developer.mozilla.org/en-US/docs/Web/API) mean its not _yet_ pratical.
