@@ -2,39 +2,17 @@
 
 > NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getAudioContext()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](/README.md).
 
-The libwebphone audio context class contains all the functionality related to
-the browsers
-[AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext).
-This is used to generate ringing audio, DTMF tones, and provide volume controls.
+The libwebphone audio context class contains all the functionality related to the browsers [AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext). This is used to generate ringing audio, DTMF tones, and provide volume controls.
 
-Ringing audio is created by modulating a generated sine wave, then cycling the
-result between audible and muted.
+Ringing audio is created by modulating a generated sine wave, then cycling the result between audible and muted.
 
-Tones are created by creating an audio buffer containing the calculated values
-of one or more sine wave frequencies provided as arguments at a sample rate of
-8000 for the configured duration (channels.tone.duration). This audio buffer is
-played then destroyed.
+Tones are created by creating an audio buffer containing the calculated values of one or more sine wave frequencies provided as arguments at a sample rate of 8000 for the configured duration (channels.tone.duration). This audio buffer is played then destroyed.
 
-Volume controls are provided by controling a
-[gain node](https://developer.mozilla.org/en-US/docs/Web/API/GainNode)
-associated with each audio channel. The output of each channel can be connected
-to a 'master' channel to provide a global volume control.
+Volume controls are provided by controling a [gain node](https://developer.mozilla.org/en-US/docs/Web/API/GainNode) associated with each audio channel. The output of each channel can be connected to a 'master' channel to provide a global volume control.
 
-> There is no way to set the sinkId (destination device) of an AudioContext.
-> Therefore, if we want to be able to change the output device we must pipe the
-> AudioContext to an audio element, but maximum audio quality is achieved when
-> directly outputing from the AudioContext. However, in chrome connecting the
-> AudioContext to an audio html element causes a few audio issues. First if the
-> sampleRate doesn't match it starts "detuning" the audio. Second it introduces
-> weird timing slips (the remote stream as compared to playing in lwpCall audio
-> elements drifts out of sync). Finally, despite the gain nodes multiplying by 1
-> they seem to still clip audio that lwpCall audio elements don't. This
-> implementation is a balance, non-critical audio will take the less ideal path
-> to support output device selection and remote audio will be rendered in
-> lwpCall (despite ideally handling it all in this audio graph).
+There is no way to set the sinkId (destination device) of an AudioContext. Therefore, if we want to be able to change the output device we must pipe the AudioContext to an audio element, but maximum audio quality is achieved when directly outputing from the AudioContext. However, in chrome connecting the AudioContext to an audio html element causes a few audio issues. First if the sampleRate doesn't match it starts "detuning" the audio. Second it introduces weird timing slips (the remote stream as compared to playing in lwpCall audio elements drifts out of sync). Finally, despite the gain nodes multiplying by 1 they seem to still clip audio that lwpCall audio elements don't. This implementation is a balance, non-critical audio will take the less ideal path to support output device selection and remote audio will be rendered in lwpCall (despite ideally handling it all in this audio graph).
 
-This has been a very helpful page to getting better understanding of the
-implementation details in the browsers: https://padenot.github.io/web-audio-perf
+> This has been a very helpful page to getting better understanding of the implementation details in the browsers: https://padenot.github.io/web-audio-perf
 
 ## Methods
 
