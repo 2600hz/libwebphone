@@ -68,7 +68,7 @@ The library provides multiple ways to interact with it. The above example will r
 
 ## Components
 
-The phone funtionality is further implemented by classes that encapsulated the logic for a particular component, those are:
+The phone funtionality is implemented by classes that encapsulated the logic for a particular component, those are:
 
 - [lwpUserAgent](docs/lwpUserAgent.md) : Provides all features for managing connecting and maintaining the SIP connection over websockets.
 - [lwpMediaDevices](docs/lwpMediaDevices.md) : Provides all features for discovering and selecting the media device (microphone, camera and audio output destination)
@@ -81,7 +81,7 @@ Each of these clases can be disabled via configuration (or modified build) if th
 
 Internally, all calls are represented as an instance of the [lwpCall](docs/lwpCall.md) class.
 
-> NOTE! Each of these classes is not expected to be created outside of the main libwebphone instance, and are accessable using methods of the main instance or by consuming events.
+> NOTE! Each of these classes is not expected to be created outside of the main libwebphone instance and are accessable using methods of the main instance or by consuming events.
 
 ## Methods
 
@@ -256,9 +256,11 @@ Some of these additional features include events when listeners are added / remo
 
 ## Todo
 
+- Standardize and cleanup i18n keys
 - Standardize default templates and add default CSS classes
 - lwpVideoCanvas : Nearly complete class to render and control video aspects of calls
 - Support multiple instances of lwpUserAgent to provide "multi-line" functionality.
+- lwpPreviews : All the functionality around "early" previews of device selections and testing
 - lwpKazoo : Base class for all classes interacting with Kazoo as well as maintaining Kazoo websocket connections
 - lwpKazooDevices : Select a device to use in lwpUserAgent from a filtered list of available devices as well as optional create when missing
 - lwpKazooParked: Maintains a list of all parked calls, allow rapid retrieval / parking as well as annotate parked calls

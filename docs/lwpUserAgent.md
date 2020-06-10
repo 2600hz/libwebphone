@@ -101,8 +101,9 @@ setRedial()).
 
 Returns:
 
-| Type | Description | | string | The last number dialed by this user agent (or
-set using setRedial()) |
+| Type   | Description                                                          |
+| ------ | -------------------------------------------------------------------- |
+| string | The last number dialed by this user agent (or set using setRedial()) |
 
 #### setRedial(target)
 
