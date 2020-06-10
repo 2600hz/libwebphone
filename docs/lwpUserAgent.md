@@ -154,10 +154,10 @@ Re-paint / update all render targets.
 | Key        | Default (en) | Description                                      |
 | ---------- | ------------ | ------------------------------------------------ |
 | agentstart | Start        | Used as the text for the start user agent action |
-| agentstop  | Stoo         | Used as the text for the stop user agent action  |
+| agentstop  | Stop         | Used as the text for the stop user agent action  |
 | debug      | Debug        | Used as the label for the debug element          |
 | debugstart | Start        | Used as the text for the start debug action      |
-| debugstop  | Stoo         | Used as the text for the stop debug action       |
+| debugstop  | Stop         | Used as the text for the stop debug action       |
 | username   | Username     | Used as the label for username input element     |
 | password   | Password     | Used as the label for password input element     |
 | realm      | Realm        | Used as the label for realm input element        |

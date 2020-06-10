@@ -2,12 +2,14 @@
 
 The libwebphone is the top level class that provides all access to the libraries functionality for an instance of a specific configuration. The funtionality is implemented by classes that encapsulated the logic for a particular component of a phone, those are:
 
+- [lwpUserAgent](lwpUserAgent.md) : Provides all features for managing connecting and maintaining the SIP connection over websockets.
+- [lwpMediaDevices](lwpMediaDevices.md) : Provides all features for discovering and selecting the media device (microphone, camera and audio output destination)
 - [lwpAudioContext](lwpAudioContext.md) : Provides audio generation (ringing, DTMF playback, ect) as well as audio routing / mixing options
-- [lwpCallControl](lwpCallControl.md) : Provides all call control features such as hold, mute, transfer, redial, ect
 - [lwpCallList](lwpCallList.md) : Provides a list of all active calls and allowes the user to switch between them
 - [lwpDialpad](lwpDialpad.md) : Provides all features for collecting the target (dialed number) for new calls, transfers and in call DTMF
-- [lwpMediaDevices](lwpMediaDevices.md) : Provides all features for discovering and selecting the media device (microphone, camera and audio output destination)
-- [lwpUserAgent](lwpUserAgent.md) : Provides all features for managing connecting and maintaining the SIP connection over websockets.
+- [lwpCallControl](lwpCallControl.md) : Provides all call control features such as hold, mute, transfer, redial, ect
+
+Each of these clases can be disabled via configuration (or modified build) if the provided functionality is not required or desired.
 
 Internally, all calls are represented as an instance of the [lwpCall](lwpCall.md) class.
 
@@ -17,27 +19,51 @@ Internally, all calls are represented as an instance of the [lwpCall](lwpCall.md
 
 #### getCallControl()
 
-Provides access to the [lwpCallControl](lwpCallControl.md) instance.
+Returns:
+
+| Type                                        | Description                                                |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| null or [lwpCallControl](lwpCallControl.md) | Provides access to the lwpCallControl instance if enabled. |
 
 #### getCallList()
 
-Provides access to the [lwpCallList](lwpCallList.md) instance.
+Returns:
+
+| Type                                  | Description                                             |
+| ------------------------------------- | ------------------------------------------------------- |
+| null or [lwpCallList](lwpCallList.md) | Provides access to the lwpCallList instance if enabled. |
 
 #### getDialpad()
 
-Provides access to the [lwpDialpad](lwpDialpad.md) instance.
+Returns:
+
+| Type                                | Description                                            |
+| ----------------------------------- | ------------------------------------------------------ |
+| null or [lwpDialpad](lwpDialpad.md) | Provides access to the lwpDialpad instance if enabled. |
 
 #### getUserAgent()
 
-Provides access to the [lwpUserAgent](lwpUserAgent.md) instance.
+Returns:
+
+| Type                                    | Description                                              |
+| --------------------------------------- | -------------------------------------------------------- |
+| null or [lwpUserAgent](lwpUserAgent.md) | Provides access to the lwpUserAgent instance if enabled. |
 
 #### getMediaDevices()
 
-Provides access to the [lwpMediaDevices](lwpMediaDevices.md) instance.
+Returns:
+
+| Type                                          | Description                                                 |
+| --------------------------------------------- | ----------------------------------------------------------- |
+| null or [lwpMediaDevices](lwpMediaDevices.md) | Provides access to the lwpMediaDevices instance if enabled. |
 
 #### getAudioContext()
 
-Provides access to the [lwpAudioContext](lwpAudioContext.md) instance.
+Returns:
+
+| Type                                          | Description                                                 |
+| --------------------------------------------- | ----------------------------------------------------------- |
+| null or [lwpAudioContext](lwpAudioContext.md) | Provides access to the lwpAudioContext instance if enabled. |
 
 #### geti18n()
 
