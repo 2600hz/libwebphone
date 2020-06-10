@@ -17,71 +17,71 @@ export default class extends lwpRenderer {
   }
 
   redial() {
-    let userAgent = this._libwebphone.getUserAgent();
+    const userAgent = this._libwebphone.getUserAgent();
     if (userAgent) {
       userAgent.redial();
     }
   }
 
   cancel() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.cancel();
     }
   }
 
   hangup() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.hangup();
     }
   }
 
   hold() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.hold();
     }
   }
 
   unhold() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.unhold();
     }
   }
 
   mute() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.mute();
     }
   }
 
   unmute() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.unmute();
     }
   }
 
   transfer() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.transfer();
     }
   }
 
   answer() {
-    let currentCall = this._getCall();
+    const currentCall = this._getCall();
     if (currentCall) {
       currentCall.answer();
     }
   }
 
   updateRenders(call = null) {
-    let callList = this._libwebphone.getCallList();
     let callSummary = null;
+    const callList = this._libwebphone.getCallList();
 
     if (!call && callList) {
       this._call = callList.getCall();
@@ -102,7 +102,7 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
         answer: "Anwser",
         redial: "Redial",
@@ -117,7 +117,7 @@ export default class extends lwpRenderer {
         transfercomplete: "Transfer (complete)",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -125,7 +125,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {
+    const defaults = {
       renderTargets: [],
     };
     this._config = lwpUtils.merge(defaults, config);
@@ -196,12 +196,12 @@ export default class extends lwpRenderer {
         transferblind: "libwebphone:callControl.transferblind",
         transferattended: "libwebphone:callControl.transferattended",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_id: {
         redial: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.redial();
             },
@@ -210,7 +210,7 @@ export default class extends lwpRenderer {
         cancel: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.cancel();
             },
@@ -219,7 +219,7 @@ export default class extends lwpRenderer {
         hangup: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.hangup();
             },
@@ -228,7 +228,7 @@ export default class extends lwpRenderer {
         hold: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.hold();
             },
@@ -237,7 +237,7 @@ export default class extends lwpRenderer {
         unhold: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.unhold();
             },
@@ -246,7 +246,7 @@ export default class extends lwpRenderer {
         mute: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.mute();
             },
@@ -255,7 +255,7 @@ export default class extends lwpRenderer {
         unmute: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.unmute();
             },
@@ -263,7 +263,7 @@ export default class extends lwpRenderer {
         },
         transfer: {
           events: {
-            onclick: (event) => {
+            onclick: () => {
               this.transfer();
             },
           },
@@ -271,7 +271,7 @@ export default class extends lwpRenderer {
         answer: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.answer();
             },
@@ -304,17 +304,17 @@ export default class extends lwpRenderer {
             {{i18n.hangup}}
           </button>
 
-          {{^data.call.hold}}
+          {{^data.call.held}}
             <button id="{{by_id.hold.elementId}}">
               {{i18n.hold}}
             </button>
-          {{/data.call.hold}}
+          {{/data.call.held}}
 
-          {{#data.call.hold}}
+          {{#data.call.held}}
             <button id="{{by_id.unhold.elementId}}">
               {{i18n.unhold}}
             </button>
-          {{/data.call.hold}}
+          {{/data.call.held}}
 
           {{^data.call.muted}}
             <button id="{{by_id.mute.elementId}}">
@@ -352,7 +352,7 @@ export default class extends lwpRenderer {
   }
 
   _renderData(data = {}, callSummary = null) {
-    let userAgent = this._libwebphone.getUserAgent();
+    const userAgent = this._libwebphone.getUserAgent();
 
     if (userAgent) {
       data.redial = userAgent.getRedial();

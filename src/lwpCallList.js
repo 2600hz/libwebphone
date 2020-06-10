@@ -32,7 +32,7 @@ export default class extends lwpRenderer {
   }
 
   addCall(newCall) {
-    let previousCall = this.getCall();
+    const previousCall = this.getCall();
 
     if (previousCall && !previousCall.isOnHold()) {
       this._calls.push(newCall);
@@ -52,9 +52,9 @@ export default class extends lwpRenderer {
     }
   }
 
-  switchCall(callid) {
-    let previousCall = this.getCall();
-    let primaryCall = this.getCall(callid);
+  switchCall(callId) {
+    const previousCall = this.getCall();
+    const primaryCall = this.getCall(callId);
 
     this._calls.map((call) => {
       if (call.isPrimary) {
@@ -73,7 +73,7 @@ export default class extends lwpRenderer {
   }
 
   removeCall(terminatedCall) {
-    let terminatedId = terminatedCall.getId();
+    const terminatedId = terminatedCall.getId();
 
     this._calls = this._calls.filter((call) => {
       return call.getId() != terminatedId;
@@ -81,7 +81,7 @@ export default class extends lwpRenderer {
     this._emit("calls.removed", this, terminatedCall);
 
     if (terminatedCall.isPrimary()) {
-      let withSession = this._calls.find((call) => {
+      const withSession = this._calls.find((call) => {
         return call.hasSession();
       });
 
@@ -109,12 +109,12 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
         new: "New Call",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -122,12 +122,12 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {
+    const defaults = {
       renderTargets: [],
     };
     this._config = lwpUtils.merge(defaults, config);
 
-    let newCall = new lwpCall(this._libwebphone);
+    const newCall = new lwpCall(this._libwebphone);
     newCall._setPrimary();
     this._calls = [newCall];
   }
@@ -140,15 +140,14 @@ export default class extends lwpRenderer {
       this.removeCall(call);
     });
 
+    this._libwebphone.on("calllist.calls.added", () => {
+      this.updateRenders();
+    });
     this._libwebphone.on("callList.calls.changed", () => {
       this.updateRenders();
     });
 
     /** TODO: make all these call.pimary.* when we don't need the debugging info */
-    this._libwebphone.on("call.created", (lwp, call) => {
-      this.updateRenders();
-    });
-
     this._libwebphone.on("call.promoted", () => {
       this.updateRenders();
     });
@@ -201,13 +200,13 @@ export default class extends lwpRenderer {
       i18n: {
         new: "libwebphone:callList.new",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_name: {
         calls: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
-              let callid = element.value;
+              const element = event.srcElement;
+              const callid = element.value;
               this.switchCall(callid);
             },
           },
@@ -241,13 +240,13 @@ export default class extends lwpRenderer {
         <input type="radio" id="{{by_name.calls.elementName}}{{callId}}"  name="{{by_name.calls.elementName}}" value="{{callId}}">
         {{/primary}}
 
-        <label for="{{by_name.calls.elementName}}{{callId}}">{{remote_identity}}
+        <label for="{{by_name.calls.elementName}}{{callId}}">{{remoteIdentity}}
           <ul>
             <li>call id: {{callId}}</li>
             <li>primary: {{primary}}</li>
             <li>progress: {{progress}}</li>
             <li>established: {{established}}</li>
-            <li>hold: {{hold}}</li>
+            <li>held: {{held}}</li>
             <li>muted: {{muted}}</li>
             <li>inTransfer: {{inTransfer}}</li>
             <li>ended: {{ended}}</li>

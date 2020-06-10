@@ -222,7 +222,6 @@
         color: #000;
       }
       canvas {
-        border: 5px black solid;
         cursor: pointer;
       }
       .col {
@@ -371,7 +370,7 @@
             preferedDeviceIds: ["bnkZoip5H5kiNXBLV+YNGalX9r0kvfNjJsZcOkHPeQQ="],
           },
           videoinput: {
-            enabled: false,
+            enabled: true,
           },
           renderTargets: [
             "media_device",
@@ -406,9 +405,9 @@
             recovery_min_interval: 2,
           },
           authentication: {
-            username: "",
-            password: "",
-            realm: "",
+            username: "user_ctNx9XCWq7",
+            password: "N3kk4b75XHP6",
+            realm: "4a6863.sip.sandbox.2600hz.com",
           },
           user_agent: {
             //contact_uri: '',
@@ -417,8 +416,12 @@
             no_answer_timeout: 60,
             register: true,
             register_expires: 300,
-            user_agent: "libwebphone 2.x",
+            user_agent: "libwebphone 2.x - dev",
           },
+        },
+        videoCanvas: {
+          canvas: "video_screen",
+          renderTargets: ["video_controls"],
         },
       }; //End ofConfig
 
@@ -452,6 +455,7 @@
     </script>
   </head>
   <body>
+    <div id="test"></div>
     <div class="container-fluid">
       <!-- User Agent-->
       <div class="row" style="border: solid;">
@@ -461,16 +465,16 @@
         <div class="col" style="border-right: dashed;">
           <div>
             <button
-              onclick="webphone.getUserAgent().start('user_one', 'my_password');"
+              onclick="webphone.getUserAgent().start('user_q5eNt95vwv', 'cxNMVV2BD47J');"
             >
-              Start as User 1
+              Start Mahfuzel New Softphone (1009)
             </button>
           </div>
           <div>
             <button
-              onclick="webphone.getUserAgent().start('user_two', 'my_password');"
+              onclick="webphone.getUserAgent().start('user_743dJ3fuNj', '72aBcdBvQnz3');"
             >
-              Start as User 2
+              Start Multiple WebRTC (1008)
             </button>
           </div>
         </div>
@@ -812,7 +816,8 @@
       <!-- Video Canvas -->
       <div class="row" style="border: solid;">
         <div class="col">
-          <div id="video_screen"></div>
+          <canvas id="video_screen" width="640" height="480"></canvas>
+          <div id="video_controls"></div>
         </div>
       </div>
     </div>

@@ -47,13 +47,6 @@ export default class extends EventEmitter {
       this._videoCanvas = new lwpVideoCanvas(this, this._config.videoCanvas);
     }
 
-    if (this._config.mediaPreviews.enabled) {
-      this._mediaPreviews = new lwpMediaPreviews(
-        this,
-        this._config.mediaPreviews
-      );
-    }
-
     this._libwebphone._emit("created", this._libwebphone);
   } //end of constructor
 
@@ -85,28 +78,24 @@ export default class extends EventEmitter {
     return this._audioContext;
   }
 
-  getMediaPreviews() {
-    return this._mediaPreviews;
-  }
-
   geti18n() {
     return i18next;
   }
 
-  i18nAddResourceBundles(module, resources) {
-    for (let lang in resources) {
-      this.i18nAddResourceBundle(module, lang, resources[lang]);
+  i18nAddResourceBundles(className, resources) {
+    for (const lang in resources) {
+      this.i18nAddResourceBundle(className, lang, resources[lang]);
     }
   }
 
-  i18nAddResourceBundle(module, lang, resource) {
-    let bundle = {};
-    bundle[module] = resource;
-    i18next.addResourceBundle(lang, "libwebphone", bundle, true);
+  i18nAddResourceBundle(className, language, resource) {
+    const bundle = {};
+    bundle[className] = resource;
+    i18next.addResourceBundle(language, "libwebphone", bundle, true);
     this._libwebphone._emit(
       "language.bundle.added",
       this._libwebphone,
-      lang,
+      language,
       bundle
     );
   }
@@ -127,7 +116,7 @@ export default class extends EventEmitter {
       mediaPreviews: { enabled: false },
       audioContext: { enabled: true },
       userAgent: { enabled: true },
-      videoCanvas: { enabled: false },
+      videoCanvas: { enabled: true },
       call: {
         useAudioContext: false,
         globalKeyShortcuts: true,

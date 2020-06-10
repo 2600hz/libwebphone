@@ -37,7 +37,7 @@ export default class extends lwpRenderer {
     }
 
     try {
-      let config = {
+      const config = {
         sockets: this._sockets,
         uri:
           this._config.authentication.username +
@@ -63,8 +63,8 @@ export default class extends lwpRenderer {
       this._userAgent = new JsSIP.UA(config);
       this._userAgent.receiveRequest = (request) => {
         /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
-        let config_user = this._userAgent._configuration.uri.user;
-        let ruri_user = request.ruri.user;
+        const config_user = this._userAgent._configuration.uri.user;
+        const ruri_user = request.ruri.user;
         if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
           request.ruri.user = config_user;
         }
@@ -98,9 +98,10 @@ export default class extends lwpRenderer {
       });
       this._userAgent.on("registrationExpiring", (...event) => {
         this._emit("registration.expiring", this, ...event);
+        this._userAgent.register();
       });
       this._userAgent.on("newRTCSession", (...event) => {
-        let session = event[0].session;
+        const session = event[0].session;
         new lwpCall(this._libwebphone, session);
       });
       this._userAgent.on("newMessage", (...event) => {
@@ -120,6 +121,7 @@ export default class extends lwpRenderer {
   stop() {
     if (this.isStarted()) {
       this.hangupAll();
+      this.unregister();
       this._userAgent.stop();
       this._userAgent = null;
       this._emit("stopped", this);
@@ -197,7 +199,7 @@ export default class extends lwpRenderer {
   }
 
   redial() {
-    let redialTarget = this.getRedial();
+    const redialTarget = this.getRedial();
 
     this._emit("redial.started", this, redialTarget);
 
@@ -220,8 +222,8 @@ export default class extends lwpRenderer {
 
   call(target = null) {
     let options = { data: { lwpStreamId: lwpUtils.uuid() } };
-    let mediaDevices = this._libwebphone.getMediaDevices();
-    let callList = this._libwebphone.getCallList();
+    const mediaDevices = this._libwebphone.getMediaDevices();
+    const callList = this._libwebphone.getCallList();
 
     if (!target) {
       target = this.getRedial();
@@ -270,9 +272,8 @@ export default class extends lwpRenderer {
   /** Init functions */
 
   _initInternationalization(config) {
-    let defaults = {
+    const defaults = {
       en: {
-        agent: "User Agent",
         agentstart: "Start",
         agentstop: "Stop",
         debug: "Debug",
@@ -286,7 +287,7 @@ export default class extends lwpRenderer {
         unregister: "Unregister",
       },
     };
-    let resourceBundles = lwpUtils.merge(
+    const resourceBundles = lwpUtils.merge(
       defaults,
       config.resourceBundles || {}
     );
@@ -294,7 +295,7 @@ export default class extends lwpRenderer {
   }
 
   _initProperties(config) {
-    let defaults = {
+    const defaults = {
       transport: {
         sockets: [],
         recovery_max_interval: 30,
@@ -368,7 +369,6 @@ export default class extends lwpRenderer {
     return {
       template: this._renderDefaultTemplate(),
       i18n: {
-        agent: "libwebphone:userAgent.agent",
         agentstart: "libwebphone:userAgent.agentstart",
         agentstop: "libwebphone:userAgent.agentstop",
         debug: "libwebphone:userAgent.debug",
@@ -381,12 +381,12 @@ export default class extends lwpRenderer {
         password: "libwebphone:userAgent.password",
         realm: "libwebphone:userAgent.realm",
       },
-      data: lwpUtils.merge(this._renderData(), this._config),
+      data: lwpUtils.merge({}, this._config, this._renderData()),
       by_id: {
         debug: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.toggleDebug();
             },
@@ -395,7 +395,7 @@ export default class extends lwpRenderer {
         registrar: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.toggleRegistration();
             },
@@ -404,7 +404,7 @@ export default class extends lwpRenderer {
         username: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this._config.authentication.username = element.value;
             },
           },
@@ -412,7 +412,7 @@ export default class extends lwpRenderer {
         password: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this._config.authentication.password = element.value;
             },
           },
@@ -420,7 +420,7 @@ export default class extends lwpRenderer {
         realm: {
           events: {
             onchange: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               this._config.authentication.realm = element.value;
             },
           },
@@ -428,7 +428,7 @@ export default class extends lwpRenderer {
         agentstart: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.start();
             },
@@ -437,7 +437,7 @@ export default class extends lwpRenderer {
         agentstop: {
           events: {
             onclick: (event) => {
-              let element = event.srcElement;
+              const element = event.srcElement;
               element.disabled = true;
               this.stop();
             },
@@ -538,7 +538,7 @@ export default class extends lwpRenderer {
         throw new Error("Webphone client not ready yet!");
       }
 
-      let session = this._userAgent.call(target, options);
+      this._userAgent.call(target, options);
 
       this._emit("call.started", this, target);
     } catch (error) {
