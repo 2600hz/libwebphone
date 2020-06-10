@@ -10,6 +10,8 @@ The filter can be enabled to remove any non-number characters when executing a
 new call or transfer. Further, the convert option can be enabled to convert any
 letters to numbers as they would map on a standard dialpad.
 
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallList()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
+
 ## Methods
 
 #### dial(char, tones)

@@ -1,5 +1,13 @@
 # lwpMediaDevices
 
+The libwebphone media devices class contains all the functionality releated to selecting media devices (audio input, video input and audio output) as well as access to any required [MediaStreamTrack](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack). It does this by keeping a master [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) instance with tracks that correspond to the device selections. When entities need access to the media devices if the master MediaStream currently does not have the required MediaStreamTrack(s) then they will be created on the master MediaStream. To fill requests to start streams all tracks in the master MediaStream are then cloned to a new and unique instance of a MediaStream created for that specific request. This allows each requestor to share access to the devices, rather than start multiple streams for that device which some browsers will not allow or limit. Further, by cloning the MediaStreamTracks each requestor can manipulate them (mute, ect) individually without impacting the other instances using that device. Once the last requestor has informed the instance that the streams are no longer required the master MediaStream tracks are stopped and removed until needed again.
+
+When the instance is created it will first attempt to start the master MediaStream for all enabled input media kinds (audio and/or video), using the prefered device ids if provided. This is done to get permission from the user to use these devices prior to them being required. It also elevates the permissions of the instance to be able to get the device names when listing (without starting the MediaStream tracks first the browsers generally don't provide meaningful device names, usually just the device id). It will then stop any started device and maintain an internal representation of the available as well as connected devices. If the user selects a new device, or that device becomes unavailable, the new device will be started immediately to get permission from the user. If there are active instances consuming the streams the newly started device stream replaces any previous stream or removes access to previously active streams if a "null" device is selected (IE: the "None" option). However, if no active instances are consuming the streams the newly started device is immediately stopped after access is granted.
+
+Additionally, the instance provides access to a [HTMLMediaElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement) that represent the different device kinds the instance manages (audio input, video input and audio output). It also provides a 'global' mute / unmute functionality that will impact any consumers of that device kind.
+
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallList()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
+
 ## Methods
 
 #### startStreams(requestId)
@@ -13,8 +21,9 @@ When streams are required this function will start the [MediaStream](https://dev
 > The request id is optional, but its good practice to use the call id.
 
 Returns:
-| Type | Description |
-| -- | -- |
+
+| Type                                                                                    | Description                                                    |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream/MediaStream) | A MediaStream with tracks cloned from the "master" MediaStream |
 
 #### stopStreams(requestId)
@@ -104,12 +113,13 @@ Re-paint / update all render targets.
 
 ## i18n
 
-| Key         | Default (en)             | Description |
-| ----------- | ------------------------ | ----------- |
-| none        | None                     |             |
-| audiooutput | Speaker                  |             |
-| audioinput  | Microphone               |             |
-| loading     | Finding media devices... |             |
+| Key         | Default (en)             | Description                                                                          |
+| ----------- | ------------------------ | ------------------------------------------------------------------------------------ |
+| none        | None                     | Used as the text for a 'null' selection that can be used to disable that device kind |
+| audiooutput | Speaker                  | Used to label the selector for the audio output device                               |
+| audioinput  | Microphone               | Used to label the selector for the audio input device                                |
+| videoinput  | Camera                   | Used to lable the selector for the video input device                                |
+| loading     | Finding media devices... | Used to label the inital loading screen when discovering available devices           |
 
 ## Configuration
 

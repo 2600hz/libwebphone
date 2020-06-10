@@ -3,6 +3,8 @@
 Provides the necessary functionality to handle multiple calls at once, if this
 class is disabled libwebphone will only be able to make a single call at once.
 
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallList()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
+
 ## Methods
 
 #### getCalls()

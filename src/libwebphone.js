@@ -88,14 +88,14 @@ export default class extends EventEmitter {
     }
   }
 
-  i18nAddResourceBundle(module, lang, resource) {
+  i18nAddResourceBundle(module, language, resource) {
     const bundle = {};
     bundle[module] = resource;
-    i18next.addResourceBundle(lang, "libwebphone", bundle, true);
+    i18next.addResourceBundle(language, "libwebphone", bundle, true);
     this._libwebphone._emit(
       "language.bundle.added",
       this._libwebphone,
-      lang,
+      language,
       bundle
     );
   }

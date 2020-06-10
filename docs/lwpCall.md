@@ -8,9 +8,9 @@ Since there can be multiple instances of lwpCall only one of those instance can
 be the primary at a time. The primary lwpCall is the instance that is producing
 and sending media as well as the target for in-call controls.
 
-> If lwpCallList is enabled there will be a 'null' lwpCall instance created to
-> represent new calls. This instance will not have a session, which can be
-> checked via hasSession()
+> NOTE! If lwpCallList is enabled there will be a 'null' lwpCall instance created to represent new calls. This instance will not have a session, which can be checked via `hasSession()`.
+
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance use the methods provided by lwpCallList or capture it via events. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
 
 ## Methods
 
@@ -19,7 +19,7 @@ and sending media as well as the target for in-call controls.
 Provides a unique identifier for the instance of the lwpCall. This is either the
 MediaStream ID from lwpMediaDevices or a locally generated UUID.
 
-> Note: this is not related to any values from jssip or the SIP protocol.
+> NOTE! this is not related to any values from jssip or the SIP protocol.
 
 Returns:
 

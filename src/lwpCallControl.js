@@ -304,17 +304,17 @@ export default class extends lwpRenderer {
             {{i18n.hangup}}
           </button>
 
-          {{^data.call.hold}}
+          {{^data.call.held}}
             <button id="{{by_id.hold.elementId}}">
               {{i18n.hold}}
             </button>
-          {{/data.call.hold}}
+          {{/data.call.held}}
 
-          {{#data.call.hold}}
+          {{#data.call.held}}
             <button id="{{by_id.unhold.elementId}}">
               {{i18n.unhold}}
             </button>
-          {{/data.call.hold}}
+          {{/data.call.held}}
 
           {{^data.call.muted}}
             <button id="{{by_id.mute.elementId}}">

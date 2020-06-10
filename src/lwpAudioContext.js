@@ -138,7 +138,7 @@ export default class extends lwpRenderer {
 
     this.startAudioContext();
 
-    if (!options.hasOwnProperty("scale")) {
+    if (!Object.prototype.hasOwnProperty.call(options, "scale")) {
       if (volume > 1) {
         options.scale = true;
       } else {

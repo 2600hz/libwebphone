@@ -27,7 +27,7 @@ export default class extends lwpRenderer {
       tones = this._charToTone(char);
     }
 
-    if (tones !=== false) {
+    if (tones !== false) {
       this._emit("tones.play", this, tones);
     }
 
