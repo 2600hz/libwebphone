@@ -1,5 +1,7 @@
 # lwpDialpad
 
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallList()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](/README.md).
+
 The libwebphone dialpad class is responsisble for collecting a target for either
 a new call or transfer. In addition, when appropriate the dialed characters are
 sent as DTMF on the primary call. Additionally, the class provides a means to
@@ -9,8 +11,6 @@ features.
 The filter can be enabled to remove any non-number characters when executing a
 new call or transfer. Further, the convert option can be enabled to convert any
 letters to numbers as they would map on a standard dialpad.
-
-> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallList()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
 
 ## Methods
 

@@ -1,5 +1,7 @@
 # lwpAudioContext
 
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getAudioContext()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](/README.md).
+
 The libwebphone audio context class contains all the functionality related to
 the browsers
 [AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext).
@@ -33,8 +35,6 @@ to a 'master' channel to provide a global volume control.
 
 This has been a very helpful page to getting better understanding of the
 implementation details in the browsers: https://padenot.github.io/web-audio-perf
-
-> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getAudioContext()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
 
 ## Methods
 

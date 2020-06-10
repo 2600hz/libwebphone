@@ -1,8 +1,8 @@
 # lwpUserAgent
 
-The libwebphone user agent class provides all the functionality to start and manage a [SIP User Agent](https://en.wikipedia.org/wiki/Session_Initiation_Protocol#User_agent).
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getUserAgent()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](/README.md).
 
-> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getUserAgent()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
+The libwebphone user agent class provides all the functionality to start and manage a [SIP User Agent](https://en.wikipedia.org/wiki/Session_Initiation_Protocol#User_agent).
 
 ## Methods
 
@@ -224,7 +224,3 @@ Re-paint / update all render targets.
 ### Data
 
 ### HTML
-
-## Todo
-
-- Support multiple instances of lwpUserAgent to provide "multi-line" functionality.

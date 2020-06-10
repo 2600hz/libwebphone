@@ -1,5 +1,7 @@
 # lwpCall
 
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance use the methods provided by lwpCallList or capture it via events. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](/README.md).
+
 The libwebphone call class represents an instance of a call and provides all
 in-call functionality. It is also repsonsible for managing the audio / video
 sent as well as recieved.
@@ -9,8 +11,6 @@ be the primary at a time. The primary lwpCall is the instance that is producing
 and sending media as well as the target for in-call controls.
 
 > NOTE! If lwpCallList is enabled there will be a 'null' lwpCall instance created to represent new calls. This instance will not have a session, which can be checked via `hasSession()`.
-
-> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance use the methods provided by lwpCallList or capture it via events. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
 
 ## Methods
 

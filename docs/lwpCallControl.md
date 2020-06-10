@@ -1,9 +1,9 @@
 # lwpCallControl
 
+> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallControl()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](/README.md).
+
 Provides call controls such as redial, answer, cancel, hangup, hold/unhold,
 mute/unmute and transfer.
-
-> NOTE! It is not expected that an instance of this class be created outside of the libwebphone interals. To access this instance use the libwebphone instance method `getCallControl()`. If you are unfamiliar with the structure of libwebphone its highly recommended you [start here](libwebphone.md).
 
 ## Methods
 
