@@ -162,8 +162,6 @@ Returns:
 | --------------------------------------------------------------------------- | ------------------------------------- |
 | [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) | A MediaStream from the master channel |
 
-media stream
-
 #### updateRenders()
 
 Re-paint / update all render targets.
