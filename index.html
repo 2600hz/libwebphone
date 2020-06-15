@@ -400,14 +400,14 @@
         userAgent: {
           renderTargets: ["user_agent"],
           transport: {
-            sockets: ["wss://sandbox.2600hz.com:5065"],
+            sockets: ["wss://{SIP_SERVER}:5065"],
             recovery_max_interval: 30,
             recovery_min_interval: 2,
           },
           authentication: {
-            username: "user_ctNx9XCWq7",
-            password: "N3kk4b75XHP6",
-            realm: "4a6863.sip.sandbox.2600hz.com",
+            username: "{SIP_USERNAME}",
+            password: "{SIP_PASSWORD}",
+            realm: "{SIP_DOMAIN}",
           },
           user_agent: {
             //contact_uri: '',
@@ -488,13 +488,13 @@
                       &#128512
                       {{/data.isRegistered}}
                       {{/data.isConnected}}
-      
+
                       {{#data.isConnected}}
                       {{^data.isRegistered}}
-                      &#128542 
+                      &#128542
                       {{/data.isRegistered}}
                       {{/data.isConnected}}
-      
+
                       {{^data.isConnected}}
                       {{^data.isRegistered}}
                       &#128561
@@ -565,7 +565,7 @@
                   </div>
 
                   <br>
-                  
+
                   <div>
                     <label for="videoinput">
                       {{i18n.videoinput}}
