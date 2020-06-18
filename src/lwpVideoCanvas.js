@@ -16,6 +16,10 @@ export default class extends lwpRenderer {
     return this;
   }
 
+  hasRemoteVideo() {
+    return false;
+  }
+
   updateRenders() {
     this.render((render) => {
       render.data = this._renderData(render.data);
@@ -83,49 +87,65 @@ export default class extends lwpRenderer {
       },
       layouts: [
         {
+          name: "background",
+          style: {
+            fill: "#2e2e32",
+          },
+          predicate: () => {
+            return true;
+          },
+        },
+
+        {
           name: "disconnected",
           elements: [{ type: "image", name: "disconnected", rescale: 0.5 }],
           predicate: () => {
-            return (
-              this._libwebphone.getUserAgent() &&
-              !this._libwebphone.getUserAgent().isReady()
-            );
+            return !this._isUserAgentReady();
           },
-          exclusive: true,
         },
 
         {
           name: "idle",
           elements: [
             { type: "image", name: "idle", rescale: 0.9 },
-            { type: "string", name: "test", source: "This is a test!" },
+            { type: "string", name: "dialpadTarget" },
           ],
+          direction: "row",
           predicate: () => {
-            return !this._call || !this._call.hasSession();
+            return this._isUserAgentReady() && !this._hasCall();
           },
         },
 
         {
           name: "terminating",
-          elements: [{ type: "image", name: "ringing", rescale: 0.9 }],
+          elements: [
+            { type: "image", name: "ringing", rescale: 0.9 },
+            { type: "string", name: "remoteIdentity" },
+          ],
           predicate: () => {
-            return this._call && this._call.isRinging();
+            return this._hasCall() && this._call.isRinging();
           },
         },
 
         {
           name: "muted",
-          elements: [{ type: "image", name: "muted", rescale: 0.5 }],
+          elements: [
+            { type: "image", name: "muted", rescale: 0.5 },
+            { type: "string", name: "remoteIdentity" },
+          ],
           predicate: () => {
-            return this._call && this._call.isMuted();
+            return this._hasCall() && this._call.isMuted();
           },
         },
 
         {
           name: "held",
-          elements: [{ type: "image", name: "held", rescale: 0.5 }],
+          elements: [
+            { type: "image", name: "held", rescale: 0.5 },
+            { type: "string", name: "remoteIdentity" },
+          ],
           predicate: () => {
-            return this._call && this._call.isOnHold();
+            return this._hasCall() && this._call.isOnHold();
           },
         },
 
@@ -133,15 +153,19 @@ export default class extends lwpRenderer {
           name: "videoCall",
           elements: [{ type: "remoteVideo" }, { type: "localVideo" }],
           predicate: () => {
-            return this._call && this._call.hasSession();
+            return this._hasCall() && this.hasRemoteVideo();
           },
         },
 
         {
           name: "audioCall",
-          elements: [{ type: "image", name: "defaultAvatar", rescale: 0.1 }],
+          elements: [
+            { type: "image", name: "defaultAvatar", rescale: 0.1 },
+            { type: "string", name: "remoteIdentity" },
+            { type: "string", name: "callTimer" },
+          ],
           predicate: () => {
-            return this._call && this._call.hasSession();
+            return this._hasCall() && !this.hasRemoteVideo();
           },
         },
       ],
@@ -197,6 +221,11 @@ export default class extends lwpRenderer {
     };
     this._config = lwpUtils.merge(defaults, config);
 
+    this._config.images.forEach((image) => {
+      image.img = document.createElement("img");
+      image.img.src = image.source;
+    });
+
     this._canvasRender = null;
   }
 
@@ -229,11 +258,19 @@ export default class extends lwpRenderer {
     return data;
   }
 
+  /** Helper functions */
+  _isUserAgentReady() {
+    const userAgent = this._libwebphone.getUserAgent();
+    return !userAgent || userAgent.isReady();
+  }
+
+  _hasCall() {
+    return this._call && this._call.hasSession();
+  }
+
   /** Layout functions */
   _layoutPositionDefaults() {
     return {
-      width: 0,
-      height: 0,
       placement: {
         x: 0,
         y: 0,
@@ -246,9 +283,12 @@ export default class extends lwpRenderer {
   _layoutCreate(canvasRender, config) {
     const layout = lwpUtils.merge(
       {
+        width: 0,
+        height: 0,
         elements: [],
         position: { mode: "center" },
         direction: "column",
+        style: {},
         predicate: () => {
           return false;
         },
@@ -262,18 +302,10 @@ export default class extends lwpRenderer {
     layout.elements.forEach((config, index) => {
       switch (config.type) {
         case "image":
-          layout.elements[index] = this._layoutLoadImage(
-            canvasRender,
-            layout,
-            config
-          );
+          layout.elements[index] = this._layoutLoadImage(config);
           break;
         case "string":
-          layout.elements[index] = this._layoutLoadString(
-            canvasRender,
-            layout,
-            config
-          );
+          layout.elements[index] = this._layoutLoadString(canvasRender, config);
           break;
       }
     });
@@ -284,17 +316,33 @@ export default class extends lwpRenderer {
   }
 
   _layoutAssignCanvas(canvasRender, layout) {
-    const canvasWidth = canvasRender.root.element.width;
-    const canvasHeight = canvasRender.root.element.height;
+    if (!canvasRender.root.element) {
+      return;
+    }
 
-    layout.width = canvasWidth;
-    layout.height = canvasHeight;
+    layout.width = canvasRender.width;
+    layout.height = canvasRender.height;
   }
 
-  _layoutLoadImage(canvasRender, layout, config) {
+  _layoutLoadImage(config) {
     const element = lwpUtils.merge(
       {
         source: null,
+        alignment: "center",
+        style: {},
+        renderer: (canvasRender, element) => {
+          canvasRender.context.drawImage(
+            element.source,
+            0,
+            0,
+            element.source.width,
+            element.source.height,
+            element.placement.x,
+            element.placement.y,
+            element.placement.width,
+            element.placement.height
+          );
+        },
       },
       this._layoutPositionDefaults(),
       config
@@ -304,39 +352,58 @@ export default class extends lwpRenderer {
       return image.name == element.name;
     });
 
-    if (!source.source) {
-      return;
+    if (!source.img) {
+      return element;
     }
 
-    const img = document.createElement("img");
-
-    img.onload = () => {
-      element.source = img;
-      element.width = img.width;
-      element.height = img.height;
-
-      this._layoutRecalculate(canvasRender, layout);
-    };
-
-    img.src = source.source;
+    element.source = source.img;
 
     return element;
   }
 
-  _layoutLoadString(canvasRender, layout, config) {
+  _layoutLoadString(canvasRender, config) {
     const element = lwpUtils.merge(
       {
         font: "14px sans-serif",
         fillStyle: "#ffffff",
         textAlign: "left",
         textBaseline: "top",
-        source: "",
+        source: null,
+        alignment: "center",
+        context: null,
+        style: {},
+        renderer: (canvasRender, element) => {
+          canvasRender.context.font = element.font;
+          canvasRender.context.fillStyle = element.fillStyle;
+          canvasRender.context.textAlign = element.textAlign;
+          canvasRender.context.textBaseline = element.textBaseline;
+
+          canvasRender.context.fillText(
+            element.source.text,
+            element.placement.x,
+            element.placement.y
+          );
+        },
       },
       this._layoutPositionDefaults(),
       config
     );
 
-    //this._layoutRecalculate(canvasRender, layout);
+    if (canvasRender.context) {
+      element.context = canvasRender.context;
+    }
+
+    const source = this._config.strings.find((string) => {
+      return string.name == element.name;
+    });
+
+    if (source) {
+      element.source = { text: "", width: 0, height: 0 };
+
+      if (source.text) {
+        element.source.text = source.text;
+      }
+    }
 
     return element;
   }
@@ -345,39 +412,50 @@ export default class extends lwpRenderer {
     layout.placement.width = 0;
     layout.placement.height = 0;
 
-    switch (layout.direction) {
-      case "column":
-        layout.elements.forEach((element) => {
-          if (!element.placement) {
-            return;
-          }
-          this._layoutRecalculateElement(canvasRender, layout, element);
-          if (element.width > layout.placement.width) {
-            layout.placement.width = element.placement.width;
-          }
-          layout.placement.height += element.placement.height;
-        });
-        break;
-      case "row":
-      default:
-        layout.elements.forEach((element) => {
-          if (!element.placement) {
-            return;
-          }
-          this._layoutRecalculateElement(canvasRender, layout, element);
-          layout.placement.width += element.placement.width;
-          if (element.height > layout.placement.height) {
-            layout.placement.height = element.placement.height;
-          }
-        });
-        break;
+    if (layout.elements.length) {
+      switch (layout.direction) {
+        case "column":
+          layout.elements.forEach((element) => {
+            if (!element.source) {
+              return;
+            }
+
+            this._layoutRecalculateElement(layout, element);
+
+            if (element.source.width > layout.placement.width) {
+              layout.placement.width = element.placement.width;
+            }
+
+            layout.placement.height += element.placement.height;
+          });
+          break;
+        case "row":
+        default:
+          layout.elements.forEach((element) => {
+            if (!element.source) {
+              return;
+            }
+
+            this._layoutRecalculateElement(layout, element);
+
+            layout.placement.width += element.placement.width;
+
+            if (element.source.height > layout.placement.height) {
+              layout.placement.height = element.placement.height;
+            }
+          });
+          break;
+      }
+    } else {
+      layout.placement.width = layout.width;
+      layout.placement.height = layout.height;
     }
 
     this._layoutPosition(canvasRender, layout);
 
     const position = { x: layout.placement.x, y: layout.placement.y };
     layout.elements.forEach((element) => {
-      if (!element.placement) {
+      if (!element.source) {
         return;
       }
 
@@ -388,52 +466,76 @@ export default class extends lwpRenderer {
         (element.placement.height / layout.placement.height) *
         layout.placement.height;
 
-      element.placement.x = position.x;
-      element.placement.y = position.y;
+      const alignment = { x: 0, y: 0 };
+      switch (element.alignment) {
+        case "pull":
+          break;
+        case "push":
+          alignment.x = layout.placement.width - element.placement.width;
+          alignment.y = layout.placement.height - element.placement.height;
+          break;
+        case "center":
+        default:
+          alignment.x = (layout.placement.width - element.placement.width) / 2;
+          alignment.y =
+            (layout.placement.height - element.placement.height) / 2;
+          break;
+      }
 
       switch (layout.direction) {
         case "column":
+          element.placement.x = position.x + alignment.x;
+          element.placement.y = position.y;
           position.y += element.placement.height;
           break;
         case "row":
         default:
+          element.placement.x = position.x;
+          element.placement.y = position.y + alignment.y;
           position.x += element.placement.width;
           break;
       }
     });
   }
 
-  _layoutRecalculateElement(canvasRender, layout, element) {
+  _layoutRecalculateElement(layout, element) {
     switch (element.type) {
       case "image":
-        this._layoutScale(canvasRender, layout, element, element.rescale || 1);
+        this._layoutScale(layout, element, element.rescale || 1);
         break;
       case "string":
-        this._layoutMeasureText(canvasRender, layout, element);
+        this._layoutMeasureText(element);
         break;
     }
   }
 
-  _layoutMeasureText(canvasRender, layout, element) {
-    element.width = 0;
-    element.height = 0;
+  _layoutMeasureText(element) {
+    if (!element.context || !element.source) {
+      return;
+    }
 
-    element.measurements = canvasRender.context.measureText(element.source);
-    element.width = element.measurements.width;
-    element.height =
-      (element.measurements.actualBoundingBoxAscent || 12) +
-      (element.measurements.actualBoundingBoxDescent || 12);
-    element.placement.width = element.width;
-    element.placement.height = element.height;
+    const measurements = element.context.measureText(element.source.text || "");
+
+    element.source.width = measurements.width;
+    element.source.height =
+      (measurements.actualBoundingBoxAscent || 12) +
+      (measurements.actualBoundingBoxDescent || 12);
+
+    element.placement.width = element.source.width;
+    element.placement.height = element.source.height;
   }
 
-  _layoutScale(canvasRender, layout, element, rescale = null) {
-    const canvasWidth = canvasRender.root.element.width;
-    const canvasHeight = canvasRender.root.element.height;
-    const elementWidth = element.width;
-    const elementHeight = element.height;
+  _layoutScale(layout, element, rescale = null) {
+    if (!element.source) {
+      return;
+    }
+
+    const layoutWidth = layout.width;
+    const canvasHeight = layout.height;
+    const elementWidth = element.source.width;
+    const elementHeight = element.source.height;
     let scale = Math.min(
-      canvasWidth / elementWidth,
+      layoutWidth / elementWidth,
       canvasHeight / elementHeight
     );
 
@@ -540,25 +642,19 @@ export default class extends lwpRenderer {
       {
         defaultWidth: 640,
         defaultHeight: 480,
+        width: 0,
+        height: 0,
         root: { elementId: null, element: null },
         context: null,
         framesPerSecond: 1,
         timer: null,
         layouts: [],
-        styles: {
-          fills: {
-            background: "#2e2e32",
-          },
-          strokes: {
-            debug: {
-              crosshairs: "white",
-              layoutBorder: "red",
-              imageBorder: "green",
-              stringBorder: "blue",
-            },
+        debug: {
+          enabled: true,
+          style: {
+            stroke: "white",
           },
         },
-        debug: true,
       },
       config
     );
@@ -598,40 +694,40 @@ export default class extends lwpRenderer {
       return;
     }
 
-    canvasRender.context.fillStyle = canvasRender.styles.fills.background;
-    canvasRender.context.fillRect(
-      0,
-      0,
-      canvasRender.width,
-      canvasRender.height
-    );
+    this._layoutFindActive(canvasRender).forEach((layout) => {
+      this._layoutRecalculate(canvasRender, layout);
+      this._canvasRenderLayout(canvasRender, layout);
+    });
 
-    if (canvasRender.debug) {
+    if (canvasRender.debug.enabled) {
       canvasRender.context.beginPath();
       canvasRender.context.moveTo(canvasRender.width / 2, 0);
       canvasRender.context.lineTo(canvasRender.width / 2, canvasRender.height);
-      canvasRender.context.strokeStyle =
-        canvasRender.styles.strokes.debug.crosshairs;
+      canvasRender.context.strokeStyle = canvasRender.debug.style.stroke;
       canvasRender.context.stroke();
 
       canvasRender.context.beginPath();
       canvasRender.context.moveTo(0, canvasRender.height / 2);
       canvasRender.context.lineTo(canvasRender.width, canvasRender.height / 2);
-      canvasRender.context.strokeStyle =
-        canvasRender.styles.strokes.debug.crosshairs;
+      canvasRender.context.strokeStyle = canvasRender.debug.style.stroke;
       canvasRender.context.stroke();
     }
-
-    this._layoutFindActive(canvasRender).forEach((layout) => {
-      this._canvasRenderLayout(canvasRender, layout);
-    });
   }
 
   _canvasRenderLayout(canvasRender, layout) {
-    if (canvasRender.debug) {
+    if (layout.style.fill) {
+      canvasRender.context.fillStyle = layout.style.fill;
+      canvasRender.context.fillRect(
+        layout.placement.x,
+        layout.placement.y,
+        layout.placement.width,
+        layout.placement.height
+      );
+    }
+
+    if (layout.style.stroke) {
       canvasRender.context.beginPath();
-      canvasRender.context.strokeStyle =
-        canvasRender.styles.strokes.debug.layoutBorder;
+      canvasRender.context.strokeStyle = layout.style.stroke;
       canvasRender.context.strokeRect(
         layout.placement.x,
         layout.placement.y,
@@ -642,69 +738,31 @@ export default class extends lwpRenderer {
     }
 
     layout.elements.forEach((element) => {
-      if (element.placement) {
-        switch (element.type) {
-          case "image":
-            this._canvasRenderImage(canvasRender, element);
-            break;
-          case "string":
-            this._canvasRenderString(canvasRender, element);
-            break;
+      if (element.source) {
+        if (element.style.fill) {
+          canvasRender.context.fillStyle = element.style.fill;
+          canvasRender.context.fillRect(
+            element.placement.x,
+            element.placement.y,
+            element.placement.width,
+            element.placement.height
+          );
         }
+
+        if (element.style.stroke) {
+          canvasRender.context.beginPath();
+          canvasRender.context.strokeStyle = element.style.stroke;
+          canvasRender.context.strokeRect(
+            element.placement.x,
+            element.placement.y,
+            element.placement.width,
+            element.placement.height
+          );
+          canvasRender.context.stroke();
+        }
+
+        element.renderer(canvasRender, element);
       }
     });
-  }
-
-  _canvasRenderImage(canvasRender, element) {
-    if (canvasRender.debug) {
-      canvasRender.context.beginPath();
-      canvasRender.context.strokeStyle =
-        canvasRender.styles.strokes.debug.imageBorder;
-      canvasRender.context.strokeRect(
-        element.placement.x,
-        element.placement.y,
-        element.placement.width,
-        element.placement.height
-      );
-      canvasRender.context.stroke();
-    }
-
-    canvasRender.context.drawImage(
-      element.source,
-      0,
-      0,
-      element.source.width,
-      element.source.height,
-      element.placement.x,
-      element.placement.y,
-      element.placement.width,
-      element.placement.height
-    );
-  }
-
-  _canvasRenderString(canvasRender, element) {
-    if (canvasRender.debug) {
-      canvasRender.context.beginPath();
-      canvasRender.context.strokeStyle =
-        canvasRender.styles.strokes.debug.stringBorder;
-      canvasRender.context.strokeRect(
-        element.placement.x,
-        element.placement.y,
-        element.placement.width,
-        element.placement.height
-      );
-      canvasRender.context.stroke();
-    }
-
-    canvasRender.context.font = element.font;
-    canvasRender.context.fillStyle = element.fillStyle;
-    canvasRender.context.textAlign = element.textAlign;
-    canvasRender.context.textBaseline = element.textBaseline;
-
-    canvasRender.context.fillText(
-      element.source,
-      element.placement.x,
-      element.placement.y
-    );
   }
 }
