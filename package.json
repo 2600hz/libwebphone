@@ -4,8 +4,9 @@
   "description": "A library of components to build real-time media clients in the browser",
   "main": "index.html",
   "scripts": {
-    "dev": "webpack --mode development --config webpack.config.js --watch",
-    "build": "webpack --mode production --config webpack.config.js",
+    "dev": "webpack-dev-server --config configuration/development/webpack.config.js",
+    "watch": "webpack --config configuration/development/webpack.config.js --watch",
+    "build": "webpack --config configuration/production/webpack.config.js",
     "lint": "npx eslint src/*"
   },
   "repository": {
@@ -32,6 +33,7 @@
     "eslint": "^7.0.0",
     "webpack": "^4.41.2",
     "webpack-cli": "^3.3.10",
+    "webpack-dev-server": "^3.11.0",
     "webpack-merge": "^4.2.2"
   }
 }

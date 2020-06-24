@@ -169,6 +169,10 @@ export default class extends lwpRenderer {
   }
 
   playTones(...tones) {
+    if (!tones.length) {
+      return;
+    }
+
     this.startAudioContext();
 
     const duration = this._config.channels.tones.duration;
