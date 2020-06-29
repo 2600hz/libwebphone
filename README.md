@@ -44,19 +44,27 @@ The library provides multiple ways to interact with it. The quick start example 
       $ npm install
 ```
 
-4. Build the library
+4. Start a continuos process that will build the library, rebuild if any source files are changed as well as starting a webserver to serve the artifacts. Once started it will log a URL that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
+
+```bash
+      $ npm run dev
+```
+
+## Publishing
+
+1. Build the library
 
 ```bash
       $ npm run build
 ```
 
-5. Include the libwebphone build artifact on your website
+2. Include the libwebphone build artifact on your website
 
 ```
          <script src="dist/libwebphone.js" type="text/javascript"></script>
 ```
 
-6. Create an instance, providing a configuration object with all the minimal parameters for the features you require. A "simple kitchen sink" example might look like:
+3. Create an instance, providing a configuration object with all the minimal parameters for the features you require. A "simple kitchen sink" example might look like:
 
 ```
          <script type="text/javascript">
