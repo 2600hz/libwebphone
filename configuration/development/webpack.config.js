@@ -12,7 +12,7 @@ module.exports = {
   },
   devtool: "inline-source-map",
   devServer: {
-    inline: false,
-    liveReload: false,
+    inline: true,
+    liveReload: true,
   },
 };

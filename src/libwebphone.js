@@ -78,6 +78,10 @@ export default class extends EventEmitter {
     return this._audioContext;
   }
 
+  getUtils() {
+    return lwpUtils;
+  }
+
   geti18n() {
     return i18next;
   }

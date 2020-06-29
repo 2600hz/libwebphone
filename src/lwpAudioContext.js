@@ -177,7 +177,8 @@ export default class extends lwpRenderer {
 
     const duration = this._config.channels.tones.duration;
     const sampleRate = 8000; //this._tonesAudio.context.sampleRate;
-    const buffer = this._tonesAudio.context.createBuffer(
+    const buffer = this._shimCreateBuffer(
+      this._tonesAudio.context,
       tones.length,
       sampleRate,
       sampleRate
@@ -190,7 +191,7 @@ export default class extends lwpRenderer {
       }
     }
 
-    const bufferSource = this._tonesAudio.context.createBufferSource();
+    const bufferSource = this._shimCreateBufferSource(this._tonesAudio.context);
     bufferSource.buffer = buffer;
     bufferSource.connect(this._getOutputGainNode("tones"));
     bufferSource.start();
@@ -364,22 +365,30 @@ export default class extends lwpRenderer {
 
     this._outputAudio.context = this._audioContext;
 
-    this._outputAudio.masterGain = this._outputAudio.context.createGain();
+    this._outputAudio.masterGain = this._shimCreateGain(
+      this._outputAudio.context
+    );
     this._outputAudio.masterGain.gain.value = this._config.channels.master.volume;
 
-    this._outputAudio.ringerGain = this._outputAudio.context.createGain();
+    this._outputAudio.ringerGain = this._shimCreateGain(
+      this._outputAudio.context
+    );
     this._outputAudio.ringerGain.gain.value = this._config.channels.ringer.volume;
     if (this._config.channels.ringer.connectToMaster) {
       this._outputAudio.ringerGain.connect(this._outputAudio.masterGain);
     }
 
-    this._outputAudio.tonesGain = this._outputAudio.context.createGain();
+    this._outputAudio.tonesGain = this._shimCreateGain(
+      this._outputAudio.context
+    );
     this._outputAudio.tonesGain.gain.value = this._config.channels.tones.volume;
     if (this._config.channels.tones.connectToMaster) {
       this._outputAudio.tonesGain.connect(this._outputAudio.masterGain);
     }
 
-    this._outputAudio.remoteGain = this._outputAudio.context.createGain();
+    this._outputAudio.remoteGain = this._shimCreateGain(
+      this._outputAudio.context
+    );
     this._outputAudio.remoteGain.gain.value = this._config.channels.remote.volume;
     if (
       this._config.channels.remote.connectToMaster &&
@@ -388,13 +397,15 @@ export default class extends lwpRenderer {
       this._outputAudio.remoteGain.connect(this._outputAudio.masterGain);
     }
 
-    this._outputAudio.previewGain = this._outputAudio.context.createGain();
+    this._outputAudio.previewGain = this._shimCreateGain(
+      this._outputAudio.context
+    );
     this._outputAudio.previewGain.gain.value = this._config.channels.preview.volume;
     if (this._config.channels.preview.connectToMaster) {
       this._outputAudio.previewGain.connect(this._outputAudio.masterGain);
     }
 
-    this._outputAudio.destinationStream = this._createMediaStreamDestination(
+    this._outputAudio.destinationStream = this._shimCreateMediaStreamDestination(
       this._outputAudio.context
     );
     this._outputAudio.masterGain.connect(this._outputAudio.destinationStream);
@@ -420,17 +431,25 @@ export default class extends lwpRenderer {
 
     this._ringerAudio.ringerConnected = false;
 
-    this._ringerAudio.carrierGain = this._ringerAudio.context.createGain();
+    this._ringerAudio.carrierGain = this._shimCreateGain(
+      this._ringerAudio.context
+    );
 
-    this._ringerAudio.carrierNode = this._ringerAudio.context.createOscillator();
+    this._ringerAudio.carrierNode = this._shimCreateOscillator(
+      this._ringerAudio.context
+    );
     this._ringerAudio.carrierNode.frequency.value = this._config.channels.ringer.carrier.frequency;
     this._ringerAudio.carrierNode.connect(this._ringerAudio.carrierGain);
 
-    this._ringerAudio.modulatorNode = this._ringerAudio.context.createOscillator();
+    this._ringerAudio.modulatorNode = this._shimCreateOscillator(
+      this._ringerAudio.context
+    );
     this._ringerAudio.modulatorNode.frequency.value = this._config.channels.ringer.modulator.frequency;
     this._ringerAudio.modulatorNode.connect(this._ringerAudio.carrierGain.gain);
 
-    this._ringerAudio.ringerGain = this._ringerAudio.context.createGain();
+    this._ringerAudio.ringerGain = this._shimCreateGain(
+      this._ringerAudio.context
+    );
     this._ringerAudio.carrierGain.connect(this._ringerAudio.ringerGain);
   }
 
@@ -457,13 +476,16 @@ export default class extends lwpRenderer {
 
     this._previewAudio.toneActive = false;
 
-    this._previewAudio.oscillatorNode = this._previewAudio.context.createOscillator();
+    this._previewAudio.oscillatorNode = this._shimCreateOscillator(
+      this._previewAudio.context
+    );
     this._previewAudio.oscillatorNode.frequency.value = this._config.channels.preview.tone.frequency;
     this._previewAudio.oscillatorNode.type = this._config.channels.preview.tone.type;
 
     this._previewAudio.loopbackActive = false;
 
-    this._previewAudio.loopbackDelayNode = this._previewAudio.context.createDelay(
+    this._previewAudio.loopbackDelayNode = this._shimCreateDelay(
+      this._previewAudio.context,
       this._config.channels.preview.loopback.delay + 1.5
     );
     this._previewAudio.loopbackDelayNode.delayTime.value = this._config.channels.preview.loopback.delay;
@@ -729,16 +751,18 @@ export default class extends lwpRenderer {
     );
   }
 
-  _createMediaStreamDestination(context) {
-    return context.createMediaStreamDestination();
-  }
-
   _createLocalMediaStreamSource(mediaStream) {
-    return this._previewAudio.context.createMediaStreamSource(mediaStream);
+    return this._shimCreateMediaStreamSource(
+      this._previewAudio.context,
+      mediaStream
+    );
   }
 
   _createRemoteMediaStreamSource(mediaStream) {
-    return this._remoteAudio.context.createMediaStreamSource(mediaStream);
+    return this._shimCreateMediaStreamSource(
+      this._remoteAudio.context,
+      mediaStream
+    );
   }
 
   _connectLocalSourceStream(sourceStream = null) {
@@ -830,14 +854,63 @@ export default class extends lwpRenderer {
     }
   }
 
+  /** Shims */
+
+  _shimCreateBuffer(context, ...args) {
+    return (context.createBuffer || context.webkitCreateBuffer).apply(
+      context,
+      args
+    );
+  }
+
+  _shimCreateBufferSource(context, ...args) {
+    return (
+      context.createBufferSource || context.webkitCreateBufferSource
+    ).apply(context, args);
+  }
+
+  _shimCreateDelay(context, ...args) {
+    return (context.createDelay || context.webkitCreateDelay).apply(
+      context,
+      args
+    );
+  }
+
+  _shimCreateGain(context, ...args) {
+    return (context.createGain || context.webkitCreateGain).apply(
+      context,
+      args
+    );
+  }
+
+  _shimCreateOscillator(context, ...args) {
+    return (context.createOscillator || context.webkitCreateOscillator).apply(
+      context,
+      args
+    );
+  }
+
+  _shimCreateMediaStreamDestination(context, ...args) {
+    return (
+      context.createMediaStreamDestination ||
+      context.webkitCreateMediaStreamDestination
+    ).apply(context, args);
+  }
+
+  _shimCreateMediaStreamSource(context, ...args) {
+    return (
+      context.createMediaStreamSource || context.webkitCreateMediaStreamSource
+    ).apply(context, args);
+  }
+
   _shimAudioContext() {
     if (lwpUtils.isChrome()) {
-      return new AudioContext({
+      return new (window.AudioContext || window.webkitAudioContext)({
         latencyHint: "interactive",
         sampleRate: 44100,
       });
     } else {
-      return new AudioContext({
+      return new (window.AudioContext || window.webkitAudioContext)({
         latencyHint: "interactive",
       });
     }
