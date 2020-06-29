@@ -44,7 +44,7 @@ The library provides multiple ways to interact with it. The quick start example 
       $ npm install
 ```
 
-4. Start a continuos process that will build the library, rebuild if any source files are changed as well as starting a webserver to serve the artifacts. Once started it will log a URL that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
+4. Start a continuous process that will build the library, rebuild if any source files are changed as well as a webserver to serve the artifacts. Once started it will print a URL to the screen that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
 
 ```bash
       $ npm run dev
@@ -107,7 +107,7 @@ The library provides multiple ways to interact with it. The quick start example 
 
 #### npm run dev
 
-Build and automatically rebuild if any of the source files are changed. In addition, it starts a webpack-dev-server to server the build artifacts for eaze of development.
+Build and automatically rebuild if any of the source files are changed. In addition, it starts a webpack-dev-server to serve the build artifacts for ease of development.
 
 #### npm run watch
 
