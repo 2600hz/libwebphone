@@ -99,7 +99,15 @@ The library provides multiple ways to interact with it. The quick start example 
 
 #### npm run dev
 
+Build and automatically rebuild if any of the source files are changed. In addition, it starts a webpack-dev-server to server the build artifacts for eaze of development.
+
+#### npm run watch
+
 Build and automatically rebuild if any of the source files are changed.
+
+#### npm run stats
+
+Creates a 'stats.json' file on the root of the project detailing statistics regarding the webpack artifact for use by tools such as [webpack-visualizer](https://chrisbateman.github.io/webpack-visualizer/).
 
 #### npm run build
 
