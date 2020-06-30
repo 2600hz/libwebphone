@@ -176,7 +176,7 @@ export default class extends lwpRenderer {
     this.startAudioContext();
 
     const duration = this._config.channels.tones.duration;
-    const sampleRate = 8000; //this._tonesAudio.context.sampleRate;
+    const sampleRate = this._tonesAudio.context.sampleRate;
     const buffer = this._shimCreateBuffer(
       this._tonesAudio.context,
       tones.length,
