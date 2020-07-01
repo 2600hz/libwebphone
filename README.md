@@ -51,13 +51,15 @@ The library provides multiple ways to interact with it. The quick start example 
 - `{SIP_PASSWORD}`
 - `{SIP_DOMAIN}`
 
-> NOTE: The `{SIP_USERNAME}`, `{SIP_PASSWORD}` and `{SIP_DOMAIN}` can be entered in the lwpUserAgent default form. However, failure to update `{SIP_SERVER}` will cause the library to crash on start up.
+> NOTE: The `{SIP_USERNAME}`, `{SIP_PASSWORD}` and `{SIP_DOMAIN}` can be changed via the lwpUserAgent default form and are not required to be changed in the configuration (they would need to be changed on the form prior to starting the user agent). However, failure to update `{SIP_SERVER}` will cause the library to crash on start up.
 
 5. Start a continuous process that will build the library, rebuild if any source files are changed as well as a webserver to serve the artifacts. Once started it will print a URL to the screen that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
 
 ```bash
       $ npm run dev
 ```
+
+> NOTE: By default the webserver will be running at [http://localhost:8080/](http://localhost:8080/).
 
 ## Publishing
 
