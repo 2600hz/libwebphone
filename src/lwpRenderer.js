@@ -14,6 +14,7 @@ export default class {
       if (this._windowLoaded && this._i18nReady) {
         this._renderReady = true;
         this.render();
+        this._emit("render.ready", this);
       }
     });
     window.addEventListener("load", () => {
@@ -21,6 +22,7 @@ export default class {
       if (this._windowLoaded && this._i18nReady) {
         this._renderReady = true;
         this.render();
+        this._emit("render.ready", this);
       }
     });
   }
@@ -32,7 +34,7 @@ export default class {
       };
     }
 
-    let render = lwpUtils.merge(this._renderDefaultConfig(), {
+    const render = lwpUtils.merge(this._renderDefaultConfig(), {
       data: config.data || {},
       i18n: config.i18n || {},
       template: config.template,
@@ -44,7 +46,7 @@ export default class {
 
     if (render.by_id) {
       Object.keys(render.by_id).forEach((index) => {
-        let by_id = render.by_id[index];
+        const by_id = render.by_id[index];
         if (!by_id.elementId) {
           by_id.elementId = lwpUtils.randomElementId();
         }
@@ -53,7 +55,7 @@ export default class {
 
     if (render.by_name) {
       Object.keys(render.by_name).forEach((index) => {
-        let by_name = render.by_name[index];
+        const by_name = render.by_name[index];
         if (!by_name.elementName) {
           by_name.elementName = lwpUtils.randomElementId();
         }
@@ -70,7 +72,7 @@ export default class {
   }
 
   render(premodifier = (render) => render, postmodifier = (render) => render) {
-    let renderPromises = this._renders.map((render) => {
+    const renderPromises = this._renders.map((render) => {
       return this._render(premodifier(render)).then((render) =>
         postmodifier(render)
       );
@@ -87,7 +89,7 @@ export default class {
       if (!this._renderReady) {
         resolve(render);
       } else {
-        let renderConfig = {
+        const renderConfig = {
           data: render.data,
           by_id: render.by_id,
           by_name: render.by_name,
@@ -106,7 +108,7 @@ export default class {
 
         if (render.by_id) {
           Object.keys(render.by_id).forEach((index) => {
-            let by_id = render.by_id[index];
+            const by_id = render.by_id[index];
 
             if (by_id.elementId) {
               by_id.element = document.getElementById(by_id.elementId);
@@ -125,7 +127,7 @@ export default class {
 
         if (render.by_name) {
           Object.keys(render.by_name).forEach((index) => {
-            let by_name = render.by_name[index];
+            const by_name = render.by_name[index];
 
             if (by_name.elementName) {
               by_name.elements = document.getElementsByName(
@@ -152,9 +154,9 @@ export default class {
   }
 
   _i18nTranslate(i18n) {
-    let translator = this._libwebphone.i18nTranslator();
-    let translations = {};
-    for (let [key, value] of Object.entries(i18n)) {
+    const translator = this._libwebphone.i18nTranslator();
+    const translations = {};
+    for (const [key, value] of Object.entries(i18n)) {
       translations[key] = translator(value);
     }
     return translations;
