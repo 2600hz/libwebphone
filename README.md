@@ -44,7 +44,16 @@ The library provides multiple ways to interact with it. The quick start example 
       $ npm install
 ```
 
-4. Start a continuous process that will build the library, rebuild if any source files are changed as well as a webserver to serve the artifacts. Once started it will print a URL to the screen that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
+4. Replace the following placeholder on the index.html configuration with appropriate values:
+
+- `{SIP_SERVER}`
+- `{SIP_USERNAME}`
+- `{SIP_PASSWORD}`
+- `{SIP_DOMAIN}`
+
+> NOTE: The `{SIP_USERNAME}`, `{SIP_PASSWORD}` and `{SIP_DOMAIN}` can be entered in the lwpUserAgent default form. However, failure to update `{SIP_SERVER}` will cause the library to crash on start up.
+
+5. Start a continuous process that will build the library, rebuild if any source files are changed as well as a webserver to serve the artifacts. Once started it will print a URL to the screen that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
 
 ```bash
       $ npm run dev
@@ -318,6 +327,8 @@ Some of these additional features include events when listeners are added / remo
 ## Todo
 
 - Standardize and cleanup i18n keys
+- Add 'remeber me' feature to lwpUserAgent form
+- Add entry of websocket to lwpUserAgent form
 - Standardize default templates and add default CSS classes
 - lwpVideoCanvas : Nearly complete class to render and control video aspects of calls
 - Support multiple instances of lwpUserAgent to provide "multi-line" functionality.
