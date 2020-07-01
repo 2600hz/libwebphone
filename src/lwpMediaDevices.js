@@ -1120,6 +1120,10 @@ export default class extends lwpRenderer {
 
   _importInputDevices(devices) {
     devices.forEach((device) => {
+      if (!device.deviceId || 0 === device.deviceId.length) {
+        return;
+      }
+
       const enumeratedDevice = this._deviceParameters(device);
       const availableDevice = this._findAvailableDevice(
         device.kind,
@@ -1148,9 +1152,8 @@ export default class extends lwpRenderer {
   }
 
   _deviceParameters(device) {
-    const deviceId = device.deviceId;
     return {
-      id: deviceId,
+      id: device.deviceId,
       label: device.label,
       deviceKind: device.kind,
       name: this._getDeviceName(device),

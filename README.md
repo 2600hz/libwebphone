@@ -44,19 +44,38 @@ The library provides multiple ways to interact with it. The quick start example 
       $ npm install
 ```
 
-4. Build the library
+4. Replace the following placeholder on the index.html configuration with appropriate values:
+
+- `{SIP_SERVER}`
+- `{SIP_USERNAME}`
+- `{SIP_PASSWORD}`
+- `{SIP_DOMAIN}`
+
+> NOTE: The `{SIP_USERNAME}`, `{SIP_PASSWORD}` and `{SIP_DOMAIN}` can be changed via the lwpUserAgent default form and are not required to be changed in the configuration (they would need to be changed on the form prior to starting the user agent). However, failure to update `{SIP_SERVER}` will cause the library to crash on start up.
+
+5. Start a continuous process that will build the library, rebuild if any source files are changed as well as a webserver to serve the artifacts. Once started it will print a URL to the screen that can be visted, only by the computer it was started on, in the browser to create an example / developer instance of the library.
+
+```bash
+      $ npm run dev
+```
+
+> NOTE: By default the webserver will be running at [http://localhost:8080/](http://localhost:8080/).
+
+## Publishing
+
+1. Build the library
 
 ```bash
       $ npm run build
 ```
 
-5. Include the libwebphone build artifact on your website
+2. Include the libwebphone build artifact on your website
 
 ```
          <script src="dist/libwebphone.js" type="text/javascript"></script>
 ```
 
-6. Create an instance, providing a configuration object with all the minimal parameters for the features you require. A "simple kitchen sink" example might look like:
+3. Create an instance, providing a configuration object with all the minimal parameters for the features you require. A "simple kitchen sink" example might look like:
 
 ```
          <script type="text/javascript">
@@ -99,7 +118,15 @@ The library provides multiple ways to interact with it. The quick start example 
 
 #### npm run dev
 
+Build and automatically rebuild if any of the source files are changed. In addition, it starts a webpack-dev-server to serve the build artifacts for ease of development.
+
+#### npm run watch
+
 Build and automatically rebuild if any of the source files are changed.
+
+#### npm run stats
+
+Creates a 'stats.json' file on the root of the project detailing statistics regarding the webpack artifact for use by tools such as [webpack-visualizer](https://chrisbateman.github.io/webpack-visualizer/).
 
 #### npm run build
 
@@ -302,6 +329,8 @@ Some of these additional features include events when listeners are added / remo
 ## Todo
 
 - Standardize and cleanup i18n keys
+- Add 'remeber me' feature to lwpUserAgent form
+- Add entry of websocket to lwpUserAgent form
 - Standardize default templates and add default CSS classes
 - lwpVideoCanvas : Nearly complete class to render and control video aspects of calls
 - Support multiple instances of lwpUserAgent to provide "multi-line" functionality.

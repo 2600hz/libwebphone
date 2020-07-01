@@ -1275,16 +1275,16 @@ export default class extends lwpRenderer {
         this._canvasGetImage(canvasRender, this._config.remoteVideo.name)
       );
 
-      return;
-    }
+      if (this._config.localVideo.enabled) {
+        this._renderCanvasImage(
+          canvasRender,
+          this._canvasGetImage(canvasRender, this._config.localVideo.name, {
+            checkShouldShow: true,
+          })
+        );
+      }
 
-    if (this._config.localVideo.enabled) {
-      this._renderCanvasImage(
-        canvasRender,
-        this._canvasGetImage(canvasRender, this._config.localVideo.name, {
-          checkShouldShow: true,
-        })
-      );
+      return;
     }
 
     const image = this._canvasRender.data.images.find((image) => {
