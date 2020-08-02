@@ -16,6 +16,7 @@ export default class extends lwpRenderer {
     this._initEventBindings();
     this._initRenderTargets();
     this._emit("created", this);
+    this.initAgent = this._initAgent.bind(this);
     return this;
   }
 
@@ -58,21 +59,10 @@ export default class extends lwpRenderer {
         register_expires: this._config.user_agent.register_expires,
         user_agent: this._config.user_agent.user_agent,
         session_timers: false,
+        authorization_jwt: this._config.authentication.token,
       };
 
-      this._userAgent = new JsSIP.UA(config);
-      this._userAgent.receiveRequest = (request) => {
-        /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
-        const config_user = this._userAgent._configuration.uri.user;
-        const ruri_user = request.ruri.user;
-        if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
-          request.ruri.user = config_user;
-        }
-        return this._userAgent.__proto__.receiveRequest.call(
-          this._userAgent,
-          request
-        );
-      };
+      this.initAgent(config);
 
       this._userAgent.start();
 
@@ -338,6 +328,22 @@ export default class extends lwpRenderer {
       // TODO: handle when socket is an object with weights...
       this._sockets.push(new JsSIP.WebSocketInterface(socket));
     });
+  }
+
+  _initAgent(config) {
+      this._userAgent = new JsSIP.UA(config);
+      this._userAgent.receiveRequest = (request) => {
+        /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
+        const config_user = this._userAgent._configuration.uri.user;
+        const ruri_user = request.ruri.user;
+        if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
+          request.ruri.user = config_user;
+        }
+        return this._userAgent.__proto__.receiveRequest.call(
+          this._userAgent,
+          request
+        );
+      };
   }
 
   _initEventBindings() {
