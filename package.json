@@ -2,7 +2,7 @@
   "name": "libwebphone",
   "version": "2.0.0",
   "description": "A library of components to build real-time media clients in the browser",
-  "main": "index.html",
+  "main": "src/index.js",
   "scripts": {
     "dev": "webpack-dev-server --config configuration/development/webpack.config.js --watch",
     "watch": "webpack --config configuration/development/webpack.config.js --watch",
