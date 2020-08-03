@@ -59,7 +59,6 @@ export default class extends lwpRenderer {
         register_expires: this._config.user_agent.register_expires,
         user_agent: this._config.user_agent.user_agent,
         session_timers: false,
-        authorization_jwt: this._config.authentication.token,
       };
 
       this.initAgent(config);
