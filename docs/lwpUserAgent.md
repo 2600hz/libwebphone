@@ -113,11 +113,13 @@ Returns:
 
 Updates the redial target.
 
-#### call(target)
+#### call(target, custom_headers, anonymous)
 
 | Name   | Type   | Default | Description                 |
 | ------ | ------ | ------- | --------------------------- |
 | target | string |         | The target for the new call |
+| custom_headers | array |   []      | A list of strings to add to the INVITE |
+| anonymous | boolean |    false     | Whether the call should be done anonymously |
 
 Attempts to create a new call to target, or the redial target if non is provided
 as an argument.
@@ -127,6 +129,9 @@ streams, otherwise it will be left up to jssip internals.
 
 Additionally, if lwpCallList is not available this will terminate any active
 calls first ensuring only one call is active at a time.
+
+If custom_headers are provided they will be merged with any configured headers.  The
+format of each string should be the full, valid SIP header.  For example: "X-Foo: bar"
 
 #### hangupAll()
 
@@ -184,6 +189,7 @@ Re-paint / update all render targets.
 | user_agent.register_expires     | integer                                                                                                   | 300                    | From jssip documentation "Registration expiry time (in seconds) (Integer). "                                                                                                                                                                                                                         |
 | user_agent.user_agent           | string                                                                                                    | 2600Hz libwebphone 2.x | From jssip documentation "User-Agent header field value (String) present in SIP messages."                                                                                                                                                                                                           |
 | user_agent.redial               | string                                                                                                    | \*97                   | The initial value for the redial target                                                                                                                                                                                                                                                              |
+| user_agent.custom_headers.establish_call               | array                                                                                                    | []                   | A list of strings to add to every INVITE when establishing a call target                                                                                                                                                                                                                                                              |
 | debug                           | boolean                                                                                                   | false                  | The inital value for the debugging option                                                                                                                                                                                                                                                            |
 | renderTargets                   | array                                                                                                     | []                     | See [lwpRenderer](lwpRenderer.md)                                                                                                                                                                                                                                                                    |
 

@@ -209,8 +209,12 @@ export default class extends lwpRenderer {
     this._emit("redial.update", this, this._redialTarget);
   }
 
-  call(target = null) {
-    let options = { data: { lwpStreamId: lwpUtils.uuid() } };
+  call(target = null, custom_headers = [], anonymous = false) {
+    let options = {
+      data: { lwpStreamId: lwpUtils.uuid() },
+      extraHeaders: [...custom_headers, ...this._config.custom_headers.establish_call],
+      anonymous: anonymous
+    };
     const mediaDevices = this._libwebphone.getMediaDevices();
     const callList = this._libwebphone.getCallList();
 
@@ -303,7 +307,10 @@ export default class extends lwpRenderer {
         register: true,
         register_expires: 300,
         user_agent: "2600Hz libwebphone 2.x",
-        redial: "*97",
+        redial: "*97"
+      },
+      custom_headers: {
+        establish_call: []
       },
       debug: false,
     };
