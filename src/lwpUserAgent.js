@@ -40,11 +40,7 @@ export default class extends lwpRenderer {
     try {
       const config = {
         sockets: this._sockets,
-        uri:
-          this._config.authentication.username +
-          "@" +
-          this._config.authentication.realm,
-        authorization_user: this._config.authentication.username,
+        uri: "webphone@" + this._config.authentication.realm,
         connection_recovery_max_interval: this._config.transport
           .recovery_max_interval,
         connection_recovery_min_interval: this._config.transport
@@ -53,13 +49,25 @@ export default class extends lwpRenderer {
         display_name: this._config.user_agent.display_name,
         instance_id: this._config.user_agent.instance_id,
         no_answer_timeout: this._config.user_agent.no_answer_timeout,
-        password: this._config.authentication.password,
         realm: this._config.authentication.realm,
         register: this._config.user_agent.register,
         register_expires: this._config.user_agent.register_expires,
         user_agent: this._config.user_agent.user_agent,
         session_timers: false,
       };
+
+      if (this._config.authentication.jwt) {
+        config.authorization_jwt = this._config.authentication.jwt;
+      } else {
+        if (this._config.authentication.username) {
+          config.authorization_user = this._config.authentication.username;
+          config.uri = this._config.authentication.username + "@" + this._config.authentication.realm;
+
+          if (this._config.authentication.password) {
+            config.password = this._config.authentication.password;
+          }
+        }
+      }
 
       this.initAgent(config);
 
@@ -337,19 +345,24 @@ export default class extends lwpRenderer {
   }
 
   _initAgent(config) {
-      this._userAgent = new JsSIP.UA(config);
-      this._userAgent.receiveRequest = (request) => {
-        /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
-        const config_user = this._userAgent._configuration.uri.user;
-        const ruri_user = request.ruri.user;
-        if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
-          request.ruri.user = config_user;
-        }
-        return this._userAgent.__proto__.receiveRequest.call(
-          this._userAgent,
-          request
-        );
-      };
+    this._userAgent = new JsSIP.UA(config);
+    this._userAgent.receiveRequest = (request) => {
+      /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
+      const config_user = this._userAgent._configuration.uri.user;
+      const ruri_user = request.ruri.user;
+      if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
+        request.ruri.user = config_user;
+      }
+      return this._userAgent.__proto__.receiveRequest.call(
+        this._userAgent,
+        request
+      );
+    };
+
+    if (this._config.custom_headers.register) {
+      this._userAgent.registrator().setExtraHeaders(this._config.custom_headers.register);
+      console.log(this._userAgent);
+    }
   }
 
   _initEventBindings() {
