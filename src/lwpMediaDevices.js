@@ -112,6 +112,63 @@ export default class extends lwpRenderer {
     }
   }
 
+  /**
+   * Start Screen Capture.
+   * @param {DisplayMediaStreamConstraints} [options] The source for screen capture.
+   * @param {boolean} [useDisplayMedia] Use mediaDevices.getDisplayMedia over mediaDevices.getUserMedia
+   */
+  async startScreenCapture(options = {}, useDisplayMedia = true) {
+    /**
+     * Screen Capture acts as a new videoinput device,
+     * meaning that if you switch calls when screensharing
+     * the new call will also be screensharing if video is unmuted.
+     */
+    try {
+      this._captureStream = useDisplayMedia
+        ? await navigator.mediaDevices.getDisplayMedia(options)
+        : await navigator.mediaDevices.getUserMedia(options);
+
+      this._emit("screenCapture.started", this, this._captureStream);
+    } catch (error) {
+      this._emit("screenCapture.error", this, error);
+    }
+
+    if (this._captureStream) {
+      const screenTrack = this._captureStream.getVideoTracks()[0];
+
+      screenTrack.addEventListener("ended", () => {
+        const selectedDevice = this._availableDevices.videoinput.find(
+          (device) => device.selected === true
+        );
+
+        this.stopScreenCapture();
+        this.changeDevice("videoinput", selectedDevice.id);
+      });
+
+      this._mediaStreamPromise.then((mediaStream) => {
+        this._emit(
+          "video.input.changed",
+          this,
+          lwpUtils.trackParameters(mediaStream, screenTrack)
+        );
+      });
+    }
+  }
+
+  /**
+   * Stops Screen Capture and enables previously selected videoinput
+   */
+  stopScreenCapture() {
+    const currentTracks = this._captureStream.getTracks();
+
+    if (currentTracks.length > 0) {
+      currentTracks.forEach((track) => track.stop());
+    }
+
+    this._captureStream = null;
+    this._emit("screenCapture.stopped", this);
+  }
+
   getMediaElement(deviceKind) {
     if (
       this._config[deviceKind] &&
@@ -253,6 +310,7 @@ export default class extends lwpRenderer {
     const defaults = {
       en: {
         none: "None",
+        screenCapture: "Screen Capture",
         audiooutput: "Speaker",
         audioinput: "Microphone",
         videoinput: "Camera",
@@ -300,6 +358,7 @@ export default class extends lwpRenderer {
         show: true,
         constraints: {},
         preferedDeviceIds: [],
+        screenCapture: false,
         mediaElement: {
           create: false,
           elementId: null,
@@ -324,6 +383,8 @@ export default class extends lwpRenderer {
     this._startedStreams = [];
 
     this._availableDevices = {};
+
+    this._captureStream = null;
 
     this._deviceKinds().forEach((deviceKind) => {
       if (
@@ -366,11 +427,10 @@ export default class extends lwpRenderer {
           Object.keys(
             this._config[deviceKind].mediaElement.initParameters
           ).forEach((parameterName) => {
-            this._config[deviceKind].mediaElement.element[
-              parameterName
-            ] = this._config[deviceKind].mediaElement.initParameters[
-              parameterName
-            ];
+            this._config[deviceKind].mediaElement.element[parameterName] =
+              this._config[deviceKind].mediaElement.initParameters[
+                parameterName
+              ];
           });
         }
       }
@@ -396,6 +456,17 @@ export default class extends lwpRenderer {
         kind: "videoinput",
         displayOrder: 0,
       }),
+      // Add screenCapture device if screenCapture is enabled in config
+      ...(this._config.videoinput.screenCapture
+        ? [
+            this._deviceParameters({
+              deviceId: "screenCapture",
+              label: "libwebphone:mediaDevices.screenCapture",
+              kind: "videoinput",
+              displayOrder: 1,
+            }),
+          ]
+        : []),
     ];
   }
 
@@ -526,6 +597,7 @@ export default class extends lwpRenderer {
       template: this._renderDefaultTemplate(),
       i18n: {
         none: "libwebphone:mediaDevices.none",
+        screenCapture: "libwebphone:mediaDevices.screenCapture",
         audiooutput: "libwebphone:mediaDevices.audiooutput",
         audioinput: "libwebphone:mediaDevices.audioinput",
         videoinput: "libwebphone:mediaDevices.videoinput",
@@ -755,9 +827,8 @@ export default class extends lwpRenderer {
       let mutedInputs = [];
 
       const trackKind = preferedDevice.trackKind;
-      const trackConstraints = this._createConstraints(preferedDevice)[
-        trackKind
-      ];
+      const trackConstraints =
+        this._createConstraints(preferedDevice)[trackKind];
       const previousTrack = mediaStream.getTracks().find((track) => {
         return track.kind == preferedDevice.trackKind;
       });
@@ -766,9 +837,47 @@ export default class extends lwpRenderer {
         previousTrack
       );
 
+      if (trackKind === "video" && preferedDevice.id === "screenCapture") {
+        return this.startScreenCapture();
+      }
+
+      if (this._captureStream) {
+        this.stopScreenCapture();
+      }
+
       if (previousTrack) {
         mutedInputs = previousTrack.enabled ? [] : [previousTrack.kind];
         this._removeTrack(mediaStream, previousTrack);
+      }
+
+      if (trackKind === "video" && preferedDevice.id === "none") {
+        // Disable video for all streams, do not replace track or media stream
+        this._startedStreams.forEach((request) => {
+          if (request.mediaStream) {
+            request.mediaStream.getVideoTracks().forEach((track) => {
+              track.enabled = false;
+            });
+          }
+        });
+
+        this._availableDevices[preferedDevice.deviceKind].forEach(
+          (availableDevice) => {
+            if (availableDevice.id === "none") {
+              availableDevice.selected = true;
+            } else {
+              availableDevice.selected = false;
+            }
+          }
+        );
+
+        this._emit(
+          trackKind + ".input.changed",
+          this,
+          null,
+          previousTrackParameters
+        );
+
+        return;
       }
 
       if (trackConstraints) {
@@ -793,33 +902,6 @@ export default class extends lwpRenderer {
           }
         });
       }
-
-      if (trackKind === "video" && preferedDevice.id === "none") {
-        this._startedStreams.forEach((request) => {
-          if (request.mediaStream) {
-            request.mediaStream.getVideoTracks().forEach((track) => {
-              track.enabled = false;
-            });
-          }
-        });
-      }
-
-      this._availableDevices[preferedDevice.deviceKind].forEach(
-        (availableDevice) => {
-          if (availableDevice.id == "none") {
-            availableDevice.selected = true;
-          } else {
-            availableDevice.selected = false;
-          }
-        }
-      );
-
-      this._emit(
-        trackKind + ".input.changed",
-        this,
-        null,
-        previousTrackParameters
-      );
     });
   }
 
@@ -1147,9 +1229,8 @@ export default class extends lwpRenderer {
           this._availableDevices[device.kind] = [];
         }
 
-        enumeratedDevice.displayOrder = this._availableDevices[
-          device.kind
-        ].length;
+        enumeratedDevice.displayOrder =
+          this._availableDevices[device.kind].length;
 
         enumeratedDevice.preference =
           (this._config[device.kind].preferedDeviceIds || []).indexOf(
