@@ -495,12 +495,8 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.video.input.changed",
       (lwp, mediaDevices, newTrack) => {
-        if (this.hasSession()) {
-          if (newTrack) {
-            this.replaceSenderTrack(newTrack.track);
-          } else {
-            this.removeSenderTrack("video");
-          }
+        if (this.hasSession() && newTrack) {
+          this.replaceSenderTrack(newTrack.track);
         }
       }
     );
