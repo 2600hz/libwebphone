@@ -58,6 +58,7 @@ export default class extends lwpRenderer {
 
       if (this._config.authentication.jwt) {
         config.authorization_jwt = this._config.authentication.jwt;
+        config.uri = this._config.authentication.username + "@" + this._config.authentication.realm
       } else {
         if (this._config.authentication.username) {
           config.authorization_user = this._config.authentication.username;
