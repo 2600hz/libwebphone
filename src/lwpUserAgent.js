@@ -16,6 +16,7 @@ export default class extends lwpRenderer {
     this._initEventBindings();
     this._initRenderTargets();
     this._emit("created", this);
+    this.initAgent = this._initAgent.bind(this);
     return this;
   }
 
