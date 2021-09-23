@@ -66,6 +66,19 @@ If the provided device kind is already muted, unmute it. Otherwise if the device
 | ---------- | ------ | ------- | -------------------------------------------------------------------- |
 | deviceKind | string |         | The device kind to toggle mute (audiooutput, audioinput, videoinput) |
 
+#### startScreenCapture(options, useDisplayMedia)
+
+Replaces the current video stream with the contents of a display or portion thereof (a window).
+
+| Name            | Type                                                                                              | Default | Description                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| options         | [MediaStreamConstraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints) |         | Object specifying requirements for the returned MediaStream                                                                                                                                          |
+| useDisplayMedia | boolean                                                                                           | true    | Use [getDisplayMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) over [getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) |
+
+#### stopScreenCapture()
+
+Stops Screen Capture and enables previously selected videoinput
+
 #### getMediaElement(deviceKind)
 
 Get the HTML media element linked to the provided device kind.
