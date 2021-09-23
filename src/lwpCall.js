@@ -193,17 +193,19 @@ export default class {
     }
   }
 
-  mute(options = {}) {
-    options = lwpUtils.merge(options, { audio: true, video: true });
-
+  /**
+   * @param {{audio: boolean, video: boolean}} options - The channels you want to mute
+   */
+  mute(options = { audio: true, video: true }) {
     if (this.hasSession()) {
       this._getSession().mute(options);
     }
   }
 
-  unmute(options = {}) {
-    options = lwpUtils.merge(options, { audio: true, video: true });
-
+  /**
+   * @param {{audio: boolean, video: boolean}} options - The channels you want to unmute
+   */
+  unmute(options = { audio: true, video: true }) {
     if (this.hasSession()) {
       this._getSession().unmute(options);
     }
@@ -393,6 +395,8 @@ export default class {
 
   summary() {
     const direction = this.getDirection();
+    const { audio: isAudioMuted, video: isVideoMuted } = this.isMuted(true);
+
     return {
       callId: this.getId(),
       hasSession: this.hasSession(),
@@ -400,7 +404,8 @@ export default class {
       established: this.isEstablished(),
       ended: this.isEnded(),
       held: this.isOnHold(),
-      muted: this.isMuted(),
+      isAudioMuted,
+      isVideoMuted,
       primary: this.isPrimary(),
       inTransfer: this.isInTransfer(),
       direction: direction,
@@ -495,12 +500,8 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.video.input.changed",
       (lwp, mediaDevices, newTrack) => {
-        if (this.hasSession()) {
-          if (newTrack) {
-            this.replaceSenderTrack(newTrack.track);
-          } else {
-            this.removeSenderTrack("video");
-          }
+        if (this.hasSession() && newTrack) {
+          this.replaceSenderTrack(newTrack.track);
         }
       }
     );
@@ -538,6 +539,13 @@ export default class {
     if (this.hasSession()) {
       this._getSession().on("progress", (...event) => {
         this._emit("progress", this, ...event);
+      });
+      this._getSession().on("connecting", () => {
+        // Mute video and audio after the local media stream is added into RTCSession
+        this._getSession().mute({
+          audio: this._config.startWithAudioMuted,
+          video: this._config.startWithVideoMuted,
+        });
       });
       this._getSession().on("confirmed", (...event) => {
         this._answerTime = new Date();

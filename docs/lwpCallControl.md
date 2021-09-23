@@ -29,11 +29,19 @@ Resumes the primary call if on hold.
 
 #### mute()
 
-Mutes audio and video being transmitted on the primary call.
+Mutes audio being transmitted on the primary call.
 
 #### unmute()
 
-Unmutes audio and video being transmitted on the primary call.
+Unmutes audio being transmitted on the primary call.
+
+### muteVideo()
+
+Mutes video being transmitted on the primary call.
+
+### unmuteVideo()
+
+Unmutes video being transmitted on the primary call.
 
 #### transfer()
 
@@ -61,8 +69,10 @@ Re-paint / update all render targets.
 | hangup           | Hung Up             | Used as the text for the hang up action                 |
 | hold             | Hold                | Used as the text for the hold action                    |
 | unhold           | Resume              | Used as the text for the unhold action                  |
-| mute             | Mute                | Used as the text for the mute action                    |
-| unmute           | Unmute              | Used as the text for the unmute action                  |
+| mute             | Mute Audio          | Used as the text for the mute action                    |
+| unmute           | Unmute Audio        | Used as the text for the unmute action                  |
+| muteVideo        | Mute Video          | Used as the text for the mute video action              |
+| unmuteVideo      | Unmute Video        | Used as the text for the unmute video action            |
 | transferblind    | Blind Transfer      | Used as the text for the start blind transfer action    |
 | transferattended | Attended Transfer   | Used as the text for the start attended transfer action |
 | transfercomplete | Transfer (complete) | Used as the text for the complete transfer action       |

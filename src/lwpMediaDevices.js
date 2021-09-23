@@ -106,7 +106,7 @@ export default class extends lwpRenderer {
   toggleMute(deviceKind = null) {
     switch (deviceKind) {
       case "audiooutput":
-        return this._toggleUuteOutput(deviceKind);
+        return this._toggleMuteOutput(deviceKind);
       default:
         return this._toggleMuteInput(deviceKind);
     }
@@ -902,6 +902,23 @@ export default class extends lwpRenderer {
           }
         });
       }
+
+      this._availableDevices[preferedDevice.deviceKind].forEach(
+        (availableDevice) => {
+          if (availableDevice.id == "none") {
+            availableDevice.selected = true;
+          } else {
+            availableDevice.selected = false;
+          }
+        }
+      );
+
+      this._emit(
+        trackKind + ".input.changed",
+        this,
+        null,
+        previousTrackParameters
+      );
     });
   }
 
