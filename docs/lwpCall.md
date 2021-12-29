@@ -363,11 +363,16 @@ If the call is on hold it will not invoke the jssip renegotiate because the
 resume from hold will effectively renegotion when the Re-INVITE is sent to
 restore the media streams.
 
-#### sendDTMF(signal)
+#### sendDTMF(signal, options)
 
-| Name   | Type              | Default | Description                        |
-| ------ | ----------------- | ------- | ---------------------------------- |
-| signal | string or integer | null    | One or multiple valid DTMF symbols |
+| Name                  | Type              | Default | Description                                                                                  |
+| --------------------  | ----------------- | ------- | -------------------------------------------------------------------------------------------- |
+| signal                | string or integer | null    | One or multiple valid DTMF symbols                                                           |
+| options.duration      | string or integer | 100     | Positive decimal Number indicating the duration of the tone expressed in milliseconds        |
+| options.interToneGap  | string or integer | 500     | Positive decimal Number indicating the interval between two tones expressed in milliseconds  |
+| options.extraHeaders  | array             | null    | Optional Array of Strings with extra SIP headers for each INFO request                       |
+| options.transportType | string or integer | 'INFO'  | Optional String INFO’ or ‘RFC2833’                                                           |
+
 
 If the instance has a session, invokes the jssip sendDTMF method described by
 jssip as:
