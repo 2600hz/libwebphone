@@ -294,10 +294,10 @@ export default class {
     }
   }
 
-  sendDTMF(signal) {
+  sendDTMF(signal, options) {
     if (this.hasSession()) {
-      this._getSession().sendDTMF(signal);
-      this._emit("send.dtmf", this, signal);
+      this._getSession().sendDTMF(signal, options);
+      this._emit("send.dtmf", this, signal, options);
     }
   }
 
