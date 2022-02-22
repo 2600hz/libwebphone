@@ -937,6 +937,21 @@ export default class extends lwpRenderer {
         })
         .catch((error) => {
           this._emit("getUserMedia.error", this, error);
+          if (constraints.video && constraints.audio) {
+            delete constraints.video;
+            return this._shimGetUserMedia(constraints)
+              .then((otherMediaStream) => {
+                otherMediaStream.getTracks().forEach((track) => {
+                  this._addTrack(mediaStream, track);
+                });
+      
+                return mediaStream;
+              })
+              .then((mediaStream) => {
+                this._updateMediaElements(mediaStream);
+                return mediaStream;
+              });
+          }
         });
     });
   }
