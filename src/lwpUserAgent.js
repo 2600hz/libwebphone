@@ -1,6 +1,6 @@
 "use strict";
 
-import * as JsSIP from "jssip";
+import * as JsSIP from "@2600hz/jssip";
 import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
@@ -135,6 +135,17 @@ export default class extends lwpRenderer {
     }
 
     return false;
+  }
+
+  startDebugJSSIP() {
+
+    JsSIP.debug.enable("JsSIP:*");
+  }
+
+  stopDebugJSSIP() {
+
+    JsSIP.debug.enable("");
+
   }
 
   startDebug() {
