@@ -24,7 +24,7 @@
     "detectrtc": "^1.3.9",
     "eventemitter2": "^6.2.1",
     "i18next": "^19.8.7",
-    "@2600hz/jssip": "3.10.0",
+    "jssip": "github:2600Hz/libwebphone-deps-JsSIP#jssip10",
     "lodash": "^4.17.21",
     "media-device-id": "^1.0.1",
     "mustache": "^3.1.0",

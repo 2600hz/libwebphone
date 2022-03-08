@@ -1,6 +1,6 @@
 "use strict";
 
-import * as JsSIP from "@2600hz/jssip";
+import * as JsSIP from "jssip";
 import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
