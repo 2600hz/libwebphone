@@ -93,6 +93,13 @@ export default class extends lwpRenderer {
     }
   }
 
+  sendInfo(contentType, body, options = {}) {
+    const currentCall = this._getCall();
+    if (currentCall) {
+      currentCall.sendInfo(contentType, body, options);
+    }
+  }
+
   updateRenders(call = null) {
     let callSummary = null;
     const callList = this._libwebphone.getCallList();

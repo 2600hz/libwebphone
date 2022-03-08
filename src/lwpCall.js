@@ -301,6 +301,13 @@ export default class {
     }
   }
 
+  sendInfo(contentType, body, options = {}) {
+    if (this.hasSession()) {
+      this._getSession().sendInfo(contentType, body, options);
+      this._emit("send.info", this, contentType, body, options);
+    }
+  }
+
   changeVolume(volume = null, kind = null) {
     if (volume === null && this._libwebphone.getAudioContext()) {
       volume = this._libwebphone
