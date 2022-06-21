@@ -113,13 +113,12 @@ Returns:
 
 Updates the redial target.
 
-#### call(target, custom_headers, anonymous)
+#### call(target, custom_headers, anonymous, options)
 
 | Name   | Type   | Default | Description                 |
 | ------ | ------ | ------- | --------------------------- |
 | target | string |         | The target for the new call |
-| custom_headers | array |   []      | A list of strings to add to the INVITE |
-| anonymous | boolean |    false     | Whether the call should be done anonymously |
+| call_options | object |    {}     |  [jssip UA.call()](https://jssip.net/documentation/3.4.x/api/ua/#method_call) options parameter |
 
 Attempts to create a new call to target, or the redial target if non is provided
 as an argument.
@@ -132,6 +131,8 @@ calls first ensuring only one call is active at a time.
 
 If custom_headers are provided they will be merged with any configured headers.  The
 format of each string should be the full, valid SIP header.  For example: "X-Foo: bar"
+
+If options are provided they will be merged as part of the jssip UA.call() options
 
 #### hangupAll()
 
