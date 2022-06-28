@@ -217,14 +217,12 @@ export default class extends lwpRenderer {
     this._emit("redial.update", this, this._redialTarget);
   }
 
-  call(target = null, call_options = {}) {
+  call(target = null, custom_headers = [], anonymous = false) {
     let options = {
-      ...call_options,
       data: { lwpStreamId: lwpUtils.uuid() },
-      extraHeaders: [...(call_options.extraHeaders || []), ...this._config.custom_headers.establish_call],
-      anonymous: call_options.anonymous || false
+      extraHeaders: [...custom_headers, ...this._config.custom_headers.establish_call],
+      anonymous: anonymous
     };
-
     const mediaDevices = this._libwebphone.getMediaDevices();
     const callList = this._libwebphone.getCallList();
 
