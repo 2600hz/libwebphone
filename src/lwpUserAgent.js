@@ -217,12 +217,20 @@ export default class extends lwpRenderer {
     this._emit("redial.update", this, this._redialTarget);
   }
 
-  call(target = null, custom_headers = [], anonymous = false) {
-    let options = {
+  call(target = null, custom_headers = [], options = false) {
+    let defaultOptions = {
       data: { lwpStreamId: lwpUtils.uuid() },
       extraHeaders: [...custom_headers, ...this._config.custom_headers.establish_call],
-      anonymous: anonymous
     };
+    if (typeof options === 'boolean') {
+      defaultOptions.anonymous = options;
+    }
+    if (typeof options === 'object') {
+      defaultOptions.rtcOfferConstraints = {
+        offerToReceiveVideo: options.receive_video || false
+      };
+      defaultOptions.anonymous = options.anonymous || false
+    }
     const mediaDevices = this._libwebphone.getMediaDevices();
     const callList = this._libwebphone.getCallList();
 
@@ -238,18 +246,18 @@ export default class extends lwpRenderer {
 
     if (mediaDevices) {
       mediaDevices
-        .startStreams(options.data.lwpStreamId)
+        .startStreams(defaultOptions.data.lwpStreamId)
         .then((streams) => {
-          options = lwpUtils.merge(options, {
+          options = lwpUtils.merge(defaultOptions, {
             mediaStream: streams,
           });
-          this._call(target, options);
+          this._call(target, defaultOptions);
         })
         .catch((error) => {
           this._emit("call.failed", this, error);
         });
     } else {
-      this._call(target, options);
+      this._call(target, defaultOptions);
     }
   }
 

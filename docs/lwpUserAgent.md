@@ -113,13 +113,16 @@ Returns:
 
 Updates the redial target.
 
-#### call(target, custom_headers, anonymous)
+#### call(target, custom_headers, anonymous | options)
 
-| Name   | Type   | Default | Description                 |
-| ------ | ------ | ------- | --------------------------- |
-| target | string |         | The target for the new call |
-| custom_headers | array |   []      | A list of strings to add to the INVITE |
-| anonymous | boolean |    false     | Whether the call should be done anonymously |
+| Name                      |  Type   | Default | Description                                                                                         |
+| ------------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------- |
+| target                    | string  |                                                           | The target for the new call                       |
+| custom_headers            | array   | []                                                        | A list of strings to add to the INVITE            |
+| anonymous                 | boolean | false                                                     | Whether the call should be done anonymously       |
+| options              | object  | `{receive_video: false, anonymous: false}`                 | additional call options                           |
+| options.anonymous    | boolean | false                                                     | Whether the call should be done anonymously       |
+| options.receive_video | boolean | false                                                     | Wheter the call should accept remote video stream |
 
 Attempts to create a new call to target, or the redial target if non is provided
 as an argument.
