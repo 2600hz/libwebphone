@@ -189,7 +189,8 @@ Re-paint / update all render targets.
 | mediaDevices.video.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is started         |
 | mediaDevices.audio.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is stopped         |
 | mediaDevices.video.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is stopped         |
-
+| mediaDevices.loaded               | availableDevices                                                                      | Emitted when the devices are initialized        |
+| mediaDevices.refreshed            | availableDevices                                                                      | Emitted when the devices are changed            |
 > NOTE! All standard HTML media events for the audio output, audio input and video input elements are emitted as mediaDevices.{kind}.{direction}.{eventName} with the additional parameters: element (HTML element), event (HTML media event). For example, mediaDevices.audio.input.playing.
 
 ### Consumed
