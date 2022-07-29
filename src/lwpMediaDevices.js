@@ -293,6 +293,7 @@ export default class extends lwpRenderer {
       })
       .then(() => {
         this._sortAvailableDevices();
+        this._emit("devices.refreshed", this, this._availableDevices);
         this.updateRenders();
       });
   }
@@ -486,7 +487,7 @@ export default class extends lwpRenderer {
 
     if (
       constraints.video &&
-      this._config.audioinput.preferedDeviceIds.length > 0
+      this._config.videoinput.preferedDeviceIds.length > 0
     ) {
       constraints.video = {};
       constraints.video.deviceId = this._config.videoinput.preferedDeviceIds;
@@ -538,6 +539,7 @@ export default class extends lwpRenderer {
         });
 
         this._loaded = true;
+        this._emit("devices.loaded", this, this._availableDevices);
         this.updateRenders();
       });
     });
@@ -944,7 +946,7 @@ export default class extends lwpRenderer {
                 otherMediaStream.getTracks().forEach((track) => {
                   this._addTrack(mediaStream, track);
                 });
-      
+
                 return mediaStream;
               })
               .then((mediaStream) => {
