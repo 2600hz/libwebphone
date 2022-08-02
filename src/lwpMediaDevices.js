@@ -551,9 +551,9 @@ export default class extends lwpRenderer {
     });
 
     if (this._config.detectDeviceChanges) {
-      navigator.mediaDevices.ondevicechange = () => {
+      navigator.mediaDevices.addEventListener("devicechange", () => {
         this.refreshAvailableDevices();
-      };
+      });
     }
 
     this._libwebphone.on("audioContext.preview.loopback.started", () => {
