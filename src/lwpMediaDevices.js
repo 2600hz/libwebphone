@@ -1267,6 +1267,7 @@ export default class extends lwpRenderer {
       name: this._getDeviceName(device),
       trackKind: this._deviceKindtoTrackKind(device.kind),
       connected: true,
+      groupId: device.groupId
     };
   }
 
