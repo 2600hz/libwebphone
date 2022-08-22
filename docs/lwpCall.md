@@ -410,6 +410,21 @@ Returns:
 callId hassession progress established ended hold muted primary inTransfer
 direction terminating originating localIdentity remoteIdentity
 
+#### getCustomHeaders()
+
+List of custom headers sent, custom headers starting with X-
+
+Returns:
+
+The return is an Object with the properties key, value associated with each of the custom headers.
+
+```json
+{
+  "X-CustomHeader": "present",
+  "X-AnotherHeader": "anotherValue"
+}
+```
+
 ## Configuration
 
 | Name                  | Type     | Default | Description                                                                                                                                       |
