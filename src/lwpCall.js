@@ -411,6 +411,23 @@ export default class {
     };
   }
 
+  getCustomHeaders() {
+    const session = this._getSession();
+    const request = session._request;
+    if (request && request.headers) {
+      return Object.keys(request.headers).reduce((customHeaders, headerName) => {
+        // make sure it's a custom header
+        if (headerName.startsWith('X-')) {
+          const headerValue = request.headers[headerName];
+          if (headerValue && Array.isArray(headerValue)) {
+            customHeaders[headerName] = headerValue.map(header => header.raw).toString();
+          }
+        }
+        return customHeaders;
+      }, {})
+    }
+  }  
+
   /** Init functions */
 
   _initProperties() {
