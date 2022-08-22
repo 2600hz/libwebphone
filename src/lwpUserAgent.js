@@ -350,7 +350,7 @@ export default class extends lwpRenderer {
       /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
       const config_user = this._userAgent._configuration.uri.user;
       const ruri_user = request.ruri.user;
-      if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
+      if (config_user && ruri_user && config_user.toLowerCase() == ruri_user.toLowerCase()) {
         request.ruri.user = config_user;
       }
       return this._userAgent.__proto__.receiveRequest.call(
