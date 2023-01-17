@@ -401,9 +401,12 @@ export default class extends lwpRenderer {
         this._config[deviceKind].mediaElement.create &&
         this._config[deviceKind].enabled
       ) {
-        this._config[deviceKind].mediaElement.element = document.createElement(
-          this._deviceKindtoTrackKind(deviceKind)
-        );
+        if (deviceKind === "audiooutput") {
+          this._config[deviceKind].mediaElement.element = new Audio();
+        } else {
+          this._config[deviceKind].mediaElement.element =
+            document.createElement(this._deviceKindtoTrackKind(deviceKind));
+        }
       }
 
       if (this._config[deviceKind].mediaElement.element) {
