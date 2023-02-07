@@ -747,6 +747,9 @@ export default class extends lwpRenderer {
           if (this._config.audiooutput.enabled) {
             this._emit("audio.output.changed", this, preferedDevice);
           }
+        })
+        .catch((error) => {
+          this._emit("audio.output.error", error);
         });
     } else {
       this._availableDevices[preferedDevice.deviceKind].forEach(
