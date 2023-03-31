@@ -421,7 +421,7 @@ export default class {
   _initMediaElement(elementKind, deviceKind) {
     const element = document.createElement(elementKind);
      
-    if (this.hasSession()) {
+    if (this.hasSession() && element.setSinkId !== undefined) {
       const preferedDevice = this._libwebphone
         .getMediaDevices()
         .getPreferedDevice(deviceKind);
@@ -530,7 +530,7 @@ export default class {
       (lwp, mediaDevices, preferedDevice) => {
         Object.keys(this._streams.remote.elements).forEach((kind) => {
           const element = this._streams.remote.elements[kind];
-          if (element) {
+          if (element && element.setSinkId !== undefined) {
             try {
               element.setSinkId(preferedDevice.id);
             } catch (error) {
