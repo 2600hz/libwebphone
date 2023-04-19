@@ -8,7 +8,9 @@
     "watch": "webpack --config configuration/development/webpack.config.js --watch",
     "stats": "webpack --json > stats.json",
     "build": "webpack --config configuration/production/webpack.config.js",
-    "lint": "npx eslint src/*"
+    "lint": "npx eslint src/*",
+    "prepare": "npm run snyk-protect",
+    "snyk-protect": "snyk-protect"
   },
   "repository": {
     "type": "git",
@@ -28,13 +30,15 @@
     "media-device-id": "^1.0.1",
     "mustache": "^3.1.0",
     "pretty-ms": "^7.0.0",
-    "webrtc-adapter": "^7.3.0"
+    "webrtc-adapter": "^7.3.0",
+    "@snyk/protect": "latest"
   },
   "devDependencies": {
     "eslint": "^7.19.0",
     "webpack": "^4.46.0",
     "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.2",
+    "webpack-dev-server": "^4.0.0",
     "webpack-merge": "^4.2.2"
-  }
+  },
+  "snyk": true
 }
