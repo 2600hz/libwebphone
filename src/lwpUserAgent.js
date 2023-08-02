@@ -328,6 +328,9 @@ export default class extends lwpRenderer {
       custom_headers: {
         establish_call: []
       },
+      custom_parameters: {
+        contact_uri: {}
+      },
       debug: false,
     };
 
@@ -367,6 +370,10 @@ export default class extends lwpRenderer {
       );
     };
 
+    if (this._config.custom_parameters.contact_uri) {
+      this._userAgent.registrator().setExtraContactParams(this._config.custom_parameters.contact_uri);
+    }
+  
     if (this._config.custom_headers.register) {
       this._userAgent.registrator().setExtraHeaders(this._config.custom_headers.register);
       console.log(this._userAgent);
