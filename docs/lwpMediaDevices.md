@@ -85,7 +85,7 @@ Get the HTML media element linked to the provided device kind.
 
 | Name       | Type   | Default | Description                                                                            |
 | ---------- | ------ | ------- | -------------------------------------------------------------------------------------- |
-| deviceKind | string |         | The device kind linked to the HTML media element (audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind linked to the HTML media element (ringoutput, audiooutput, audioinput, videoinput) |
 
 Returns:
 
@@ -99,7 +99,7 @@ Get the prefered device for the given device kind.
 
 | Name       | Type   | Default | Description                                                   |
 | ---------- | ------ | ------- | ------------------------------------------------------------- |
-| deviceKind | string |         | The device kind to get (audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind to get (ringoutput, audiooutput, audioinput, videoinput) |
 
 Returns:
 
@@ -113,7 +113,7 @@ For the provided device kind attmpet to switch to the provided device id, updati
 
 | Name       | Type   | Default | Description                                                     |
 | ---------- | ------ | ------- | --------------------------------------------------------------- |
-| deviceKind | string |         | The device kind to switch (audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind to switch (ringoutput, audiooutput, audioinput, videoinput) |
 | deviceId   | string |         | The device id to switch to                                      |
 
 #### refreshAvailableDevices()
@@ -129,6 +129,7 @@ Re-paint / update all render targets.
 | Key         | Default (en)             | Description                                                                          |
 | ----------- | ------------------------ | ------------------------------------------------------------------------------------ |
 | none        | None                     | Used as the text for a 'null' selection that can be used to disable that device kind |
+| ringoutput  | Speaker                  | Used to label the selector for the ring audio output device                          |
 | audiooutput | Speaker                  | Used to label the selector for the audio output device                               |
 | audioinput  | Microphone               | Used to label the selector for the audio input device                                |
 | videoinput  | Camera                   | Used to lable the selector for the video input device                                |
@@ -138,6 +139,13 @@ Re-paint / update all render targets.
 
 | Name                                    | Type                                                                                              | Default                            | Description                                                                                                                                                                                                                                             |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ringoutput.enabled                     | boolean                                                                                           | true if sinkId in HtmlMediaElement | Enables ringing output device selection                                                                                                                                                                                                                   |
+| ringoutput.show                        | boolean                                                                                           | true                               | Should the default template show the ringing output device selection                                                                                                                                                                                            |
+| ringoutput.preferedDeviceIds           | array of strings                                                                                  | []                                 | The prefered device ids in order of precedence                                                                                                                                                                                                          |
+| ringoutput.mediaElement.create         | boolean                                                                                           | true                               | Should a HTMLMediaElement be created                                                                                                                                                                                                                    |
+| ringoutput.mediaElement.elementId      | string                                                                                            |                                    | The HTML id of an existing HTMLMediaElement to use                                                                                                                                                                                                      |
+| ringoutput.mediaElement.element        | HTMLMediaElement                                                                                  |                                    | The HTMLMediaElement linked to the output device selection                                                                                                                                                                                              |
+| ringoutput.mediaElement.initParameters | object                                                                                            | { muted: false }                   | Key - value pairs to apply to the HTMLMediaElement                                                                                                                                                                                                      |
 | audiooutput.enabled                     | boolean                                                                                           | true if sinkId in HtmlMediaElement | Enables audio output device selection                                                                                                                                                                                                                   |
 | audiooutput.show                        | boolean                                                                                           | true                               | Should the default template show the output device selection                                                                                                                                                                                            |
 | audiooutput.preferedDeviceIds           | array of strings                                                                                  | []                                 | The prefered device ids in order of precedence                                                                                                                                                                                                          |
@@ -202,6 +210,7 @@ Re-paint / update all render targets.
 | audioContext.started                  | Invokes \_startMediaElements() |
 | mediaDevices.streams.started          | Invokes updateRenders()        |
 | mediaDevices.streams.stop             | Invokes updateRenders()        |
+| mediaDevices.ring.output.changed      | Invokes updateRenders()        |
 | mediaDevices.audio.output.changed     | Invokes updateRenders()        |
 | mediaDevices.audio.input.changed      | Invokes updateRenders()        |
 | mediaDevices.video.input.changed      | Invokes updateRenders()        |
