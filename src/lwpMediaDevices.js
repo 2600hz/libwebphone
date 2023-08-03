@@ -195,6 +195,10 @@ export default class extends lwpRenderer {
     const release = await this._changeStreamMutex.acquire();
     this._preferDevice(preferedDevice);
     switch (deviceKind) {
+      case "ringoutput":
+        return this._changeRingOutputDevice(preferedDevice).then(() => {
+          release();
+        });
       case "audiooutput":
         return this._changeOutputDevice(preferedDevice).then(() => {
           release();
@@ -312,6 +316,7 @@ export default class extends lwpRenderer {
       en: {
         none: "None",
         screenCapture: "Screen Capture",
+        ringoutput: "Ringing Device",
         audiooutput: "Speaker",
         audioinput: "Microphone",
         videoinput: "Camera",
@@ -327,6 +332,19 @@ export default class extends lwpRenderer {
 
   _initProperties(config) {
     const defaults = {
+      ringoutput: {
+        enabled: "sinkId" in HTMLMediaElement.prototype,
+        show: true,
+        preferedDeviceIds: [],
+        mediaElement: {
+          create: true,
+          elementId: null,
+          element: null,
+          initParameters: {
+            muted: false,
+          },
+        },
+      },
       audiooutput: {
         enabled: "sinkId" in HTMLMediaElement.prototype,
         show: true,
@@ -402,7 +420,7 @@ export default class extends lwpRenderer {
         this._config[deviceKind].mediaElement.create &&
         this._config[deviceKind].enabled
       ) {
-        if (deviceKind === "audiooutput") {
+        if (["audiooutput", "ringoutput"].includes(deviceKind)) {
           this._config[deviceKind].mediaElement.element = new Audio();
         } else {
           this._config[deviceKind].mediaElement.element =
@@ -575,6 +593,9 @@ export default class extends lwpRenderer {
     this._libwebphone.on("mediaDevices.streams.stop", () => {
       this.updateRenders();
     });
+    this._libwebphone.on("mediaDevices.ring.output.changed", () => {
+      this.updateRenders();
+    });
     this._libwebphone.on("mediaDevices.audio.output.changed", () => {
       this.updateRenders();
     });
@@ -603,12 +624,24 @@ export default class extends lwpRenderer {
       i18n: {
         none: "libwebphone:mediaDevices.none",
         screenCapture: "libwebphone:mediaDevices.screenCapture",
+        ringoutput: "libwebphone:mediaDevices.ringoutput",
         audiooutput: "libwebphone:mediaDevices.audiooutput",
         audioinput: "libwebphone:mediaDevices.audioinput",
         videoinput: "libwebphone:mediaDevices.videoinput",
         loading: "libwebphone:mediaDevices.loading",
       },
       by_id: {
+        ringoutput: {
+          events: {
+            onchange: (event) => {
+              const element = event.srcElement;
+              if (element.options) {
+                const deviceId = element.options[element.selectedIndex].value;
+                this.changeDevice("ringoutput", deviceId);
+              }
+            },
+          },
+        },
         audiooutput: {
           events: {
             onchange: (event) => {
@@ -652,6 +685,21 @@ export default class extends lwpRenderer {
     return `
         <div>
           {{#data.loaded}}
+            {{#data.ringoutput.show}}
+              <div>
+                <label for="{{by_id.ringoutput.elementId}}">
+                  {{i18n.ringoutput}}
+                </label>
+                <select id="{{by_id.ringoutput.elementId}}">
+                  {{#data.ringoutput.devices}}
+                    {{#connected}}
+                      <option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>
+                    {{/connected}}
+                  {{/data.ringoutput.devices}}
+                </select>
+              </div>
+            {{/data.ringoutput.show}}
+            
             {{#data.audiooutput.show}}
               <div>
                 <label for="{{by_id.audiooutput.elementId}}">
@@ -730,6 +778,43 @@ export default class extends lwpRenderer {
   }
 
   /** Helper functions */
+
+  async _changeRingOutputDevice(preferedDevice) {
+    if (this._config.ringoutput.mediaElement.element) {
+      return this._config.ringoutput.mediaElement.element
+        .setSinkId(preferedDevice.id)
+        .then(() => {
+          this._availableDevices["ringoutput"].forEach((availableDevice) => {
+            if (availableDevice.id == preferedDevice.id) {
+              availableDevice.selected = true;
+            } else {
+              availableDevice.selected = false;
+            }
+          });
+
+          if (this._config.ringoutput.enabled) {
+            this._emit("ring.output.changed", this, preferedDevice);
+          }
+        })
+        .catch((error) => {
+          this._emit("ring.output.error", error);
+        });
+    } else {
+      this._availableDevices["ringoutput"].forEach((availableDevice) => {
+        if (availableDevice.id == preferedDevice.id) {
+          availableDevice.selected = true;
+        } else {
+          availableDevice.selected = false;
+        }
+      });
+
+      if (this._config.ringoutput.enabled) {
+        this._emit("ring.output.changed", this, preferedDevice);
+      }
+
+      return Promise.resolve();
+    }
+  }
 
   async _changeOutputDevice(preferedDevice) {
     if (this._config.audiooutput.mediaElement.element) {
@@ -1273,7 +1358,7 @@ export default class extends lwpRenderer {
       name: this._getDeviceName(device),
       trackKind: this._deviceKindtoTrackKind(device.kind),
       connected: true,
-      groupId: device.groupId
+      groupId: device.groupId,
     };
   }
 
@@ -1288,8 +1373,8 @@ export default class extends lwpRenderer {
 
   _deviceKindtoTrackKind(deviceKind) {
     switch (deviceKind) {
+      case "ringoutput":
       case "audiooutput":
-        return "audio";
       case "audioinput":
         return "audio";
       case "videoinput":
@@ -1299,6 +1384,8 @@ export default class extends lwpRenderer {
 
   _deviceKindtoEventKind(deviceKind) {
     switch (deviceKind) {
+      case "ringoutput":
+        return "ring.output";
       case "audiooutput":
         return "audio.output";
       case "audioinput":
@@ -1309,13 +1396,30 @@ export default class extends lwpRenderer {
   }
 
   _deviceKinds() {
-    return ["audiooutput", "audioinput", "videoinput"];
+    return ["ringoutput", "audiooutput", "audioinput", "videoinput"];
   }
 
   /** Shims */
 
-  _shimEnumerateDevices() {
-    return navigator.mediaDevices.enumerateDevices();
+  async _shimEnumerateDevices() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const ringoutputDevices = [];
+
+    devices.forEach((device) => {
+      if (device.kind !== "audiooutput") return;
+      ringoutputDevices.push(this._outputDeviceToRingDevice(device));
+    });
+
+    return devices.concat(ringoutputDevices);
+  }
+
+  _outputDeviceToRingDevice(device) {
+    return {
+      deviceId: device.deviceId,
+      groupId: device.groupId,
+      kind: "ringoutput",
+      label: device.label,
+    };
   }
 
   _shimGetUserMedia(constraints) {
