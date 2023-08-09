@@ -435,6 +435,26 @@ export default class {
 
   /** Init functions */
 
+  _initMediaElement(elementKind, deviceKind) {
+    const element = document.createElement(elementKind);
+     
+    if (this.hasSession() && element.setSinkId !== undefined) {
+      const preferedDevice = this._libwebphone
+        .getMediaDevices()
+        .getPreferedDevice(deviceKind);
+
+      if (preferedDevice) {
+        try {
+          element.setSinkId(preferedDevice.id);
+        } catch (error) {
+         this._emit("error", error);
+        }
+      }
+    }
+
+    return element;
+  }
+
   _initProperties() {
     this._primary = false;
 
@@ -452,8 +472,8 @@ export default class {
           video: false,
         },
         elements: {
-          audio: document.createElement("audio"),
-          video: document.createElement("video"),
+          audio: this._initMediaElement("audio", "audiooutput"),
+          video: this._initMediaElement("video", "videoinput"),
         },
       },
       local: {
@@ -463,8 +483,8 @@ export default class {
           video: false,
         },
         elements: {
-          audio: document.createElement("audio"),
-          video: document.createElement("video"),
+          audio: this._initMediaElement("audio", "audiooutput"),
+          video: this._initMediaElement("video", "videoinput"),
         },
       },
     };
@@ -527,8 +547,12 @@ export default class {
       (lwp, mediaDevices, preferedDevice) => {
         Object.keys(this._streams.remote.elements).forEach((kind) => {
           const element = this._streams.remote.elements[kind];
-          if (element) {
-            element.setSinkId(preferedDevice.id);
+          if (element && element.setSinkId !== undefined) {
+            try {
+              element.setSinkId(preferedDevice.id);
+            } catch (error) {
+              this._emit("error", error);
+            }
           }
         });
       }
@@ -741,8 +765,10 @@ export default class {
             break;
           case "local":
             peerConnection.getSenders().forEach((peer) => {
-              if (peer.track) {
-                peerTracks.push(peer.track);
+              const track = peer.track;
+              if (track) {
+                track.enabled = !this.isMuted(true)[track.kind];
+                peerTracks.push(track);
               }
             });
             break;

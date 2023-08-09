@@ -379,6 +379,7 @@
                 elementId: "media_device_tweaked",
               },
               data: {
+                ringoutput: { show: false },
                 audiooutput: { show: false },
                 audioinput: { show: false },
               },
@@ -532,6 +533,21 @@
 
                 {{#data.loaded}}
                   <div>
+                    <label for="ringoutput">
+                      {{i18n.ringoutput}}
+                    </label>
+                    <fieldset id="ringoutput">
+                      {{#data.ringoutput.devices}}
+                        {{#connected}}
+                          <div><input type="radio" value="{{id}}" name="{{by_name.ringoutputselector.elementName}}" {{#selected}}checked{{/selected}}>{{name}}</input></div>
+                        {{/connected}}
+                      {{/data.ringoutput.devices}}
+                    </fieldset>
+                  </div>
+
+                  <br>
+                
+                  <div>
                     <label for="audiooutput">
                       {{i18n.audiooutput}}
                     </label>
@@ -588,10 +604,20 @@
                 elementId: "media_device_custom",
               },
               by_name: {
+                ringoutputselector: {
+                  events: {
+                    onchange: (event) => {
+                      const element = event.srcElement;
+                      webphone
+                        .getMediaDevices()
+                        .changeDevice("ringoutput", element.value);
+                    },
+                  },
+                },
                 audiooutputselector: {
                   events: {
                     onchange: (event) => {
-                      let element = event.srcElement;
+                      const element = event.srcElement;
                       webphone
                         .getMediaDevices()
                         .changeDevice("audiooutput", element.value);
@@ -601,7 +627,7 @@
                 audiooinputselector: {
                   events: {
                     onchange: (event) => {
-                      let element = event.srcElement;
+                      const element = event.srcElement;
                       webphone
                         .getMediaDevices()
                         .changeDevice("audioinput", element.value);
@@ -611,7 +637,7 @@
                 videoinputselector: {
                   events: {
                     onchange: (event) => {
-                      let element = event.srcElement;
+                      const element = event.srcElement;
                       webphone
                         .getMediaDevices()
                         .changeDevice("videoinput", element.value);
