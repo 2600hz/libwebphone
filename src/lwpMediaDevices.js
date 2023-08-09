@@ -402,9 +402,12 @@ export default class extends lwpRenderer {
         this._config[deviceKind].mediaElement.create &&
         this._config[deviceKind].enabled
       ) {
-        this._config[deviceKind].mediaElement.element = document.createElement(
-          this._deviceKindtoTrackKind(deviceKind)
-        );
+        if (deviceKind === "audiooutput") {
+          this._config[deviceKind].mediaElement.element = new Audio();
+        } else {
+          this._config[deviceKind].mediaElement.element =
+            document.createElement(this._deviceKindtoTrackKind(deviceKind));
+        }
       }
 
       if (this._config[deviceKind].mediaElement.element) {
@@ -746,6 +749,9 @@ export default class extends lwpRenderer {
           if (this._config.audiooutput.enabled) {
             this._emit("audio.output.changed", this, preferedDevice);
           }
+        })
+        .catch((error) => {
+          this._emit("audio.output.error", error);
         });
     } else {
       this._availableDevices[preferedDevice.deviceKind].forEach(
@@ -904,6 +910,23 @@ export default class extends lwpRenderer {
           }
         });
       }
+
+      this._availableDevices[preferedDevice.deviceKind].forEach(
+        (availableDevice) => {
+          if (availableDevice.id == "none") {
+            availableDevice.selected = true;
+          } else {
+            availableDevice.selected = false;
+          }
+        }
+      );
+
+      this._emit(
+        trackKind + ".input.changed",
+        this,
+        null,
+        previousTrackParameters
+      );
     });
   }
 
@@ -946,7 +969,6 @@ export default class extends lwpRenderer {
                 otherMediaStream.getTracks().forEach((track) => {
                   this._addTrack(mediaStream, track);
                 });
-
                 return mediaStream;
               })
               .then((mediaStream) => {
