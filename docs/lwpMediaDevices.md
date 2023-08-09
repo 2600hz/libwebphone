@@ -66,6 +66,19 @@ If the provided device kind is already muted, unmute it. Otherwise if the device
 | ---------- | ------ | ------- | -------------------------------------------------------------------- |
 | deviceKind | string |         | The device kind to toggle mute (audiooutput, audioinput, videoinput) |
 
+#### startScreenCapture(options, useDisplayMedia)
+
+Replaces the current video stream with the contents of a display or portion thereof (a window).
+
+| Name            | Type                                                                                              | Default | Description                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| options         | [MediaStreamConstraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints) |         | Object specifying requirements for the returned MediaStream                                                                                                                                          |
+| useDisplayMedia | boolean                                                                                           | true    | Use [getDisplayMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) over [getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) |
+
+#### stopScreenCapture()
+
+Stops Screen Capture and enables previously selected videoinput
+
 #### getMediaElement(deviceKind)
 
 Get the HTML media element linked to the provided device kind.
@@ -158,25 +171,26 @@ Re-paint / update all render targets.
 
 | Event                             | Additional Parameters                                                                 | Description                                     |
 | --------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| meidaDevices.created              |                                                                                       | Emitted when the class is instantiated          |
-| meidaDevices.streams.started      | [mediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)           | Emitted when streams are started for a call     |
-| meidaDevices.streams.stopped      |                                                                                       | Emitted when streams are stopped for a call     |
-| meidaDevices.audio.output.element | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
-| meidaDevices.audio.input.element  | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
-| meidaDevices.video.output.element | [HTML Video Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video) | Emitted when the HTML audio element is created  |
-| meidaDevices.getUserMedia.error   | error (exception)                                                                     | Emitted if getUserMedia() throws                |
-| meidaDevices.audio.output.changed | preferedDevice                                                                        | Emitted when the output audio device is changed |
-| meidaDevices.audio.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
-| meidaDevices.video.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
-| meidaDevices.audio.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
-| meidaDevices.video.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
-| meidaDevices.audio.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input audio device is changed  |
-| meidaDevices.video.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input video device is changed  |
-| meidaDevices.audio.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is started         |
-| meidaDevices.video.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is started         |
-| meidaDevices.audio.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is stopped         |
-| meidaDevices.video.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is stopped         |
-
+| mediaDevices.created              |                                                                                       | Emitted when the class is instantiated          |
+| mediaDevices.streams.started      | [mediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)           | Emitted when streams are started for a call     |
+| mediaDevices.streams.stopped      |                                                                                       | Emitted when streams are stopped for a call     |
+| mediaDevices.audio.output.element | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
+| mediaDevices.audio.input.element  | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
+| mediaDevices.video.output.element | [HTML Video Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video) | Emitted when the HTML audio element is created  |
+| mediaDevices.getUserMedia.error   | error (exception)                                                                     | Emitted if getUserMedia() throws                |
+| mediaDevices.audio.output.changed | preferedDevice                                                                        | Emitted when the output audio device is changed |
+| mediaDevices.audio.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
+| mediaDevices.video.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
+| mediaDevices.audio.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
+| mediaDevices.video.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
+| mediaDevices.audio.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input audio device is changed  |
+| mediaDevices.video.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input video device is changed  |
+| mediaDevices.audio.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is started         |
+| mediaDevices.video.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is started         |
+| mediaDevices.audio.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is stopped         |
+| mediaDevices.video.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is stopped         |
+| mediaDevices.loaded               | availableDevices                                                                      | Emitted when the devices are initialized        |
+| mediaDevices.refreshed            | availableDevices                                                                      | Emitted when the devices are changed            |
 > NOTE! All standard HTML media events for the audio output, audio input and video input elements are emitted as mediaDevices.{kind}.{direction}.{eventName} with the additional parameters: element (HTML element), event (HTML media event). For example, mediaDevices.audio.input.playing.
 
 ### Consumed
