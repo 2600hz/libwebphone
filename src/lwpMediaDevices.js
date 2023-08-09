@@ -420,7 +420,7 @@ export default class extends lwpRenderer {
         this._config[deviceKind].mediaElement.create &&
         this._config[deviceKind].enabled
       ) {
-        if (["audiooutput", "ringoutput"].includes(deviceKind)) {
+        if (deviceKind === "audiooutput") {
           this._config[deviceKind].mediaElement.element = new Audio();
         } else {
           this._config[deviceKind].mediaElement.element =
@@ -995,6 +995,23 @@ export default class extends lwpRenderer {
           }
         });
       }
+
+      this._availableDevices[preferedDevice.deviceKind].forEach(
+        (availableDevice) => {
+          if (availableDevice.id == "none") {
+            availableDevice.selected = true;
+          } else {
+            availableDevice.selected = false;
+          }
+        }
+      );
+
+      this._emit(
+        trackKind + ".input.changed",
+        this,
+        null,
+        previousTrackParameters
+      );
     });
   }
 
@@ -1037,7 +1054,6 @@ export default class extends lwpRenderer {
                 otherMediaStream.getTracks().forEach((track) => {
                   this._addTrack(mediaStream, track);
                 });
-
                 return mediaStream;
               })
               .then((mediaStream) => {

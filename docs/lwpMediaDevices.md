@@ -99,7 +99,7 @@ Get the prefered device for the given device kind.
 
 | Name       | Type   | Default | Description                                                   |
 | ---------- | ------ | ------- | ------------------------------------------------------------- |
-| deviceKind | string |         | The device kind to get (ringoutput, audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind to get (audiooutput, audioinput, videoinput) |
 
 Returns:
 

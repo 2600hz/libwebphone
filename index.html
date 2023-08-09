@@ -714,7 +714,7 @@
           <div id="wrapper">
             <div
               class="dialpad compact"
-              onkeypress="function(event) { if (event.keyCode == 13) { webphone.getDialpad().autoAction(); } }"
+              onkeypress="function checkEnter(event) { if (event.keyCode == 13) { webphone.getDialpad().autoAction(); } }"
             >
               <div class="dials">
                 <ol>
