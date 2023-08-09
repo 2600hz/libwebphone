@@ -368,12 +368,14 @@ export default class extends lwpRenderer {
     this._outputAudio.masterGain = this._shimCreateGain(
       this._outputAudio.context
     );
-    this._outputAudio.masterGain.gain.value = this._config.channels.master.volume;
+    this._outputAudio.masterGain.gain.value =
+      this._config.channels.master.volume;
 
     this._outputAudio.ringerGain = this._shimCreateGain(
       this._outputAudio.context
     );
-    this._outputAudio.ringerGain.gain.value = this._config.channels.ringer.volume;
+    this._outputAudio.ringerGain.gain.value =
+      this._config.channels.ringer.volume;
     if (this._config.channels.ringer.connectToMaster) {
       this._outputAudio.ringerGain.connect(this._outputAudio.masterGain);
     }
@@ -389,7 +391,8 @@ export default class extends lwpRenderer {
     this._outputAudio.remoteGain = this._shimCreateGain(
       this._outputAudio.context
     );
-    this._outputAudio.remoteGain.gain.value = this._config.channels.remote.volume;
+    this._outputAudio.remoteGain.gain.value =
+      this._config.channels.remote.volume;
     if (
       this._config.channels.remote.connectToMaster &&
       this._libwebphone._config.call.useAudioContext
@@ -400,18 +403,18 @@ export default class extends lwpRenderer {
     this._outputAudio.previewGain = this._shimCreateGain(
       this._outputAudio.context
     );
-    this._outputAudio.previewGain.gain.value = this._config.channels.preview.volume;
+    this._outputAudio.previewGain.gain.value =
+      this._config.channels.preview.volume;
     if (this._config.channels.preview.connectToMaster) {
       this._outputAudio.previewGain.connect(this._outputAudio.masterGain);
     }
 
-    this._outputAudio.destinationStream = this._shimCreateMediaStreamDestination(
-      this._outputAudio.context
-    );
+    this._outputAudio.destinationStream =
+      this._shimCreateMediaStreamDestination(this._outputAudio.context);
     this._outputAudio.masterGain.connect(this._outputAudio.destinationStream);
 
-    if (mediaDevices && mediaDevices.getMediaElement("audiooutput")) {
-      const element = mediaDevices.getMediaElement("audiooutput");
+    if (mediaDevices && mediaDevices.getMediaElement("ringoutput")) {
+      const element = mediaDevices.getMediaElement("ringoutput");
       element.srcObject = this._outputAudio.destinationStream.stream;
       this._outputAudio.usingAudioElement = true;
     } else {
@@ -438,13 +441,15 @@ export default class extends lwpRenderer {
     this._ringerAudio.carrierNode = this._shimCreateOscillator(
       this._ringerAudio.context
     );
-    this._ringerAudio.carrierNode.frequency.value = this._config.channels.ringer.carrier.frequency;
+    this._ringerAudio.carrierNode.frequency.value =
+      this._config.channels.ringer.carrier.frequency;
     this._ringerAudio.carrierNode.connect(this._ringerAudio.carrierGain);
 
     this._ringerAudio.modulatorNode = this._shimCreateOscillator(
       this._ringerAudio.context
     );
-    this._ringerAudio.modulatorNode.frequency.value = this._config.channels.ringer.modulator.frequency;
+    this._ringerAudio.modulatorNode.frequency.value =
+      this._config.channels.ringer.modulator.frequency;
     this._ringerAudio.modulatorNode.connect(this._ringerAudio.carrierGain.gain);
 
     this._ringerAudio.ringerGain = this._shimCreateGain(
@@ -479,8 +484,10 @@ export default class extends lwpRenderer {
     this._previewAudio.oscillatorNode = this._shimCreateOscillator(
       this._previewAudio.context
     );
-    this._previewAudio.oscillatorNode.frequency.value = this._config.channels.preview.tone.frequency;
-    this._previewAudio.oscillatorNode.type = this._config.channels.preview.tone.type;
+    this._previewAudio.oscillatorNode.frequency.value =
+      this._config.channels.preview.tone.frequency;
+    this._previewAudio.oscillatorNode.type =
+      this._config.channels.preview.tone.type;
 
     this._previewAudio.loopbackActive = false;
 
@@ -488,7 +495,8 @@ export default class extends lwpRenderer {
       this._previewAudio.context,
       this._config.channels.preview.loopback.delay + 1.5
     );
-    this._previewAudio.loopbackDelayNode.delayTime.value = this._config.channels.preview.loopback.delay;
+    this._previewAudio.loopbackDelayNode.delayTime.value =
+      this._config.channels.preview.loopback.delay;
   }
 
   _initEventBindings() {
