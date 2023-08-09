@@ -54,14 +54,28 @@ export default class extends lwpRenderer {
   mute() {
     const currentCall = this._getCall();
     if (currentCall) {
-      currentCall.mute();
+      currentCall.mute({ audio: true });
     }
   }
 
   unmute() {
     const currentCall = this._getCall();
     if (currentCall) {
-      currentCall.unmute();
+      currentCall.unmute({ audio: true });
+    }
+  }
+
+  muteVideo() {
+    const currentCall = this._getCall();
+    if (currentCall) {
+      currentCall.mute({ video: true });
+    }
+  }
+
+  unmuteVideo() {
+    const currentCall = this._getCall();
+    if (currentCall) {
+      currentCall.unmute({ video: true });
     }
   }
 
@@ -110,8 +124,10 @@ export default class extends lwpRenderer {
         hangup: "Hang Up",
         hold: "Hold",
         unhold: "Resume",
-        mute: "Mute",
-        unmute: "Unmute",
+        mute: "Mute Audio",
+        unmute: "Unmute Audio",
+        muteVideo: "Mute Video",
+        unmuteVideo: "Unmute Video",
         transferblind: "Blind Transfer",
         transferattended: "Attended Transfer",
         transfercomplete: "Transfer (complete)",
@@ -192,6 +208,8 @@ export default class extends lwpRenderer {
         unhold: "libwebphone:callControl.unhold",
         mute: "libwebphone:callControl.mute",
         unmute: "libwebphone:callControl.unmute",
+        muteVideo: "libwebphone:callControl.muteVideo",
+        unmuteVideo: "libwebphone:callControl.unmuteVideo",
         transfercomplete: "libwebphone:callControl.transfercomplete",
         transferblind: "libwebphone:callControl.transferblind",
         transferattended: "libwebphone:callControl.transferattended",
@@ -261,6 +279,24 @@ export default class extends lwpRenderer {
             },
           },
         },
+        muteVideo: {
+          events: {
+            onclick: (event) => {
+              const element = event.srcElement;
+              element.disabled = true;
+              this.muteVideo();
+            },
+          },
+        },
+        unmuteVideo: {
+          events: {
+            onclick: (event) => {
+              const element = event.srcElement;
+              element.disabled = true;
+              this.unmuteVideo();
+            },
+          },
+        },
         transfer: {
           events: {
             onclick: () => {
@@ -316,17 +352,29 @@ export default class extends lwpRenderer {
             </button>
           {{/data.call.held}}
 
-          {{^data.call.muted}}
+          {{^data.call.isAudioMuted}}
             <button id="{{by_id.mute.elementId}}">
               {{i18n.mute}}
             </button>
-          {{/data.call.muted}}
+          {{/data.call.isAudioMuted}}
 
-          {{#data.call.muted}}
+          {{#data.call.isAudioMuted}}
             <button id="{{by_id.unmute.elementId}}">
               {{i18n.unmute}}
             </button>
-          {{/data.call.muted}}
+          {{/data.call.isAudioMuted}}
+
+          {{^data.call.isVideoMuted}}
+            <button id="{{by_id.muteVideo.elementId}}">
+              {{i18n.muteVideo}}
+            </button>
+          {{/data.call.isVideoMuted}}
+          
+          {{#data.call.isVideoMuted}}
+             <button id="{{by_id.unmuteVideo.elementId}}">
+               {{i18n.unmuteVideo}}
+            </button>
+          {{/data.call.isVideoMuted}}
 
           <button id="{{by_id.transfer.elementId}}">
             {{^data.call.inTransfer}}

@@ -241,10 +241,10 @@ export default class extends lwpRenderer {
         if (options.call) this.call();
         break;
       case "transfer":
-        if (options.call) this.transfer();
+        if (options.transfer) this.transfer();
         break;
       case "terminate":
-        if (options.call) this.terminate();
+        if (options.terminate) this.terminate();
         break;
     }
   }
