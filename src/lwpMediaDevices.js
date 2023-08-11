@@ -114,44 +114,32 @@ export default class extends lwpRenderer {
 
   /**
    * Start Screen Capture.
+   * Screen Capture acts as a new videoinput device,
+   * meaning that if you switch calls when screensharing
+   * the new call will also be screensharing if video is unmuted.
    * @param {DisplayMediaStreamConstraints} [options] The source for screen capture.
    * @param {boolean} [useDisplayMedia] Use mediaDevices.getDisplayMedia over mediaDevices.getUserMedia
    */
   async startScreenCapture(options = {}, useDisplayMedia = true) {
-    /**
-     * Screen Capture acts as a new videoinput device,
-     * meaning that if you switch calls when screensharing
-     * the new call will also be screensharing if video is unmuted.
-     */
     try {
       this._captureStream = useDisplayMedia
         ? await navigator.mediaDevices.getDisplayMedia(options)
         : await navigator.mediaDevices.getUserMedia(options);
 
+      this._addScreenCaptureEventListeners();
       this._emit("screenCapture.started", this, this._captureStream);
+
+      const screenTrack = this._captureStream.getVideoTracks()[0];
+      this._mediaStreamPromise.then((mediaStream) => {
+        const trackInformation = lwpUtils.trackParameters(
+          mediaStream,
+          screenTrack
+        );
+
+        this._emit("video.input.changed", this, trackInformation);
+      });
     } catch (error) {
       this._emit("screenCapture.error", this, error);
-    }
-
-    if (this._captureStream) {
-      const screenTrack = this._captureStream.getVideoTracks()[0];
-
-      screenTrack.addEventListener("ended", () => {
-        const selectedDevice = this._availableDevices.videoinput.find(
-          (device) => device.selected === true
-        );
-
-        this.stopScreenCapture();
-        this.changeDevice("videoinput", selectedDevice.id);
-      });
-
-      this._mediaStreamPromise.then((mediaStream) => {
-        this._emit(
-          "video.input.changed",
-          this,
-          lwpUtils.trackParameters(mediaStream, screenTrack)
-        );
-      });
     }
   }
 
@@ -159,6 +147,9 @@ export default class extends lwpRenderer {
    * Stops Screen Capture and enables previously selected videoinput
    */
   stopScreenCapture() {
+    const currentVideoDevice = this._availableDevices.videoinput.find(
+      (device) => device.selected === true
+    );
     const currentTracks = this._captureStream.getTracks();
 
     if (currentTracks.length > 0) {
@@ -166,6 +157,7 @@ export default class extends lwpRenderer {
     }
 
     this._captureStream = null;
+    this.changeDevice("videoinput", currentVideoDevice.id);
     this._emit("screenCapture.stopped", this);
   }
 
@@ -1196,6 +1188,14 @@ export default class extends lwpRenderer {
         );
       }
     }
+  }
+
+  _addScreenCaptureEventListeners() {
+    const screenTrack = this._captureStream.getVideoTracks()[0];
+
+    screenTrack.addEventListener("ended", () => {
+      this.stopScreenCapture();
+    });
   }
 
   _startMediaElements() {
