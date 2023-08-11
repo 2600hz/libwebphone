@@ -129,14 +129,11 @@ export default class extends lwpRenderer {
       this._addScreenCaptureEventListeners();
       this._emit("screenCapture.started", this, this._captureStream);
 
-      const screenTrack = this._captureStream.getVideoTracks()[0];
       this._mediaStreamPromise.then((mediaStream) => {
-        const trackInformation = lwpUtils.trackParameters(
-          mediaStream,
-          screenTrack
-        );
-
-        this._emit("video.input.changed", this, trackInformation);
+        this._captureStream.getVideoTracks().forEach((track) => {
+          const trackInformation = lwpUtils.trackParameters(mediaStream, track);
+          this._emit("video.input.changed", this, trackInformation);
+        });
       });
     } catch (error) {
       this._emit("screenCapture.error", this, error);
@@ -150,12 +147,8 @@ export default class extends lwpRenderer {
     const currentVideoDevice = this._availableDevices.videoinput.find(
       (device) => device.selected === true
     );
-    const currentTracks = this._captureStream.getTracks();
 
-    if (currentTracks.length > 0) {
-      currentTracks.forEach((track) => track.stop());
-    }
-
+    this._captureStream.getTracks().forEach((track) => track.stop());
     this._captureStream = null;
     this.changeDevice("videoinput", currentVideoDevice.id);
     this._emit("screenCapture.stopped", this);
@@ -1191,10 +1184,10 @@ export default class extends lwpRenderer {
   }
 
   _addScreenCaptureEventListeners() {
-    const screenTrack = this._captureStream.getVideoTracks()[0];
-
-    screenTrack.addEventListener("ended", () => {
-      this.stopScreenCapture();
+    this._captureStream.getVideoTracks().forEach((track) => {
+      track.addEventListener("ended", () => {
+        this.stopScreenCapture();
+      });
     });
   }
 
