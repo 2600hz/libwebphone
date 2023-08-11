@@ -420,7 +420,16 @@ export default class {
 
   _initMediaElement(elementKind, deviceKind) {
     const element = document.createElement(elementKind);
-     
+
+    if (elementKind === "video") {
+      try {
+        element.setAttribute('webkit-playsinline', 'webkit-playsinline');
+        element.setAttribute('playsinline', 'playsinline');
+      } catch (error) {
+        this._emit("error", error);
+      }
+    }
+
     if (this.hasSession() && element.setSinkId !== undefined) {
       const preferedDevice = this._libwebphone
         .getMediaDevices()
