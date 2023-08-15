@@ -144,6 +144,10 @@ export default class extends lwpRenderer {
    * Stops Screen Capture and enables previously selected videoinput
    */
   stopScreenCapture() {
+    if (!this._captureStream) {
+      return;
+    }
+
     const currentVideoDevice = this._availableDevices.videoinput.find(
       (device) => device.selected === true
     );
