@@ -144,6 +144,13 @@ export default class {
     }
   }
 
+  remoteURIUser() { 
+    const session = this._getSession();
+    if (session) {
+      return session._dialog._remote_uri.user;
+    }
+  }
+
   terminate() {
     if (this.hasSession()) {
       if (this.isEstablished()) {

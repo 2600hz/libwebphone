@@ -188,6 +188,16 @@ Returns:
 | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | string or [JsSIP.NameAddrHeader](https://jssip.net/documentation/3.4.x/api/nameAddrHeader/) | Representation of the instance's remote identity |
 
+#### remoteURIUser()
+
+This returns the user representation of the instance's remote URI 
+
+Returns:
+
+| Type                                                                                        | Description                                      |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+|                   string                       | User representation of the instance's remote URI |
+
 #### terminate()
 
 If the instance has a session, invokes the jssip terminate method described by
