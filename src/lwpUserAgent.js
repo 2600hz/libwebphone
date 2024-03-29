@@ -1,6 +1,7 @@
 "use strict";
 
 import * as JsSIP from "jssip";
+import { jwtDecode } from "jwt-decode";
 import lwpUtils from "./lwpUtils";
 import lwpRenderer from "./lwpRenderer";
 import lwpCall from "./lwpCall";
@@ -40,7 +41,7 @@ export default class extends lwpRenderer {
     try {
       const config = {
         sockets: this._sockets,
-        uri: "webphone@" + this._config.authentication.realm,
+        uri: "webphone@nodomain.invalid",
         connection_recovery_max_interval: this._config.transport
           .recovery_max_interval,
         connection_recovery_min_interval: this._config.transport
@@ -58,15 +59,34 @@ export default class extends lwpRenderer {
 
       if (this._config.authentication.jwt) {
         config.authorization_jwt = this._config.authentication.jwt;
+        const decoded = jwtDecode(config.authorization_jwt);
+        if (decoded["SIP-Info"] && decoded["SIP-Info"]["User-Agent"]) {
+          const jwt_user_agent = decoded["SIP-Info"]["User-Agent"];
+          if (jwt_user_agent.Username) {
+            config.authorization_user = jwt_user_agent.Username;
+          }
+          if (jwt_user_agent.Realm) {
+            config.realm = jwt_user_agent.Realm;
+          }
+        }
+      } else if (this._config.authentication.password) {
+        config.password = this._config.authentication.password;
       }
 
       if (this._config.authentication.username) {
         config.authorization_user = this._config.authentication.username;
-        config.uri = this._config.authentication.username + "@" + this._config.authentication.realm;
+      }
 
-        if (this._config.authentication.password) {
-          config.password = this._config.authentication.password;
-        }
+      if (this._config.authentication.realm) {
+        config.realm = this._config.authentication.realm;
+      }
+
+      if (config.authorization_user) {
+        config.uri = config.authorization_user + "@" + config.uri.split("@")[1];
+      }
+
+      if (config.realm) {
+        config.uri = config.uri.split("@")[0] + "@" + config.realm;
       }
 
       this.initAgent(config);
@@ -373,7 +393,7 @@ export default class extends lwpRenderer {
     if (this._config.custom_parameters.contact_uri) {
       this._userAgent.registrator().setExtraContactParams(this._config.custom_parameters.contact_uri);
     }
-  
+
     if (this._config.custom_headers.register) {
       this._userAgent.registrator().setExtraHeaders(this._config.custom_headers.register);
       console.log(this._userAgent);

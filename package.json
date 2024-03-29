@@ -24,6 +24,7 @@
     "eventemitter2": "^6.2.1",
     "i18next": "^19.8.7",
     "jssip": "^3.7.1",
+    "jwt-decode": "^4.0.0",
     "lodash": "^4.17.15",
     "media-device-id": "^1.0.1",
     "mustache": "^3.1.0",
