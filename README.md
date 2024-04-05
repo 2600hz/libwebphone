@@ -96,6 +96,7 @@ The library provides multiple ways to interact with it. The quick start example 
                renderTargets: ["audio_context"],
             },
             userAgent: {
+               renderTargets: ['user_agent'],
                transport: {
                   sockets: ["wss://sip.websocket.server"],
                },
