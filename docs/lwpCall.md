@@ -198,6 +198,17 @@ Returns:
 | ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 |                   string                       | User representation of the instance's remote URI |
 
+
+#### getCustomData()
+
+This returns a custom object for application usage
+
+Returns:
+
+| Type                                                                                        | Description                                      |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+|                   object                       | Custom `data` object that is extracted from its associated [RTCSession data](https://jssip.net/documentation/3.4.x/api/session/#attribute_data) |
+
 #### terminate()
 
 If the instance has a session, invokes the jssip terminate method described by

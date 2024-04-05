@@ -122,7 +122,9 @@ Updates the redial target.
 | anonymous                 | boolean | false                                                     | Whether the call should be done anonymously       |
 | options              | object  | `{receive_video: false, anonymous: false}`                 | additional call options                           |
 | options.anonymous    | boolean | false                                                     | Whether the call should be done anonymously       |
-| options.receive_video | boolean | false                                                     | Wheter the call should accept remote video stream |
+| options.receive_video | boolean | false                                                     | Whether the call should accept remote video stream |
+| options.secondary_call | boolean | false                                                     | Whether the call should not be promoted to primary when is created |
+| options.custom_data | object | `{}`                                                     | Custom data that can be accessed in the created lwpCall instance by `call.getCustomData()`  |
 
 Attempts to create a new call to target, or the redial target if non is provided
 as an argument.

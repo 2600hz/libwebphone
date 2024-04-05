@@ -146,8 +146,15 @@ export default class {
 
   remoteURIUser() { 
     const session = this._getSession();
-    if (session) {
+    if (session && session._dialog._remote_uri) {
       return session._dialog._remote_uri.user;
+    }
+  }
+
+  getCustomData () {
+    const session = this._getSession();
+    if (session) {
+      return session.data;
     }
   }
 
