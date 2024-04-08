@@ -33,8 +33,7 @@ export default class extends lwpRenderer {
 
   addCall(newCall) {
     const previousCall = this.getCall();
-
-    if (previousCall && !previousCall.isOnHold()) {
+    if ((previousCall && !previousCall.isOnHold()) || newCall.getCustomData().lwpSecondaryCall) {
       this._calls.push(newCall);
       this._emit("calls.added", this, newCall);
     } else {

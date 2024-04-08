@@ -229,7 +229,12 @@ export default class extends lwpRenderer {
       defaultOptions.rtcOfferConstraints = {
         offerToReceiveVideo: options.receive_video || false
       };
-      defaultOptions.anonymous = options.anonymous || false
+      defaultOptions.anonymous = options.anonymous || false;
+      defaultOptions.data = {
+        lwpSecondaryCall: options.secondary_call || false,
+        ...(options.custom_data || {}),
+        ...defaultOptions.data
+      }
     }
     const mediaDevices = this._libwebphone.getMediaDevices();
     const callList = this._libwebphone.getCallList();
