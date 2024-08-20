@@ -3,7 +3,7 @@
 import lwpUtils from "./lwpUtils";
 import prettyMilliseconds from "pretty-ms";
 
-export default class {
+export default class lwpCall {
   constructor(libwebphone, session = null) {
     this._libwebphone = libwebphone;
     this._id = session
@@ -243,16 +243,20 @@ export default class {
           target = dialpad.getTarget(true);
         }
 
-        if (target) {
+        if (target && target instanceof lwpCall) {
+            const aor = target._getSession().remote_identity.uri.toAor();
+            this._getSession().refer(aor, {'replaces': target._getSession()});
+            this._emit("transfer.complete", this, target);
+        } else if (target) {
           this._getSession().refer(target);
           this._emit("transfer.started", this, target);
         } else {
           if (autoHold) {
             this.unhold();
           }
-
           this._emit("transfer.failed", this, target);
         }
+        
         this._emit("transfer.complete", this, target);
       } else {
         this._inTransfer = true;
