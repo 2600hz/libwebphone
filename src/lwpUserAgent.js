@@ -122,10 +122,10 @@ export default class extends lwpRenderer {
         new lwpCall(this._libwebphone, session);
       });
       this._userAgent.on("newMessage", (...event) => {
-        this._emit("recieved.message", this, ...event);
+        this._emit("received.message", this, ...event);
       });
       this._userAgent.on("sipEvent", (...event) => {
-        this._emit("recieved.notify", this, ...event);
+        this._emit("received.notify", this, ...event);
       });
 
       this._emit("started", this);

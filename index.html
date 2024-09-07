@@ -427,7 +427,7 @@
       }; //End ofConfig
 
       var webphone = new libwebphone(config);
-      webphone.on("userAgent.recieved.notify", (lwp, userAgent, data) => {
+      webphone.on("userAgent.received.notify", (lwp, userAgent, data) => {
         let request = data.request;
         console.log(request.body);
       });
