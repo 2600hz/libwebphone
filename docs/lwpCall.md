@@ -4,7 +4,7 @@
 
 The libwebphone call class represents an instance of a call and provides all
 in-call functionality. It is also repsonsible for managing the audio / video
-sent as well as recieved.
+sent as well as received.
 
 Since there can be multiple instances of lwpCall only one of those instance can
 be the primary at a time. The primary lwpCall is the instance that is producing
