@@ -274,7 +274,14 @@ export default class {
         mediaDevices.startStreams(this.getId()).then((streams) => {
           const options = {
             mediaStream: streams,
+            extraHeaders: [
+              "Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REFER, NOTIFY"
+            ]
           };
+
+          if (this._libwebphone._config.userAgent && this._libwebphone._config.userAgent.user_agent && this._libwebphone._config.userAgent.user_agent.user_agent) {
+            options.extraHeaders.push("User-Agent: " + this._libwebphone._config.userAgent.user_agent.user_agent);
+          }
 
           this._getSession().answer(options);
           this._emit("answered", this);
@@ -609,6 +616,15 @@ export default class {
       });
       this._getSession().on("unmuted", (...event) => {
         this._emit("unmuted", this, ...event);
+      });
+      this._getSession().on("update", (...event) => {
+        const request = event[0].request || null;
+        const session = this._getSession();
+        if (request && session && request.method === "UPDATE" && request.from) {
+          session.remote_identity.display_name = request.from._display_name;
+          session.remote_identity.uri.user = request.from._uri;
+        }
+        this._emit("update", this, ...event);
       });
       this._getSession().on("ended", (...event) => {
         this._destroyCall();

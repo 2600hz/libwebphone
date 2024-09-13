@@ -177,7 +177,9 @@ export default class extends lwpRenderer {
     this._libwebphone.on("call.transfer.completed", () => {
       this.updateRenders();
     });
-
+    this._libwebphone.on("call.update", () => {
+      this.updateRenders();
+    });
     this._libwebphone.on("call.ended", () => {
       this.updateRenders();
     });
