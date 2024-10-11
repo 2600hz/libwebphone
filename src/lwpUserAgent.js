@@ -369,9 +369,19 @@ export default class extends lwpRenderer {
   }
 
   _initSockets() {
-    this._config.transport.sockets.forEach((socket) => {
-      // TODO: handle when socket is an object with weights...
-      this._sockets.push(new JsSIP.WebSocketInterface(socket));
+    this._config.transport.sockets.forEach((s) => {
+      if (typeof s === 'object') {
+        // handle when transport.sockets is an object with weights...
+        this._sockets.push({
+          socket: new JsSIP.WebSocketInterface(s.socket),
+          weight: s.weight || 0
+        });
+      } else {
+        this._sockets.push({
+          socket: new JsSIP.WebSocketInterface(s),
+          weight: 0
+        });
+      }
     });
   }
 
