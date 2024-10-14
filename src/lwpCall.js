@@ -739,9 +739,9 @@ export default class lwpCall {
       this.unhold();
     }
 
-    this._emit("promoted", this);
-
     this._primary = true;
+
+    this._emit("promoted", this);
 
     this._connectStreams();
   }
