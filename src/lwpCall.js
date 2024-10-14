@@ -31,8 +31,18 @@ export default class lwpCall {
   }
 
   _shouldAutoAnswer() {
-    return this._session?._request?.headers["Call-Info"]
-      && this._session._request.headers["Call-Info"][0].raw.includes("answer-after=0");
+    // Return false if autoAnswer is explicitly set to false
+    if (this._config.autoAnswer === false) {
+      return false;
+    }
+  
+    // Check for the presence of Call-Info header and the "answer-after=0" value
+    if (this._session && this._session._request && this._session._request.headers && this._session._request.headers["Call-Info"]) {
+      const callInfo = this._session._request.headers["Call-Info"][0].raw;
+      return callInfo.includes("answer-after=0");
+    }
+  
+    return false;
   }
 
   getId() {
