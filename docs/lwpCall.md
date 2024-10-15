@@ -429,6 +429,7 @@ direction terminating originating localIdentity remoteIdentity
 
 | Name                  | Type     | Default | Description                                                                                                                                       |
 | --------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| autoAnswer             | boolean | true    | If set to false the phone will not honor the auto-answer=0 header, requiring the user to always explicitly answer all calls                       |
 | useAudioContext       | boolean  | false   | Should the lwpAudioContext be used as the destination for the remote audio. See note.                                                             |
 | globalKeyShortcuts    | boolean  | true    | Should the event listeners in the 'keys' property be added to the document                                                                        |
 | keys.spacebar.enabled | boolean  | true    | If true, and globalKeyShortcuts is also true, preform keys.spacebar.action if the spacebar is pressed when the body of the document has the focus |
