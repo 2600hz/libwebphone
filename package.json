@@ -22,7 +22,7 @@
     "audio-stream-meter": "^1.0.5",
     "detectrtc": "^1.3.9",
     "eventemitter2": "^6.2.1",
-    "i18next": "^19.8.7",
+    "i18next": "^24.2.3",
     "jssip": "^3.7.1",
     "lodash": "^4.17.15",
     "media-device-id": "^1.0.1",
