@@ -11,6 +11,7 @@ export default class lwpCall {
       : lwpUtils.uuid();
     this._emit = this._libwebphone._callEvent;
     this._session = session;
+    this._eventHandlers = {};
     this._initProperties();
     this._initEventBindings();
 
@@ -541,48 +542,43 @@ export default class lwpCall {
   }
 
   _initEventBindings() {
-    this._libwebphone.on(
-      "mediaDevices.audio.input.changed",
-      (lwp, mediaDevices, newTrack) => {
-        if (this.hasSession()) {
-          if (newTrack) {
-            this.replaceSenderTrack(newTrack.track);
-          } else {
-            this.removeSenderTrack("audio");
-          }
-        }
-      }
-    );
-    this._libwebphone.on(
-      "mediaDevices.video.input.changed",
-      (lwp, mediaDevices, newTrack) => {
-        if (this.hasSession() && newTrack) {
+    // Store handler references
+    this._eventHandlers.audioInputChanged = (lwp, mediaDevices, newTrack) => {
+      if (this.hasSession()) {
+        if (newTrack) {
           this.replaceSenderTrack(newTrack.track);
+        } else {
+          this.removeSenderTrack("audio");
         }
       }
-    );
-    this._libwebphone.on(
-      "mediaDevices.audio.output.changed",
-      (lwp, mediaDevices, preferedDevice) => {
-        Object.keys(this._streams.remote.elements).forEach((kind) => {
-          const element = this._streams.remote.elements[kind];
-          if (element && element.setSinkId !== undefined) {
-            try {
-              element.setSinkId(preferedDevice.id);
-            } catch (error) {
-              this._emit("error", error);
-            }
-          }
-        });
+    };
+    this._eventHandlers.videoInputChanged = (lwp, mediaDevices, newTrack) => {
+      if (this.hasSession() && newTrack) {
+        this.replaceSenderTrack(newTrack.track);
       }
-    );
+    };
+    this._eventHandlers.audioOutputChanged = (lwp, mediaDevices, preferedDevice) => {
+      Object.keys(this._streams.remote.elements).forEach((kind) => {
+        const element = this._streams.remote.elements[kind];
+        if (element && element.setSinkId !== undefined) {
+          try {
+            element.setSinkId(preferedDevice.id);
+          } catch (error) {
+            this._emit("error", error);
+          }
+        }
+      });
+    };
+    this._eventHandlers.masterVolume = () => { this.changeVolume(); };
+    this._eventHandlers.remoteVolume = () => { this.changeVolume(); };
 
-    this._libwebphone.on("audioContext.channel.master.volume", () => {
-      this.changeVolume();
-    });
-    this._libwebphone.on("audioContext.channel.remote.volume", () => {
-      this.changeVolume();
-    });
+    // Register listeners
+    this._libwebphone.on("mediaDevices.audio.input.changed", this._eventHandlers.audioInputChanged);
+    this._libwebphone.on("mediaDevices.video.input.changed", this._eventHandlers.videoInputChanged);
+    this._libwebphone.on("mediaDevices.audio.output.changed", this._eventHandlers.audioOutputChanged);
+    this._libwebphone.on("audioContext.channel.master.volume", this._eventHandlers.masterVolume);
+    this._libwebphone.on("audioContext.channel.remote.volume", this._eventHandlers.remoteVolume);
+
 
     if (this.hasPeerConnection()) {
       const peerConnection = this.getPeerConnection();
@@ -699,6 +695,17 @@ export default class lwpCall {
     }
   }
 
+  _removeEventBindings() {
+    // Remove listeners using stored references
+    if (!this._eventHandlers) return;
+    this._libwebphone.off("mediaDevices.audio.input.changed", this._eventHandlers.audioInputChanged);
+    this._libwebphone.off("mediaDevices.video.input.changed", this._eventHandlers.videoInputChanged);
+    this._libwebphone.off("mediaDevices.audio.output.changed", this._eventHandlers.audioOutputChanged);
+    this._libwebphone.off("audioContext.channel.master.volume", this._eventHandlers.masterVolume);
+    this._libwebphone.off("audioContext.channel.remote.volume", this._eventHandlers.remoteVolume);
+    this._eventHandlers = {};
+  }
+
   /** Helper functions */
   _timeUpdate() {
     if (this._answerTime) {
@@ -724,6 +731,7 @@ export default class lwpCall {
   }
 
   _destroyCall() {
+    this._removeEventBindings();
     this._emit("terminated", this);
 
     if (this.isPrimary()) {
@@ -747,7 +755,7 @@ export default class lwpCall {
     if (resume && this.isEstablished() && this.isOnHold()) {
       this.unhold();
     }
-
+    
     this._primary = true;
 
     this._emit("promoted", this);
