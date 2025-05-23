@@ -742,11 +742,13 @@ export default class lwpCall {
 
   _destroyCall() {
     this._removeEventBindings();
-    this._emit("terminated", this);
 
     if (this.isPrimary()) {
-      this._clearPrimary(false);
+      this._emit("primary.terminated", this);
     }
+
+    this._emit("terminated", this);
+
 
     this._destroyStreams();
 

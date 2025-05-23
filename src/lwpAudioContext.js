@@ -24,8 +24,6 @@ export default class extends lwpRenderer {
   startAudioContext() {
     if (!this._started) {
       this._audioContext.resume();
-      this._ringerAudio.carrierNode.start();
-      this._ringerAudio.modulatorNode.start();
       this._previewAudio.oscillatorNode.start();
 
       this._started = true;
@@ -202,22 +200,85 @@ export default class extends lwpRenderer {
     }, (duration + 0.5) * 1000);
   }
 
-  startRinging(requestId = null) {
-    this.startAudioContext();
+    /**
+   * Updates the ringtone buffer based on primary call status
+   * Switches between default ringtone and call waiting tone
+   * @param {Object} call - Optional call object to check status
+   */
+  updateRingtone(call = null) {
+    // Get primary call if none provided
+    const primaryCall = call || this._libwebphone.getCallList().getCall();
+    
+    // Determine if there's an active call = established and not on hold
+    const hasActiveCall = primaryCall && primaryCall.isEstablished() && !primaryCall.isOnHold();
+    
+    // Select appropriate ringtone buffer
+    const newBuffer = hasActiveCall 
+      ? this._ringerAudio.callWaitingToneBuffer 
+      : this._ringerAudio.defaultRingToneBuffer;
+    
+    // Log the change
+    console.log(`AudioContext: switching ring tone to ${hasActiveCall ? 'call waiting' : 'default'} tone`);
+    
+    // Check if ringtone is actively playing
+    const wasActive = this._ringerAudio.isActive;
+    
+    // Update the ringtone buffer
+    this._ringerAudio.ringToneBuffer = newBuffer;
+    
+    // If ringtone is currently active, restart it with new buffer
+    if (wasActive && this._ringerAudio.calls.length > 0) {
+      // Stop current playback
+      if (this._ringerAudio.source) {
+        this._ringerAudio.source.stop();
+      }
+      
+      // Create and start new source with updated buffer
+      this._ringerAudio.source = new AudioBufferSourceNode(this._audioContext, {
+        buffer: this._ringerAudio.ringToneBuffer,
+        loop: true,
+      });
+      
+      // Connect to output chain
+      this._ringerAudio.source
+        .connect(this._ringerAudio.ringerGain)
+        .connect(this._getOutputGainNode("ringer"));
+      
+      this._ringerAudio.source.start();
+    }
+    
+    // Emit event for the ringtone change
+    this._emit("ringtone.updated", this, hasActiveCall ? "callWaiting" : "default");
+  }
 
+  startRinging(requestId = null) {
     if (!requestId) {
       this._ringerAudio.calls.push(null);
     } else if (!this._ringerAudio.calls.includes(requestId)) {
       this._ringerAudio.calls.push(requestId);
     }
 
-    if (!this._ringerAudio.ringerConnected) {
-      this._ringerAudio.ringerConnected = true;
-      this._ringerAudio.ringerGain.connect(this._getOutputGainNode("ringer"));
-    }
 
-    if (!this._ringingTimer) {
-      this._ringTimer();
+    if (this._libwebphone.getCallList().getCall() && this._libwebphone.getCallList().getCall().isEstablished()) {
+      console.log('AudioContext: switching ring tone to call waiting tone');
+      this._ringerAudio.ringToneBuffer = this._ringerAudio.callWaitingToneBuffer;
+    } else {
+      console.log("AudioContext: switching ring tone to default tone");
+      this._ringerAudio.ringToneBuffer = this._ringerAudio.defaultRingToneBuffer;
+    }
+    if (!this._ringerAudio.isActive) {
+      
+      this.startAudioContext();
+
+      this._ringerAudio.source = new AudioBufferSourceNode(this._audioContext, {
+        buffer: this._ringerAudio.ringToneBuffer,
+        loop: true,
+      });
+      this._ringerAudio.source
+        .connect(this._ringerAudio.ringerGain)
+        .connect(this._getOutputGainNode("ringer"));
+      this._ringerAudio.source.start();
+      this._ringerAudio.isActive = true;
     }
   }
 
@@ -238,14 +299,14 @@ export default class extends lwpRenderer {
   }
 
   stopAllRinging() {
-    if (this._ringerAudio.ringerConnected) {
-      this._ringerAudio.ringerConnected = false;
-      this._ringerAudio.ringerGain.disconnect();
+    this._ringerAudio.ringerGain.disconnect();
+    this._ringerAudio.isActive = false;
+    
+    if(this._ringerAudio.source) {
+      this._ringerAudio.source.stop();
     }
 
     this._ringerAudio.calls = [];
-
-    this._ringerMute();
   }
 
   getDestinationStream() {
@@ -286,14 +347,22 @@ export default class extends lwpRenderer {
           volume: 1.0,
         },
         ringer: {
-          onTime: 1.5,
-          offTime: 1.0,
-          carrier: {
-            frequency: 440,
+          default: {
+            onTime: 2,
+            sequenceDuration: 6,
+            oscilator_1: {
+              frequency: 440,
+            },
+            oscilator_2: {
+              frequency: 480,
+            }
           },
-          modulator: {
-            frequency: 10,
-            amplitude: 0.75,
+          callWaiting: {
+            onTime: .3,
+            sequenceDuration: 10,
+            oscilator: {
+              frequency: 440,
+            }
           },
           show: true,
           volume: 1.0,
@@ -425,37 +494,87 @@ export default class extends lwpRenderer {
     }
   }
 
-  _initRingAudio() {
+  async _initRingAudio() {
     this._ringerAudio = {};
 
-    this._ringerAudio.context = this._audioContext;
-
+    var context = this._audioContext;
+    this._ringerAudio.context = context;
     this._ringerAudio.calls = [];
+    this._ringerAudio.isActive = false;
+    this._ringerAudio.ringerGain = this._shimCreateGain(context);
 
-    this._ringerAudio.ringerConnected = false;
+    await this.generateDefaultRingTone();
+    await this.generateCallWaitingTone();
 
-    this._ringerAudio.carrierGain = this._shimCreateGain(
-      this._ringerAudio.context
+    this._ringerAudio.ringToneBuffer = this._ringerAudio.defaultRingToneBuffer;
+  }
+
+  generateDefaultRingTone() {
+    const offlineCtx = new OfflineAudioContext(
+      2
+      ,44100 * this._config.channels.ringer.default.sequenceDuration
+      ,44100
     );
 
-    this._ringerAudio.carrierNode = this._shimCreateOscillator(
-      this._ringerAudio.context
-    );
-    this._ringerAudio.carrierNode.frequency.value =
-      this._config.channels.ringer.carrier.frequency;
-    this._ringerAudio.carrierNode.connect(this._ringerAudio.carrierGain);
+    const osc_1 = new OscillatorNode(offlineCtx, {
+      frequency: this._config.channels.ringer.default.oscilator_1.frequency,
+    });
+    const gain_1 = new GainNode(offlineCtx);
+    gain_1.gain.value = 0.5;
+    osc_1.connect(gain_1);
 
-    this._ringerAudio.modulatorNode = this._shimCreateOscillator(
-      this._ringerAudio.context
-    );
-    this._ringerAudio.modulatorNode.frequency.value =
-      this._config.channels.ringer.modulator.frequency;
-    this._ringerAudio.modulatorNode.connect(this._ringerAudio.carrierGain.gain);
+    const osc_2 = new OscillatorNode(offlineCtx, {
+      frequency: this._config.channels.ringer.default.oscilator_2.frequency,
+    });
+    const gain_2 = new GainNode(offlineCtx);
+    gain_2.gain.value = 0.5;
+    osc_2.connect(gain_2);
 
-    this._ringerAudio.ringerGain = this._shimCreateGain(
-      this._ringerAudio.context
+    const merger = new ChannelMergerNode(offlineCtx);
+    gain_1.connect(merger, 0, 0);
+    gain_2.connect(merger, 0, 1);
+    merger.connect(offlineCtx.destination);
+    osc_1.start(offlineCtx.currentTime);
+    osc_2.start(offlineCtx.currentTime);
+    osc_1.stop(offlineCtx.currentTime + this._config.channels.ringer.default.onTime);
+    osc_2.stop(offlineCtx.currentTime + this._config.channels.ringer.default.onTime);
+
+    return offlineCtx.startRendering().then(
+      (renderedBuffer) => {
+        console.log("AudioContext: default ringer tone rendering completed successfully.");
+        this._ringerAudio.defaultRingToneBuffer = renderedBuffer;
+      })
+      .catch((err) => {
+        console.error(`Error encountered: ${err}`);
+      });
+  }
+
+  generateCallWaitingTone() {
+    const offlineCtx = new OfflineAudioContext(
+      2
+      ,44100 * this._config.channels.ringer.callWaiting.sequenceDuration
+      ,44100
     );
-    this._ringerAudio.carrierGain.connect(this._ringerAudio.ringerGain);
+
+    // code commented out allows to add a second beep to the call waiting tone
+    const osc = new OscillatorNode(offlineCtx, {
+      frequency: this._config.channels.ringer.callWaiting.oscilator.frequency,
+    });
+    
+    const gain = new GainNode(offlineCtx);
+    gain.gain.value = 1;
+    osc.connect(gain);
+    gain.connect(offlineCtx.destination, 0, 0);
+    osc.start(offlineCtx.currentTime);
+    osc.stop(offlineCtx.currentTime + this._config.channels.ringer.callWaiting.onTime);
+    return offlineCtx.startRendering().then(
+      (renderedBuffer) => {
+        console.log("AudioContext: call wait tone rendering completed successfully.");
+        this._ringerAudio.callWaitingToneBuffer = renderedBuffer;
+      })
+      .catch((err) => {
+        console.error(`Error encountered: ${err}`);
+      });
   }
 
   _initTonesAudio() {
@@ -520,6 +639,19 @@ export default class extends lwpRenderer {
         this._createRemoteSourceStream(mediaStream);
       }
     );
+
+    this._libwebphone.on("call.primary.established", (lwp, call) => {
+      this.updateRingtone(call);
+    });
+    this._libwebphone.on("call.primary.hold", (lwp, call) => {
+      this.updateRingtone(call);
+    });
+    this._libwebphone.on("call.primary.unhold", (lwp, call) => {
+      this.updateRingtone(call);
+    });
+    this._libwebphone.on("call.primary.terminated", (lwp, call) => {
+      this.updateRingtone(call);
+    });
 
     this._libwebphone.on("dialpad.tones.play", (lwp, dialpad, tones) => {
       this.playTones.apply(this, tones);
@@ -709,56 +841,6 @@ export default class extends lwpRenderer {
 
   /** Helper functions */
 
-  _ringTimer() {
-    if (this._ringerAudio.calls.length > 0) {
-      if (this._ringerAudio.ringerGain.gain.value < 0.5) {
-        this._ringerUnmute();
-        this._ringingTimer = setTimeout(() => {
-          this._ringTimer();
-        }, this._config.channels.ringer.onTime * 1000);
-      } else {
-        this._ringerMute();
-        this._ringingTimer = setTimeout(() => {
-          this._ringTimer();
-        }, this._config.channels.ringer.offTime * 1000);
-      }
-    } else {
-      if (this._ringingTimer) {
-        clearTimeout(this._ringingTimer);
-        this._ringingTimer = null;
-      }
-
-      if (this._ringerAudio.ringerConnected) {
-        this._ringerAudio.ringerConnected = false;
-        this._ringerAudio.ringerGain.disconnect();
-      }
-    }
-  }
-
-  _ringerMute() {
-    const timestamp =
-      this._ringerAudio.context.currentTime +
-      this._config.channels.ringer.onTime * 0.2;
-
-    this._ringerAudio.ringerGain.gain.cancelScheduledValues(0);
-    this._ringerAudio.ringerGain.gain.exponentialRampToValueAtTime(
-      0.00001,
-      timestamp
-    );
-  }
-
-  _ringerUnmute() {
-    const timestamp =
-      this._ringerAudio.context.currentTime +
-      this._config.channels.ringer.offTime * 0.2;
-
-    this._ringerAudio.ringerGain.gain.cancelScheduledValues(0);
-    this._ringerAudio.ringerGain.gain.exponentialRampToValueAtTime(
-      0.5,
-      timestamp
-    );
-  }
-
   _createLocalMediaStreamSource(mediaStream) {
     return this._shimCreateMediaStreamSource(
       this._previewAudio.context,
@@ -893,6 +975,13 @@ export default class extends lwpRenderer {
 
   _shimCreateOscillator(context, ...args) {
     return (context.createOscillator || context.webkitCreateOscillator).apply(
+      context,
+      args
+    );
+  }
+
+  _shimCreateChannelMerger(context, ...args) {
+    return (context.createChannelMerger || context.webkitCreateChannelMerger).apply(
       context,
       args
     );
