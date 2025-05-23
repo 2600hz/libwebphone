@@ -122,6 +122,7 @@ export default class extends EventEmitter {
       userAgent: { enabled: true },
       videoCanvas: { enabled: true },
       call: {
+        autoAnswer: true,
         useAudioContext: false,
         globalKeyShortcuts: true,
         startWithAudioMuted: false,
