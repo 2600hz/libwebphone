@@ -4,7 +4,9 @@
 
 The libwebphone audio context class contains all the functionality related to the browsers [AudioContext](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext). This is used to generate ringing audio, DTMF tones, and provide volume controls.
 
-Ringing audio is created by modulating a generated sine wave, then cycling the result between audible and muted.
+Default ringtone audio is created by mixing of two sine wave generators/oscilators with different frequencies, result is rendered to in-memory buffer and then played back in a loop when ringing is required. Default configuration settings produce [US standard ring tone](https://en.wikipedia.org/wiki/Ringing_tone#Bell_System_tones): mix of 440Hz and 480Hz sine waves for 2 seconds followed by 4 seconds of silence.
+
+Call waiting ringtone audio is created by one sine wave generator, result is again rendered to in-memory buffer and then played back in a loop when this ring tone is required. Default configuration settings produce [ZIP tone](https://en.wikipedia.org/wiki/Zip_tone): 440Hz - 300 milliseconds beep once per 10 seconds.
 
 Tones are created by creating an audio buffer containing the calculated values of one or more sine wave frequencies provided as arguments at a sample rate of 8000 for the configured duration (channels.tone.duration). This audio buffer is played then destroyed.
 
@@ -178,40 +180,42 @@ Re-paint / update all render targets.
 
 ## Configuration
 
-| Name                                | Type     | Default | Description                                                                                                                                          |
-| ----------------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| channels.master.show                | boolean  | true    | Should the default template show the master volume control                                                                                           |
-| channels.master.volume              | float    | 1.0     | The initial volume of the master audio, where 0 is muted and 1 is 100%                                                                               |
-| channels.ringer.show                | boolean  | true    | Should the default template show the ringing volume control                                                                                          |
-| channels.ringer.volume              | float    | 1.0     | The initial volume of the ringing audio, where 0 is muted and 1 is 100%                                                                              |
-| channels.ringer.connectToMaster     | boolean  | true    | Should the ringing audio play through the master channel                                                                                             |
-| channels.ringer.onTime              | float    | 1.5     | Duration, in seconds, the ringing sound should be audible each cycle                                                                                 |
-| channels.ringer.offTime             | float    | 1.0     | Duration, in seconds, the ringing sound should be muted each cycle                                                                                   |
-| channels.ringer.carrier.frequency   | float    | 440     | Frequency of the ringing sound generator carrier                                                                                                     |
-| channels.ringer.modulator.frequency | float    | 10      | Frequency of the ring sound generator volume modulator                                                                                               |
-| channels.ringer.modulator.amplitude | float    | 0.75    | The amount the modulator should change the carrier volume, where 0 is none and 1 is 100%                                                             |
-| channels.tones.show                 | boolean  | true    | Should the default template show the DTMF playback tones volume control                                                                              |
-| channels.tones.volume               | float    | 0.15    | The initial volume of the DTMF playback tones                                                                                                        |
-| channels.tones.duration             | float    | 0.15    | Duration, in seconds, that the DTMF playback tones should be audible for                                                                             |
-| channels.tones.connectToMaster      | boolean  | true    | Should the DTMF playback tones play through the master channel                                                                                       |
-| channels.remote.show                | boolean  | true    | Should the default template show the remote (call) volume                                                                                            |
-| channels.remote.volume              | float    | 1.0     | The initial volume of any remote audio (call)                                                                                                        |
-| channels.remote.connectToMaster     | boolean  | false   | Should the remote audio (calls) play through the master channel                                                                                      |
-| channels.preview.show               | boolean  | true    | Should the default template show the preview volume                                                                                                  |
-| channels.preview.volume             | float    | 1.0     | The initial volume of any preview audio                                                                                                              |
-| channels.preview.connectToMaster    | boolean  | false   | Should the preview audio play through the master channel                                                                                             |
-| channels.preview.loopback.delay     | float    | 0.5     | Duration, in seconds, to delay the microphone audio when the loopback preview is playing                                                             |
-| channels.preview.tone.frequency     | integer  | 440     | The frequency of the preview tone                                                                                                                    |
-| channels.preview.tone.duration      | integer  | 1.5     | The duration, in seconds, to play the preview tone                                                                                                   |
-| channels.preview.tone.type          | string   | sine    | The waveform type to generate (sine, square, sawtooth, triangle)                                                                                     |
-| globalKeyShortcuts                  | boolean  | true    | Should the event listeners in the 'keys' property be added to the document                                                                           |
-| keys.arrowup.enabled                | boolean  | true    | If true, and globalKeyShortcuts is also true, preform keys.arrowup.action if the up arrow is pressed when the body of the document has the focus     |
-| keys.arrowup.action                 | function |         | By default this callback increases the master volume by 5% (0.05)                                                                                    |
+| Name                                | Type     | Default | Description                                                                               |
+| ----------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------- |
+| channels.master.show                | boolean  | true    | Should the default template show the master volume control                                |
+| channels.master.volume              | float    | 1.0     | The initial volume of the master audio, where 0 is muted and 1 is 100%                    |
+| channels.ringer.show                | boolean  | true    | Should the default template show the ringing volume control                               |
+| channels.ringer.volume              | float    | 1.0     | The initial volume of the ringing audio, where 0 is muted and 1 is 100%                   |
+| channels.ringer.connectToMaster     | boolean  | true    | Should the ringing audio play through the master channel                                  |
+| channels.ringer.default.onTime      | float    | 2       | Duration, in seconds, the ringing sound should be audible each default ring tone cycle    |
+| channels.ringer.default.<br>&emsp;sequenceDuration | float    | 6     | Duration, in seconds, of one default ring tone cycle                         |
+| channels.ringer.default.<br>&emsp;oscilator_1.frequency | float    | 440     | Frequency of the first oscilator of the `default` ring tone           |
+| channels.ringer.default.<br>&emsp;oscilator_2.frequency | float    | 480     | Frequency of the second oscilator of the `default` ring tone          |
+| channels.ringer.callWaiting.onTime  | float    | 0.3     | Duration, in seconds, the ringing sound should be audible each `call waiting` ring tone cycle |
+| channels.ringer.callWaiting.<br>&emsp;sequenceDuration | float    | 10     | Duration, in seconds, of one `call waiting` ring tone cycle             |
+| channels.ringer.callWaiting.<br>&emsp;oscilator.frequency | float    | 440     | Frequency of the oscilator of the `call waiting` ring tone          |
+| channels.tones.show                 | boolean  | true    | Should the default template show the DTMF playback tones volume control                   |
+| channels.tones.volume               | float    | 0.15    | The initial volume of the DTMF playback tones                                             |
+| channels.tones.duration             | float    | 0.15    | Duration, in seconds, that the DTMF playback tones should be audible for                  |
+| channels.tones.connectToMaster      | boolean  | true    | Should the DTMF playback tones play through the master channel                            |
+| channels.remote.show                | boolean  | true    | Should the default template show the remote (call) volume                                 |
+| channels.remote.volume              | float    | 1.0     | The initial volume of any remote audio (call)                                             |
+| channels.remote.connectToMaster     | boolean  | false   | Should the remote audio (calls) play through the master channel                           |
+| channels.preview.show               | boolean  | true    | Should the default template show the preview volume                                       |
+| channels.preview.volume             | float    | 1.0     | The initial volume of any preview audio                                                   |
+| channels.preview.connectToMaster    | boolean  | false   | Should the preview audio play through the master channel                                  |
+| channels.preview.loopback.delay     | float    | 0.5     | Duration, in seconds, to delay the microphone audio when the loopback preview is playing  |
+| channels.preview.tone.frequency     | integer  | 440     | The frequency of the preview tone                                                         |
+| channels.preview.tone.duration      | integer  | 1.5     | The duration, in seconds, to play the preview tone                                        |
+| channels.preview.tone.type          | string   | sine    | The waveform type to generate (sine, square, sawtooth, triangle)                          |
+| globalKeyShortcuts                  | boolean  | true    | Should the event listeners in the 'keys' property be added to the document                |
+| keys.arrowup.enabled                | boolean  | true    | If true, and globalKeyShortcuts is also true, preform keys.arrowup.action if the up arrow is pressed when the body of the document has the focus |
+| keys.arrowup.action                 | function |         | By default this callback increases the master volume by 5% (0.05)                         |
 | keys.arrowdown.enabled              | boolean  | true    | If true, and globalKeyShortcuts is also true, preform keys.arrowdown.action if the down arrow is pressed when the body of the document has the focus |
-| keys.arrowdown.action               | function |         | By default this callback decreases the master volume by 5% (0.05)                                                                                    |
-| volumeMax                           | integer  | 100     | The maximum value when converting the volume between floats and integers                                                                             |
-| volumeMin                           | integer  | 0       | The minimum value when converting the volume between floats and integers                                                                             |
-| renderTargets                       | array    | []      | See [lwpRenderer](lwpRenderer.md)                                                                                                                    |
+| keys.arrowdown.action               | function |         | By default this callback decreases the master volume by 5% (0.0                           |
+| volumeMax                           | integer  | 100     | The maximum value when converting the volume between floats and integers                  |
+| volumeMin                           | integer  | 0       | The minimum value when converting the volume between floats and integers                  |
+| renderTargets                       | array    | []      | See [lwpRenderer](lwpRenderer.md)                                                         |
 
 ## Events
 
