@@ -473,8 +473,22 @@ export default class lwpCall {
         .getMediaDevices()
         .getPreferedDevice(deviceKind);
 
+      // Don't call the setSinkId if video is disabled 
+      // This causes a problem for video with a "none" deviceId
+      // It causes WebRTC to throw an exception when you call setSinkId with
+      // a "none" deviceId.
+      // This is a slight hack to just short circuit here but we're never going
+      // to use videoInput so I'm pretty sure this is ok.
+      //  And it stops the error from happening.
+      if (elementKind === "video" && !this._libwebphone._config.mediaDevices.videoinput.enabled) {
+        return element;
+      }
+
       if (preferedDevice) {
         try {
+          // Here's the offending call to setSinkId that throws an
+          // "Uncaught (in promise) NotFoundError: Requested device not found"
+          // When the preferedDevice.id is "none"
           element.setSinkId(preferedDevice.id);
         } catch (error) {
          this._emit("error", error);
