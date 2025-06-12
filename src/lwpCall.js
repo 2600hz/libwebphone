@@ -472,13 +472,13 @@ export default class lwpCall {
       const preferedDevice = this._libwebphone
         .getMediaDevices()
         .getPreferedDevice(deviceKind);
-
-      if (preferedDevice) {
-        try {
-          element.setSinkId(preferedDevice.id);
-        } catch (error) {
-         this._emit("error", error);
-        }
+      
+      if (preferedDevice && preferedDevice.id !== "none") {
+        element.setSinkId(preferedDevice.id)
+         .catch ((error) => {
+          console.error("init media element " + elementKind +": " + error);
+          this._emit("error", this, error);
+         });
       }
     }
 
@@ -571,11 +571,11 @@ export default class lwpCall {
       Object.keys(this._streams.remote.elements).forEach((kind) => {
         const element = this._streams.remote.elements[kind];
         if (element && element.setSinkId !== undefined) {
-          try {
-            element.setSinkId(preferedDevice.id);
-          } catch (error) {
-            this._emit("error", error);
-          }
+          element.setSinkId(preferedDevice.id)
+          .catch ((error) => {
+            console.error("media element " + kind +": " + error);
+            this._emit("error", this, error);
+         });
         }
       });
     };

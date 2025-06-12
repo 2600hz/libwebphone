@@ -786,7 +786,7 @@ export default class extends lwpRenderer {
           }
         })
         .catch((error) => {
-          this._emit("ring.output.error", error);
+          this._emit("ring.output.error", this, error);
         });
     } else {
       this._availableDevices["ringoutput"].forEach((availableDevice) => {
@@ -825,7 +825,7 @@ export default class extends lwpRenderer {
           }
         })
         .catch((error) => {
-          this._emit("audio.output.error", error);
+          this._emit("audio.output.error", this, error);
         });
     } else {
       this._availableDevices[preferedDevice.deviceKind].forEach(
